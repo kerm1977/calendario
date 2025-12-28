@@ -196,7 +196,7 @@
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label small fw-bold">Número de Teléfono</label>
-                                    <input type="tel" id="resTel{{ event.id }}" class="form-control border-warning bg-body py-2" placeholder="88888888" oninput="checkInputs({{ event.id }})">
+                                    <input type="tel" id="resTel{{ event.id }}" class="form-control border-warning bg-body py-2" placeholder="88888888" maxlength="8" oninput="checkInputs({{ event.id }})">
                                     <div id="phoneWarning{{ event.id }}" class="text-danger x-small mt-2 d-none fw-bold bg-danger bg-opacity-10 p-2 rounded-3 border border-danger border-opacity-25">
                                         <i class="bi bi-exclamation-triangle-fill"></i> Debe colocar un Celular para que este mensaje le llegue a su Movil.
                                     </div>
@@ -441,11 +441,35 @@
 <script>
     /**
      * Valida campos obligatorios y habilitación de botones en tiempo real.
+     * Implementa formato Title Case y restricciones de caracteres.
      */
     function checkInputs(id) {
-        const nombre = document.getElementById(`resNombre${id}`).value.trim();
-        const apellido1 = document.getElementById(`resApellido1${id}`).value.trim();
-        const tel = document.getElementById(`resTel${id}`).value.trim();
+        const nombreInput = document.getElementById(`resNombre${id}`);
+        const ap1Input = document.getElementById(`resApellido1${id}`);
+        const ap2Input = document.getElementById(`resApellido2${id}`);
+        const telInput = document.getElementById(`resTel${id}`);
+
+        // Función interna para limpiar y formatear nombres (Title Case, solo letras)
+        const sanitizeAndTitleCase = (val) => {
+            // Eliminar números, espacios y caracteres especiales (solo letras permitidas)
+            let clean = val.replace(/[^a-zA-ZñÑáéíóúÁÉÍÓÚ]/g, '');
+            if (clean.length > 0) {
+                return clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase();
+            }
+            return clean;
+        };
+
+        // Aplicar limpieza y formato en tiempo real
+        nombreInput.value = sanitizeAndTitleCase(nombreInput.value);
+        ap1Input.value = sanitizeAndTitleCase(ap1Input.value);
+        ap2Input.value = sanitizeAndTitleCase(ap2Input.value);
+
+        // Limpiar teléfono (Solo números, sin espacios ni letras)
+        telInput.value = telInput.value.replace(/[^0-9]/g, '').substring(0, 8);
+
+        const nombre = nombreInput.value;
+        const apellido1 = ap1Input.value;
+        const tel = telInput.value;
         const pin = document.getElementById(`lookupPin${id}`).value.trim();
         
         const btnSubmit = document.getElementById(`btnSubmitRes${id}`);
@@ -460,8 +484,9 @@
         const isPhoneInvalid = tel.length > 0 && invalidStarts.includes(tel[0]);
         warning.classList.toggle('d-none', !isPhoneInvalid);
 
-        // Habilitar botón de envío principal
-        const canSubmit = nombre && apellido1 && tel.length >= 8 && !isPhoneInvalid;
+        // Habilitar botón de envío principal:
+        // Debe tener nombre, apellido1 y el teléfono debe ser EXACTAMENTE de 8 dígitos.
+        const canSubmit = nombre.length > 0 && apellido1.length > 0 && tel.length === 8 && !isPhoneInvalid;
         btnSubmit.classList.toggle('disabled', !canSubmit);
     }
 
