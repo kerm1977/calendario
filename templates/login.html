@@ -1,0 +1,40 @@
+<!-- templates/login.html -->
+{% extends "base.html" %}
+
+{% block title %}Acceso Administrativo{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center pt-5">
+    <div class="col-md-5 col-lg-4">
+        <div class="card shadow-lg border-0 rounded-4">
+            <div class="card-body p-4 p-md-5">
+                <div class="text-center mb-4">
+                    <div class="bg-primary bg-opacity-10 d-inline-block p-3 rounded-circle mb-3">
+                        <i class="bi bi-shield-lock text-primary h3 mb-0"></i>
+                    </div>
+                    <h2 class="fw-bold">Acceso Admin</h2>
+                    <p class="text-muted small">Solo superusuarios autorizados</p>
+                </div>
+
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Email</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-transparent border-end-0"><i class="bi bi-envelope"></i></span>
+                            <input type="email" name="email" class="form-control border-start-0" required placeholder="nombre@gmail.com">
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label small fw-bold">Contraseña</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-transparent border-end-0"><i class="bi bi-key"></i></span>
+                            <input type="password" name="password" class="form-control border-start-0" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">Entrar al Sistema</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

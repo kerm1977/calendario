@@ -1,0 +1,97 @@
+:root {
+    --cell-min-height: 120px;
+    --border-color: #dee2e6;
+}
+
+[data-bs-theme="dark"] {
+    --border-color: #373b3e;
+}
+
+/* Envoltorio Principal */
+.calendar-wrapper {
+    background: var(--bs-body-bg);
+}
+
+/* Cabecera de días */
+.calendar-header-grid {
+    display: flex;
+    background: var(--bs-primary);
+    color: white;
+    font-weight: bold;
+}
+
+.day-name {
+    flex: 1;
+    text-align: center;
+    padding: 12px;
+    border-right: 1px solid rgba(255,255,255,0.1);
+}
+
+.day-name:last-child { border-right: none; }
+
+/* Grid de días */
+.calendar-days-grid {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.calendar-cell {
+    width: calc(100% / 7);
+    min-height: var(--cell-min-height);
+    border-right: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    padding: 10px;
+    position: relative;
+    transition: background 0.2s;
+}
+
+.calendar-cell:nth-child(7n) { border-right: none; }
+.calendar-cell.empty { background: var(--bs-tertiary-bg); opacity: 0.5; }
+
+.day-number {
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: var(--bs-secondary-color);
+}
+
+/* Lista de Eventos dentro de celda */
+.event-list {
+    margin-top: 5px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.event-item {
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    background: var(--bs-primary-bg-subtle);
+    color: var(--bs-primary-text-emphasis);
+    border-left: 3px solid var(--bs-primary);
+    border-radius: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+}
+
+/* Ajustes Responsivos */
+@media (max-width: 768px) {
+    :root { --cell-min-height: 80px; }
+    
+    .day-name { padding: 6px; font-size: 0.8rem; }
+    
+    .event-item {
+        width: 8px;
+        height: 8px;
+        padding: 0;
+        border-radius: 50%;
+        overflow: hidden;
+        text-indent: -9999px; /* Solo círculos en móviles */
+    }
+    
+    .event-list {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+}

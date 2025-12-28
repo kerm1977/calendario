@@ -1,0 +1,289 @@
+<!-- templates/calendar.html -->
+{% extends "base.html" %}
+
+{% block title %}Panel Admin - Calendario{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4 gap-3">
+    <h2 class="mb-0 fw-bold">{{ month_name }} {{ year }}</h2>
+    
+    <div class="btn-group shadow-sm">
+        <a href="{{ url_for('calendar_view.view', year=year, month=month-1) }}" class="btn btn-outline-warning">
+            <i class="bi bi-chevron-left"></i>
+        </a>
+        <a href="{{ url_for('calendar_view.view') }}" class="btn btn-outline-warning">Hoy</a>
+        <a href="{{ url_for('calendar_view.view', year=year, month=month+1) }}" class="btn btn-outline-warning">
+            <i class="bi bi-chevron-right"></i>
+        </a>
+    </div>
+
+    <button class="btn btn-warning fw-bold" data-bs-toggle="modal" data-bs-target="#addEventModal">
+        <i class="bi bi-plus-lg me-2"></i>Crear Actividad
+    </button>
+</div>
+
+<!-- Estructura Flexbox del Calendario -->
+<div class="calendar-wrapper shadow-sm rounded-4 overflow-hidden border">
+    <div class="calendar-header-grid bg-warning text-dark">
+        <div class="day-name">Lun</div>
+        <div class="day-name">Mar</div>
+        <div class="day-name">Mié</div>
+        <div class="day-name">Jue</div>
+        <div class="day-name">Vie</div>
+        <div class="day-name">Sáb</div>
+        <div class="day-name">Dom</div>
+    </div>
+
+    <div class="calendar-days-grid">
+        {% for week in weeks %}
+            {% for day in week %}
+                <div class="calendar-cell {% if day == 0 %}empty{% else %}clickable-cell{% endif %}" 
+                     {% if day != 0 %}onclick="openAddModal({{ day }})"{% endif %}>
+                    {% if day != 0 %}
+                        <span class="day-number">{{ day }}</span>
+                        <div class="event-list">
+                            {% for event in events %}
+                                {% if event.event_date.day == day and event.event_date.month == month and event.event_date.year == year %}
+                                    <div class="event-item {{ 'bg-warning text-dark border-warning' if event.status == 'Se Traslado' else 'bg-warning-subtle text-warning-emphasis border-warning' }}" 
+                                         style="border-left: 3px solid #ffc107;"
+                                         title="{{ event.title }}">
+                                        {% if event.status == 'Se Traslado' %}<i class="bi bi-arrow-right-circle me-1"></i>{% endif %}
+                                        {{ event.title }}
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Modal para añadir evento (Crear Actividad) -->
+<div class="modal fade" id="addEventModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <form class="modal-content" id="addEventForm" action="{{ url_for('calendar_view.add_event') }}" method="POST" enctype="multipart/form-data">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title fw-bold">Configurar Nueva Actividad</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <!-- Sección 1: Datos Principales -->
+                    <div class="col-md-12"><h6 class="border-bottom pb-2 fw-bold text-warning">Información General</h6></div>
+                    
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Imagen del Evento (Flyer)</label>
+                        <input type="file" name="flyer" class="form-control border-warning" accept="image/*">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Nombre del Evento</label>
+                        <input type="text" name="title" class="form-control border-warning" required placeholder="Nombre de la aventura">
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Moneda</label>
+                        <select name="currency" class="form-select border-warning">
+                            <option value="¢">Colones (¢)</option>
+                            <option value="$">Dólares ($)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Precio (Monto)</label>
+                        <input type="number" step="0.01" name="price" class="form-control border-warning" placeholder="0.00">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Actividad</label>
+                        <select name="activity_type" class="form-select border-warning">
+                            <option>Caminata</option>
+                            <option>El Camino de Costa Rica</option>
+                            <option>Parque Nacional</option>
+                            <option>Internacional</option>
+                            <option>Convivio</option>
+                            <option>Fiesta de Fin de Año</option>
+                            <option>Taller</option>
+                        </select>
+                    </div>
+
+                    <!-- Sección 2: Tiempos -->
+                    <div class="col-md-12"><h6 class="border-bottom pb-2 fw-bold text-warning">Duración y Fechas</h6></div>
+                    
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold">Cantidad Días (1 al 10)</label>
+                        <input type="number" name="duration_days" id="durationDays" class="form-control border-warning" min="1" max="10" value="1">
+                    </div>
+                    
+                    <div class="col-md-4" id="startDateContainer">
+                        <label class="form-label small fw-bold" id="labelEventDate">Fecha de Actividad</label>
+                        <input type="date" name="event_date" id="eventDateInput" class="form-control border-warning" required>
+                    </div>
+
+                    <div class="col-md-4 d-none" id="endDateContainer">
+                        <label class="form-label small fw-bold">Fecha de Cierre de Actividad</label>
+                        <input type="date" name="end_date" class="form-control border-warning">
+                    </div>
+
+                    <!-- Sección 3: Detalle del Evento -->
+                    <div class="col-md-12"><h6 class="border-bottom pb-2 fw-bold text-warning">Detalle del Evento</h6></div>
+                    
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Salida de</label>
+                        <select name="departure_point" class="form-select border-warning">
+                            <option>Parque de Tres Ríos - Escuela</option>
+                            <option>Parque de Tres Ríos - Cruz Roja</option>
+                            <option>Parque de Tres Ríos - Letras</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Hora de Salida</label>
+                        <input type="time" name="departure_time" class="form-control border-warning">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Dificultad</label>
+                        <select name="difficulty" class="form-select border-warning">
+                            <option>Básica</option>
+                            <option>Paseo</option>
+                            <option>Intermedio</option>
+                            <option>Intermedio - Dificil</option>
+                            <option>Dificil</option>
+                            <option>Avanzado</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold">Distancia</label>
+                        <input type="text" name="distance" class="form-control border-warning" placeholder="Ej: 15km">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold">Capacidad</label>
+                        <input type="number" name="capacity" class="form-control border-warning" placeholder="Lugares disponibles">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold">Reserva con</label>
+                        <input type="text" name="reservation_fee" class="form-control border-warning" placeholder="Monto para reservar">
+                    </div>
+
+                    <div class="col-md-12">
+                        <label class="form-label small fw-bold">Se recoge en</label>
+                        <input type="text" name="pickup_point" class="form-control border-warning" placeholder="Puntos adicionales de recogida">
+                    </div>
+
+                    <div class="col-md-12">
+                        <label class="form-label small fw-bold">Descripción</label>
+                        <textarea name="description" class="form-control border-warning" rows="3" placeholder="Detalles generales..."></textarea>
+                    </div>
+
+                    <!-- Sección 4: Estados y Traslados -->
+                    <div class="col-md-12"><h6 class="border-bottom pb-2 fw-bold text-warning">Estado de la Actividad</h6></div>
+                    
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Estado</label>
+                        <select name="status" id="statusSelect" class="form-select border-warning">
+                            <option value="Activa">Activa</option>
+                            <option value="Pendiente">Pendiente</option>
+                            <option value="Suspendido">Suspendido</option>
+                            <option value="Se Traslado">Se Traslado</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-6 d-none" id="movedDateContainer">
+                        <label class="form-label small fw-bold">Nueva Fecha de Traslado</label>
+                        <input type="date" name="moved_date" class="form-control border-warning">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-warning px-4 fw-bold shadow-sm text-dark">Guardar Actividad</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+/**
+ * Función para abrir el modal al hacer click en un día.
+ * @param {number} day - El número del día seleccionado.
+ */
+function openAddModal(day) {
+    const year = {{ year }};
+    const month = String({{ month }}).padStart(2, '0');
+    const dayStr = String(day).padStart(2, '0');
+    const dateStr = `${year}-${month}-${dayStr}`;
+    
+    // Referencia al campo de fecha
+    const dateInput = document.getElementById('eventDateInput');
+    const durationInput = document.getElementById('durationDays');
+    
+    if (dateInput) {
+        // Establecer la fecha en el input del formulario
+        dateInput.value = dateStr;
+        
+        // Resetear duración a 1 para asegurar consistencia
+        if (durationInput) {
+            durationInput.value = 1;
+            // Forzar actualización de etiquetas de Jinja/JS
+            durationInput.dispatchEvent(new Event('input'));
+        }
+    }
+    
+    // Mostrar modal usando el objeto global de Bootstrap
+    const modalElement = document.getElementById('addEventModal');
+    const modal = new bootstrap.Modal(modalElement);
+    modal.show();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const durationInput = document.getElementById('durationDays');
+    const labelDate = document.getElementById('labelEventDate');
+    const endDateContainer = document.getElementById('endDateContainer');
+    
+    const statusSelect = document.getElementById('statusSelect');
+    const movedDateContainer = document.getElementById('movedDateContainer');
+
+    // Lógica para cantidad de días (mostrar/ocultar fecha de cierre)
+    if (durationInput) {
+        durationInput.addEventListener('input', function() {
+            const days = parseInt(this.value) || 1;
+            if (days > 1) {
+                labelDate.innerText = "Fecha de Inicio de Actividad";
+                endDateContainer.classList.remove('d-none');
+            } else {
+                labelDate.innerText = "Fecha de Actividad";
+                endDateContainer.classList.add('d-none');
+            }
+        });
+    }
+
+    // Lógica para el estado "Se Traslado" (mostrar/ocultar fecha nueva)
+    if (statusSelect) {
+        statusSelect.addEventListener('change', function() {
+            if (this.value === 'Se Traslado') {
+                movedDateContainer.classList.remove('d-none');
+            } else {
+                movedDateContainer.classList.add('d-none');
+            }
+        });
+    }
+});
+</script>
+
+<style>
+    /* Estilos adicionales para reforzar el tema Warning */
+    .calendar-header-grid {
+        background-color: #ffc107 !important;
+        color: #212529 !important;
+    }
+    .event-item {
+        border-color: #ffc107 !important;
+    }
+    .btn-outline-warning:hover {
+        color: #212529 !important;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: #ffc107;
+        box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.25);
+    }
+</style>
+{% endblock %}
