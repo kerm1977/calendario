@@ -1,264 +1,357 @@
-<!-- templates/dashboard.html -->
 {% extends "base.html" %}
 
-{% block title %}Panel de Control - La Tribu{% endblock %}
+{% block title %}Dashboard Administrativo - La Tribu{% endblock %}
 
 {% block content %}
+
 <div class="container py-4">
-    <!-- Encabezado del Dashboard -->
-    <div class="row mb-5 align-items-center">
-        <div class="col-md-8">
-            <h1 class="display-5 fw-bold mb-0">Dashboard Administrativo</h1>
-            <p class="text-muted">Gestión de expediciones, miembros y programa de puntos</p>
-        </div>
-        <div class="col-md-4 text-md-end">
-            <div class="badge bg-dark text-warning px-4 py-2 rounded-pill shadow-sm fs-6">
-                <i class="bi bi-person-circle me-2"></i> {{ current_user.email }}
-            </div>
-        </div>
+<!-- ========================================== -->
+<!-- ALERTA DE CUMPLEAÑOS DEL DÍA -->
+<!-- ========================================== -->
+{% if birthdays_today %}
+<div class="alert alert-primary border-0 shadow-lg rounded-5 mb-5 animate__animated animate__bounceIn">
+<div class="d-flex align-items-center p-2">
+<div class="display-5 me-4 text-primary animate__animated animate__pulse animate__infinite">
+<i class="bi bi-cake2-fill"></i>
+</div>
+<div>
+<h4 class="fw-bold mb-1">¡Celebración en La Tribu!</h4>
+<p class="mb-0 fs-5">
+Hoy es el cumpleaños de:
+{% for m in birthdays_today %}
+<span class="badge bg-primary text-white px-3 py-2 rounded-pill shadow-sm">{{ m.nombre }} {{ m.apellido1 }}</span>{{ ", " if not loop.last }}
+{% endfor %}.
+<span class="fw-bold">¡Dales una felicitación especial!</span>
+</p>
+</div>
+</div>
+</div>
+{% endif %}
+
+<!-- Encabezado -->
+<div class="row mb-5 align-items-end">
+    <div class="col-md-8 text-center text-md-start">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-2">
+                <li class="breadcrumb-item"><a href="{{ url_for('main.home') }}" class="text-decoration-none text-warning">Inicio</a></li>
+                <li class="breadcrumb-item active">Dashboard</li>
+            </ol>
+        </nav>
+        <h1 class="display-4 fw-bold mb-0">Panel de Control</h1>
+        <p class="lead text-muted">Gestión integral de expediciones, fidelidad y comunidad</p>
     </div>
-
-    <!-- Estadísticas de Actividades y Fidelidad -->
-    <div class="row g-4 mb-5">
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm rounded-4 h-100 bg-body">
-                <div class="card-body p-4 border-start border-warning border-5 rounded-4">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <small class="text-secondary fw-bold text-uppercase">Activas</small>
-                        <i class="bi bi-play-circle-fill text-warning fs-4"></i>
-                    </div>
-                    <h2 class="fw-bold mb-0">{{ stats.active }}</h2>
-                </div>
+    <div class="col-md-4 text-md-end mt-4 mt-md-0">
+        <div class="d-inline-flex align-items-center bg-dark text-white p-2 rounded-pill shadow-sm border border-warning border-opacity-25">
+            <div class="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 40px; height: 40px;">
+                <i class="bi bi-shield-lock-fill"></i>
             </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm rounded-4 h-100 bg-body">
-                <div class="card-body p-4 border-start border-danger border-5 rounded-4">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <small class="text-secondary fw-bold text-uppercase">Suspendidas</small>
-                        <i class="bi bi-pause-circle-fill text-danger fs-4"></i>
-                    </div>
-                    <h2 class="fw-bold mb-0">{{ stats.cancelled }}</h2>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm rounded-4 h-100 bg-body">
-                <div class="card-body p-4 border-start border-info border-5 rounded-4">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <small class="text-secondary fw-bold text-uppercase">Trasladadas</small>
-                        <i class="bi bi-arrow-right-circle-fill text-info fs-4"></i>
-                    </div>
-                    <h2 class="fw-bold mb-0">{{ stats.moved }}</h2>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm rounded-4 h-100 bg-body">
-                <div class="card-body p-4 border-start border-success border-5 rounded-4">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <small class="text-secondary fw-bold text-uppercase">Puntos de la Tribu</small>
-                        <i class="bi bi-star-fill text-success fs-4"></i>
-                    </div>
-                    <h2 class="fw-bold mb-0">2,450</h2> <!-- Placeholder de diseño -->
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="row g-4">
-        <!-- Sidebar: Categorías y Ranking de Puntos -->
-        <div class="col-lg-4">
-            <div class="card border-0 shadow-sm rounded-4 mb-4 bg-body">
-                <div class="card-body p-4">
-                    <h5 class="fw-bold mb-4 border-bottom pb-2">Distribución de Rutas</h5>
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between mb-1">
-                            <span class="small">El Camino de Costa Rica</span>
-                            <span class="fw-bold">{{ stats.camino }}</span>
-                        </div>
-                        <div class="progress" style="height: 6px;">
-                            <div class="progress-bar bg-warning" style="width: {{ (stats.camino / stats.total * 100) if stats.total > 0 else 0 }}%"></div>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between mb-1">
-                            <span class="small">Parques Nacionales</span>
-                            <span class="fw-bold">{{ stats.nacionales }}</span>
-                        </div>
-                        <div class="progress" style="height: 6px;">
-                            <div class="progress-bar bg-warning" style="width: {{ (stats.nacionales / stats.total * 100) if stats.total > 0 else 0 }}%"></div>
-                        </div>
-                    </div>
-                    <div>
-                        <div class="d-flex justify-content-between mb-1">
-                            <span class="small">Internacionales</span>
-                            <span class="fw-bold">{{ stats.internacionales }}</span>
-                        </div>
-                        <div class="progress" style="height: 6px;">
-                            <div class="progress-bar bg-warning" style="width: {{ (stats.internacionales / stats.total * 100) if stats.total > 0 else 0 }}%"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- SECCIÓN NUEVA: RANKING DE PUNTOS (DISEÑO) -->
-            <div class="card border-0 shadow-sm rounded-4 bg-body animate__animated animate__fadeInUp">
-                <div class="card-body p-4">
-                    <h5 class="fw-bold mb-4 border-bottom pb-2">
-                        <i class="bi bi-trophy-fill text-warning me-2"></i>Líderes de Puntos
-                    </h5>
-                    <!-- Item de Ranking -->
-                    <div class="d-flex align-items-center mb-3">
-                        <div class="flex-shrink-0">
-                            <div class="rounded-circle bg-warning text-dark fw-bold d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">1</div>
-                        </div>
-                        <div class="flex-grow-1 ms-3">
-                            <div class="fw-bold small">Juan Pérez</div>
-                            <div class="x-small text-muted">12 expediciones</div>
-                        </div>
-                        <div class="fw-bold text-success">350 pts</div>
-                    </div>
-                    <!-- Item de Ranking -->
-                    <div class="d-flex align-items-center mb-3">
-                        <div class="flex-shrink-0">
-                            <div class="rounded-circle bg-secondary text-white fw-bold d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">2</div>
-                        </div>
-                        <div class="flex-grow-1 ms-3">
-                            <div class="fw-bold small">Maria Arce</div>
-                            <div class="x-small text-muted">8 expediciones</div>
-                        </div>
-                        <div class="fw-bold text-success">240 pts</div>
-                    </div>
-                    <div class="d-grid mt-4">
-                        <button class="btn btn-sm btn-outline-warning rounded-pill fw-bold">Ver Tabla Completa</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Tabla de Miembros Registrados con Acciones de Eliminación -->
-        <div class="col-lg-8">
-            <div class="card border-0 shadow-sm rounded-4 bg-body h-100">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <h5 class="fw-bold mb-0">Miembros Registrados ({{ bookings|length }})</h5>
-                        <div class="d-flex gap-2">
-                             <div class="input-group input-group-sm" style="width: 200px;">
-                                <span class="input-group-text bg-transparent border-end-0"><i class="bi bi-search"></i></span>
-                                <input type="text" class="form-control border-start-0" placeholder="Buscar por nombre o PIN">
-                            </div>
-                            <button class="btn btn-sm btn-warning fw-bold rounded-pill px-3" onclick="window.location.reload()">
-                                <i class="bi bi-arrow-clockwise"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle shadow-none border-0">
-                            <thead class="bg-body-tertiary">
-                                <tr>
-                                    <th class="border-0 px-3">Miembro</th>
-                                    <th class="border-0 text-center">PIN</th>
-                                    <th class="border-0 text-center">Puntos</th>
-                                    <th class="border-0">WhatsApp</th>
-                                    <th class="border-0 text-end">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for b in bookings %}
-                                <tr>
-                                    <td class="px-3">
-                                        <div class="fw-bold text-body">{{ b.nombre }} {{ b.apellido1 }}</div>
-                                        <div class="x-small text-muted text-uppercase">{{ b.event.title }}</div>
-                                    </td>
-                                    <td class="text-center">
-                                        <span class="badge bg-warning text-dark px-3 rounded-pill fw-bold" style="letter-spacing: 1px;">{{ b.pin }}</span>
-                                    </td>
-                                    <td class="text-center">
-                                        <span class="fw-bold text-success"><i class="bi bi-star-fill x-small"></i> 25</span> <!-- Placeholder puntos -->
-                                    </td>
-                                    <td>
-                                        <a href="https://wa.me/506{{ b.telefono }}" target="_blank" class="btn btn-sm btn-outline-success rounded-pill px-3">
-                                            <i class="bi bi-whatsapp me-1"></i> {{ b.telefono }}
-                                        </a>
-                                    </td>
-                                    <td class="text-end">
-                                        <div class="d-flex justify-content-end gap-2">
-                                            <!-- Botón Historial de Puntos -->
-                                            <button class="btn btn-sm btn-light border rounded-circle text-primary" title="Historial de Puntos">
-                                                <i class="bi bi-clock-history"></i>
-                                            </button>
-                                            <!-- Botón Eliminar Registro -->
-                                            <button class="btn btn-sm btn-light border rounded-circle text-danger" title="Eliminar Registro" data-bs-toggle="modal" data-bs-target="#deleteBookingModal{{ b.id }}">
-                                                <i class="bi bi-trash3-fill"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-
-                                <!-- MODAL DE ELIMINACIÓN DE MIEMBRO (DISEÑO) -->
-                                <div class="modal fade" id="deleteBookingModal{{ b.id }}" tabindex="-1">
-                                    <div class="modal-dialog modal-sm modal-dialog-centered">
-                                        <div class="modal-content border-0 shadow-lg rounded-4">
-                                            <div class="modal-body p-4 text-center">
-                                                <div class="text-danger mb-3">
-                                                    <i class="bi bi-person-x-fill display-4"></i>
-                                                </div>
-                                                <h5 class="fw-bold">¿Eliminar registro?</h5>
-                                                <p class="small text-muted mb-4">Vas a borrar a <strong>{{ b.nombre }}</strong> de la expedición <strong>{{ b.event.title }}</strong>. Esto no se puede deshacer.</p>
-                                                <div class="d-grid gap-2">
-                                                    <button type="button" class="btn btn-danger fw-bold rounded-pill shadow-sm">SÍ, ELIMINAR</button>
-                                                    <button type="button" class="btn btn-light fw-bold rounded-pill" data-bs-dismiss="modal">CANCELAR</button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% if not bookings %}
-                    <div class="text-center py-5">
-                        <i class="bi bi-people text-muted opacity-25 display-4"></i>
-                        <p class="text-muted mt-2">Aún no hay usuarios registrados.</p>
-                    </div>
-                    {% endif %}
-                </div>
+            <div class="pe-3">
+                <div class="x-small opacity-50 text-uppercase fw-bold" style="font-size: 0.6rem;">Admin Logueado</div>
+                <div class="small fw-bold text-warning">{{ current_user.email.split('@')[0] if current_user.email else 'Admin' }}</div>
             </div>
         </div>
     </div>
 </div>
 
+<!-- ========================================== -->
+<!-- ESTADÍSTICAS EN TIEMPO REAL -->
+<!-- ========================================== -->
+<div class="row g-4 mb-5">
+    <div class="col-md-6 col-xl-3">
+        <div class="card border-0 shadow-sm rounded-4 h-100 bg-body stat-card">
+            <div class="card-body p-4 border-start border-warning border-5 rounded-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <small class="text-secondary fw-bold text-uppercase" style="letter-spacing: 1px;">Expediciones</small>
+                    <div class="p-2 bg-warning bg-opacity-10 rounded-3 text-warning"><i class="bi bi-calendar-event fs-4"></i></div>
+                </div>
+                <h2 class="fw-bold mb-0">{{ stats.total }}</h2>
+                <div class="x-small text-muted mt-2">Rutas históricas registradas</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="card border-0 shadow-sm rounded-4 h-100 bg-body stat-card">
+            <div class="card-body p-4 border-start border-success border-5 rounded-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <small class="text-secondary fw-bold text-uppercase" style="letter-spacing: 1px;">Miembros</small>
+                    <div class="p-2 bg-success bg-opacity-10 rounded-3 text-success"><i class="bi bi-people-fill fs-4"></i></div>
+                </div>
+                <h2 class="fw-bold mb-0">{{ stats.members_count }}</h2>
+                <div class="x-small text-muted mt-2">Usuarios únicos con PIN</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="card border-0 shadow-sm rounded-4 h-100 bg-body stat-card">
+            <div class="card-body p-4 border-start border-info border-5 rounded-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <small class="text-secondary fw-bold text-uppercase" style="letter-spacing: 1px;">Activas</small>
+                    <div class="p-2 bg-info bg-opacity-10 rounded-3 text-info"><i class="bi bi-play-circle-fill fs-4"></i></div>
+                </div>
+                <h2 class="fw-bold mb-0">{{ stats.active }}</h2>
+                <div class="x-small text-muted mt-2">Publicadas actualmente</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="card border-0 shadow-sm rounded-4 h-100 bg-body stat-card">
+            <div class="card-body p-4 border-start border-primary border-5 rounded-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <small class="text-secondary fw-bold text-uppercase" style="letter-spacing: 1px;">Cumpleaños</small>
+                    <div class="p-2 bg-primary bg-opacity-10 rounded-3 text-primary"><i class="bi bi-balloon-fill fs-4"></i></div>
+                </div>
+                <h2 class="fw-bold mb-0">{{ stats.birthdays_count }}</h2>
+                <div class="x-small text-muted mt-2">Miembros celebrando hoy</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================== -->
+<!-- RANKING Y TABLA DE MIEMBROS -->
+<!-- ========================================== -->
+<div class="row g-4">
+    <!-- Sidebar: LÍDERES REALES -->
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm rounded-5 bg-body mb-4 h-100 border border-warning border-opacity-10">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center justify-content-between mb-4 border-bottom pb-3">
+                    <h5 class="fw-bold mb-0 text-body">
+                        <i class="bi bi-trophy-fill text-warning me-2"></i>Líderes de Puntos
+                    </h5>
+                    <i class="bi bi-info-circle text-muted" title="Top 10 miembros con más puntos"></i>
+                </div>
+                
+                {% if ranking %}
+                    <div class="ranking-list">
+                    {% for member in ranking %}
+                    <div class="d-flex align-items-center mb-4 animate__animated animate__fadeInLeft" style="animation-delay: {{ loop.index0 * 0.05 }}s">
+                        <div class="flex-shrink-0 position-relative">
+                            <div class="rounded-circle bg-light border fw-bold d-flex align-items-center justify-content-center text-dark shadow-sm" style="width: 42px; height: 42px; font-size: 0.9rem;">
+                                {{ loop.index }}
+                            </div>
+                            {% if loop.index == 1 %}
+                            <i class="bi bi-patch-check-fill text-warning position-absolute bottom-0 end-0 bg-white rounded-circle" style="font-size: 0.8rem; transform: translate(25%, 25%);"></i>
+                            {% endif %}
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <div class="fw-bold small text-body">{{ member.nombre }} {{ member.apellido1 }}</div>
+                            <div class="x-small text-muted d-flex align-items-center">
+                                {{ calculate_age(member.birth_date) }} años 
+                                <span class="mx-1">•</span> 
+                                {{ member.bookings|length }} expediciones
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            <div class="fw-bold text-success" style="font-size: 1.1rem;">{{ member.puntos_totales }}</div>
+                            <div class="x-small text-muted text-uppercase fw-bold" style="font-size: 0.5rem;">Puntos</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-star text-muted opacity-25 display-1 mb-3"></i>
+                        <p class="text-muted fw-medium">No hay miembros registrados todavía.</p>
+                    </div>
+                {% endif %}
+            </div>
+            {% if ranking %}
+            <div class="card-footer bg-transparent border-0 p-4 pt-0">
+                <a href="#" class="btn btn-light w-100 rounded-pill fw-bold text-muted small border">VER LISTA COMPLETA</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Tabla Principal: MIEMBROS Y RESERVAS -->
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm rounded-5 bg-body h-100">
+            <div class="card-body p-4 p-md-5">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-5 gap-3">
+                    <div>
+                        <h5 class="fw-bold mb-1 text-body">Actividad Reciente</h5>
+                        <p class="text-muted small mb-0">Últimos registros en la plataforma</p>
+                    </div>
+                    <div class="input-group input-group-sm w-100 w-md-50 shadow-sm rounded-pill overflow-hidden border">
+                        <span class="input-group-text bg-white border-0 ps-3"><i class="bi bi-search text-muted"></i></span>
+                        <input type="text" class="form-control border-0 py-2" placeholder="Buscar por nombre o PIN..." id="memberSearchInput">
+                    </div>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle border-0 mb-0" id="membersTable">
+                        <thead class="bg-body-tertiary">
+                            <tr>
+                                <th class="border-0 px-3 py-3 text-secondary x-small fw-bold text-uppercase" style="letter-spacing: 1px;">Miembro</th>
+                                <th class="border-0 py-3 text-secondary x-small fw-bold text-uppercase text-center" style="letter-spacing: 1px;">Edad</th>
+                                <th class="border-0 py-3 text-secondary x-small fw-bold text-uppercase text-center" style="letter-spacing: 1px;">PIN</th>
+                                <th class="border-0 py-3 text-secondary x-small fw-bold text-uppercase" style="letter-spacing: 1px;">Contacto</th>
+                                <th class="border-0 py-3 text-secondary x-small fw-bold text-uppercase text-center" style="letter-spacing: 1px;">Puntos</th>
+                                <th class="border-0 py-3 text-secondary x-small fw-bold text-uppercase text-end pe-3" style="letter-spacing: 1px;">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for b in bookings %}
+                            <tr class="member-row animate__animated animate__fadeIn">
+                                <td class="px-3 py-3">
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar-sm me-3 bg-warning bg-opacity-10 text-warning rounded-circle d-flex align-items-center justify-content-center fw-bold shadow-sm" style="width: 38px; height: 38px;">
+                                            {{ b.member.nombre[0] if b.member.nombre else '?' }}{{ b.member.apellido1[0] if b.member.apellido1 else '?' }}
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold text-body member-name">
+                                                {{ b.member.nombre }} {{ b.member.apellido1 }}
+                                                {% if b.member.birth_date and b.member.birth_date.month == now.month and b.member.birth_date.day == now.day %}
+                                                    <i class="bi bi-cake2-fill text-primary ms-1 animate__animated animate__heartBeat animate__infinite" title="¡CUMPLEAÑOS HOY!"></i>
+                                                {% endif %}
+                                            </div>
+                                            <div class="x-small text-muted text-uppercase text-truncate" style="max-width: 150px;" title="{{ b.event.title }}">
+                                                <i class="bi bi-tag-fill me-1"></i>{{ b.event.title }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-light text-dark border fw-medium px-2 py-1">
+                                        {{ calculate_age(b.member.birth_date) }} <span class="x-small">años</span>
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-warning text-dark px-3 py-2 rounded-pill fw-bold member-pin" style="letter-spacing: 1px; font-size: 0.85rem;">{{ b.pin }}</span>
+                                </td>
+                                <td>
+                                    <a href="https://wa.me/506{{ b.telefono }}" target="_blank" class="btn btn-sm btn-outline-success rounded-pill px-3 shadow-sm transition-all hover-scale">
+                                        <i class="bi bi-whatsapp me-1"></i> WhatsApp
+                                    </a>
+                                </td>
+                                <td class="text-center">
+                                    <span class="fw-bold text-success fs-5">
+                                        {{ b.member.puntos_totales }}
+                                    </span>
+                                </td>
+                                <td class="text-end pe-3">
+                                    <div class="d-flex justify-content-end gap-2">
+                                        <!-- Botón Historial (Temporalmente desactivado para evitar BuildError) -->
+                                        <a href="#" class="btn btn-sm btn-light border rounded-circle text-muted" title="Ver historial">
+                                            <i class="bi bi-clock-history"></i>
+                                        </a>
+                                        <!-- Botón Eliminar -->
+                                        <button class="btn btn-sm btn-white border border-danger-subtle rounded-circle text-danger shadow-sm transition-all hover-scale" 
+                                                title="Eliminar Miembro" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#deleteMemberModal{{ b.member.id }}">
+                                            <i class="bi bi-person-x"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- MODAL DE ELIMINACIÓN DE MIEMBRO -->
+                            <div class="modal fade" id="deleteMemberModal{{ b.member.id }}" tabindex="-1">
+                                <div class="modal-dialog modal-sm modal-dialog-centered">
+                                    <div class="modal-content border-0 shadow-lg rounded-5 overflow-hidden">
+                                        <div class="modal-header bg-danger text-white border-0 py-3 text-center d-block">
+                                            <h5 class="modal-title fw-bold">Eliminar Miembro</h5>
+                                        </div>
+                                        <div class="modal-body p-4 text-center bg-body">
+                                            <div class="text-danger mb-3">
+                                                <i class="bi bi-exclamation-octagon-fill display-4 opacity-25"></i>
+                                            </div>
+                                            <p class="text-body fw-bold mb-1 fs-5">{{ b.member.nombre }} {{ b.member.apellido1 }}</p>
+                                            <p class="small text-muted mb-4 px-2">Esta acción borrará permanentemente sus puntos y su PIN único.</p>
+                                            
+                                            <div class="d-grid gap-2">
+                                                <form action="{{ url_for('main.delete_member', member_id=b.member.id) }}" method="POST">
+                                                    <button type="submit" class="btn btn-danger fw-bold rounded-pill shadow-sm py-2 w-100">BORRAR DEFINITIVAMENTE</button>
+                                                </form>
+                                                <button type="button" class="btn btn-light fw-bold rounded-pill py-2 border" data-bs-dismiss="modal">CANCELAR</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if not bookings %}
+                <div class="text-center py-5">
+                    <i class="bi bi-calendar2-x text-muted opacity-25 display-1 mb-3 d-block"></i>
+                    <h4 class="text-muted fw-bold">Sin reservas recientes</h4>
+                    <p class="text-muted">Las nuevas inscripciones aparecerán aquí automáticamente.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+const searchInput = document.getElementById('memberSearchInput');
+const tableRows = document.querySelectorAll('.member-row');
+
+    if (searchInput) {
+        searchInput.addEventListener(&#39;input&#39;, function() {
+            const term = this.value.toLowerCase();
+            tableRows.forEach(row =&gt; {
+                const nameCell = row.querySelector(&#39;.member-name&#39;);
+                const pinCell = row.querySelector(&#39;.member-pin&#39;);
+                if (nameCell &amp;&amp; pinCell) {
+                    const name = nameCell.textContent.toLowerCase();
+                    const pin = pinCell.textContent.toLowerCase();
+                    row.style.display = (name.includes(term) || pin.includes(term)) ? &quot;&quot; : &quot;none&quot;;
+                }
+            });
+        });
+    }
+});
+
+
+</script>
+
 <style>
-    .x-small { font-size: 0.75rem; }
-    .table th { font-weight: 700; text-transform: uppercase; color: var(--bs-secondary); font-size: 0.8rem; }
-    .progress-bar { border-radius: 10px; }
-    
-    /* Efecto hover refinado para las filas de la tabla */
-    .table-hover tbody tr:hover {
-        background-color: rgba(255, 193, 7, 0.03);
-        transition: background-color 0.2s ease;
-    }
+.x-small { font-size: 0.75rem; }
+.table th {
+font-weight: 800;
+color: var(--bs-secondary);
+background-color: var(--bs-tertiary-bg);
+}
 
-    [data-bs-theme="dark"] .table-hover tbody tr:hover {
-        background-color: rgba(255, 193, 7, 0.05);
-    }
+.stat-card { transition: transform 0.3s ease; }
+.stat-card:hover { transform: translateY(-5px); }
 
-    /* Estilo para los botones de acción circulares */
-    .btn-light.border.rounded-circle {
-        width: 32px;
-        height: 32px;
-        padding: 0;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.2s ease;
-    }
-    .btn-light.border.rounded-circle:hover {
-        transform: scale(1.1);
-        background-color: #fff;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    }
+.table-hover tbody tr:hover {
+    background-color: rgba(255, 193, 7, 0.05);
+    transition: background-color 0.2s ease;
+}
+
+.hover-scale:hover { transform: scale(1.05); }
+
+[data-bs-theme=&quot;dark&quot;] .table th { background-color: #1a1a1a; }
+[data-bs-theme=&quot;dark&quot;] .card { border: 1px solid #2a2a2a !important; }
+[data-bs-theme=&quot;dark&quot;] .btn-white { background: #1a1a1a; color: #fff; border-color: #333; }
+[data-bs-theme=&quot;dark&quot;] .bg-body-tertiary { background-color: #121212 !important; }
+
+.ranking-list { position: relative; }
+.ranking-list::before {
+    content: &#39;&#39;;
+    position: absolute;
+    left: 20px;
+    top: 20px;
+    bottom: 20px;
+    width: 1px;
+    background: linear-gradient(to bottom, transparent, rgba(255,193,7,0.2), transparent);
+    z-index: 0;
+}
+
+.badge.bg-primary { background-color: #0d6efd !important; }
+
+
 </style>
+
 {% endblock %}

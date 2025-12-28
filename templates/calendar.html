@@ -45,6 +45,20 @@
                     {% if day != 0 %}
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <span class="day-number fw-bold fs-5">{{ day }}</span>
+                            
+                            {# Marcador de cumpleaños en el día correspondiente #}
+                            {% set day_birthdays = [] %}
+                            {% for mb in monthly_birthdays %}
+                                {% if mb.birth_date.day == day %}
+                                    {% set _ = day_birthdays.append(mb) %}
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if day_birthdays %}
+                                <span class="badge bg-primary rounded-circle p-1" title="Cumpleaños: {{ day_birthdays|length }}">
+                                    <i class="bi bi-balloon-fill"></i>
+                                </span>
+                            {% endif %}
                         </div>
                         
                         <div class="event-stack">
@@ -56,6 +70,13 @@
                                         <span class="text-truncate">{{ event.title }}</span>
                                     </div>
                                 {% endif %}
+                            {% endfor %}
+                            
+                            {# Lista resumida de cumpleañeros en la celda #}
+                            {% for bday_person in day_birthdays %}
+                                <div class="x-small text-primary fw-bold mt-1">
+                                    <i class="bi bi-cake2"></i> {{ bday_person.nombre }}
+                                </div>
                             {% endfor %}
                         </div>
                     {% endif %}
@@ -223,7 +244,7 @@
         display: grid;
         grid-template-columns: repeat(7, 1fr);
         background-color: #dee2e6;
-        gap: 1px; /* Espacio para las líneas de división */
+        gap: 1px;
     }
 
     .calendar-cell {
@@ -263,6 +284,8 @@
         font-weight: 600;
     }
 
+    .x-small { font-size: 0.7rem; }
+
     /* Adaptación a Modo Oscuro */
     [data-bs-theme="dark"] .calendar-cell {
         background-color: #1a1a1a;
@@ -288,33 +311,23 @@
 </style>
 
 <script>
-/**
- * Función para abrir el modal al hacer click en un día.
- * @param {number} day - El número del día seleccionado.
- */
 function openAddModal(day) {
     const year = {{ year }};
     const month = String({{ month }}).padStart(2, '0');
     const dayStr = String(day).padStart(2, '0');
     const dateStr = `${year}-${month}-${dayStr}`;
     
-    // Referencia al campo de fecha
     const dateInput = document.getElementById('eventDateInput');
     const durationInput = document.getElementById('durationDays');
     
     if (dateInput) {
-        // Establecer la fecha en el input del formulario
         dateInput.value = dateStr;
-        
-        // Resetear duración a 1 para asegurar consistencia
         if (durationInput) {
             durationInput.value = 1;
-            // Forzar actualización de etiquetas de Jinja/JS
             durationInput.dispatchEvent(new Event('input'));
         }
     }
     
-    // Mostrar modal usando el objeto global de Bootstrap
     const modalElement = document.getElementById('addEventModal');
     const modal = new bootstrap.Modal(modalElement);
     modal.show();
@@ -328,7 +341,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const statusSelect = document.getElementById('statusSelect');
     const movedDateContainer = document.getElementById('movedDateContainer');
 
-    // Lógica para cantidad de días (mostrar/ocultar fecha de cierre)
     if (durationInput) {
         durationInput.addEventListener('input', function() {
             const days = parseInt(this.value) || 1;
@@ -342,7 +354,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Lógica para el estado "Se Traslado" (mostrar/ocultar fecha nueva)
     if (statusSelect) {
         statusSelect.addEventListener('change', function() {
             if (this.value === 'Se Traslado') {

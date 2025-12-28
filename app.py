@@ -1,14 +1,15 @@
-# app.py
 import os
 import calendar
 import random
-from datetime import datetime
+from datetime import datetime, date
 from flask import Flask, render_template, redirect, url_for, request, flash, Blueprint, jsonify
-from flask_login import LoginManager, login_user, login_required, logout_user, current_user
+from flask_sqlalchemy import SQLAlchemy
+from flask_bcrypt import Bcrypt
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.utils import secure_filename
 from sqlalchemy import extract
-from db import db, bcrypt, User, Event, Booking, init_db
 
+# --- CONFIGURACIÓN INICIAL ---
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'dev_key_la_tribu_2026'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.db'
@@ -23,29 +24,95 @@ MESES_ES = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
             "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
 
 # Inicialización de extensiones
-db.init_app(app)
-bcrypt.init_app(app)
+db = SQLAlchemy(app)
+bcrypt = Bcrypt(app)
 
 login_manager = LoginManager(app)
 login_manager.login_view = 'auth.login'
 login_manager.login_message_category = 'info'
 
+# --- MODELOS DE DATOS ---
+
+class User(UserMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password = db.Column(db.String(200), nullable=False)
+    is_superuser = db.Column(db.Boolean, default=False)
+
+class Member(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    pin = db.Column(db.String(10), unique=True, nullable=False)
+    nombre = db.Column(db.String(100), nullable=False)
+    apellido1 = db.Column(db.String(100), nullable=False)
+    apellido2 = db.Column(db.String(100), default='')
+    telefono = db.Column(db.String(20))
+    birth_date = db.Column(db.Date)
+    puntos_totales = db.Column(db.Integer, default=0)
+    bookings = db.relationship('Booking', backref='member', lazy=True, cascade="all, delete-orphan")
+
+class Event(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(150), nullable=False)
+    flyer = db.Column(db.String(200))
+    currency = db.Column(db.String(10), default='CRC')
+    price = db.Column(db.Float, default=0.0)
+    points_reward = db.Column(db.Integer, default=10)
+    activity_type = db.Column(db.String(50))
+    duration_days = db.Column(db.Integer, default=1)
+    event_date = db.Column(db.Date, nullable=False)
+    end_date = db.Column(db.Date)
+    departure_point = db.Column(db.String(200))
+    departure_time = db.Column(db.String(50))
+    difficulty = db.Column(db.String(50))
+    distance = db.Column(db.String(50))
+    capacity = db.Column(db.Integer, default=0)
+    reservation_fee = db.Column(db.String(100))
+    description = db.Column(db.Text)
+    pickup_point = db.Column(db.String(200))
+    status = db.Column(db.String(50), default='Activa') # Activa, Suspendido, Se Traslado
+    moved_date = db.Column(db.Date)
+    bookings = db.relationship('Booking', backref='event', lazy=True, cascade="all, delete-orphan")
+
+class Booking(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    member_id = db.Column(db.Integer, db.ForeignKey('member.id'), nullable=False)
+    event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
+    nombre = db.Column(db.String(100))
+    apellido1 = db.Column(db.String(100))
+    telefono = db.Column(db.String(20))
+    pin = db.Column(db.String(10))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+# --- FUNCIONES DE UTILIDAD ---
+
+def calculate_age(born):
+    """Calcula la edad actual basándose en la fecha de nacimiento."""
+    if not born:
+        return "N/A"
+    today = date.today()
+    return today.year - born.year - ((today.month, today.day) < (born.month, born.day))
+
+def to_date(date_str):
+    return datetime.strptime(date_str, '%Y-%m-%d').date() if date_str else None
+
 # --- PROCESADOR DE CONTEXTO ---
 @app.context_processor
 def inject_global_vars():
-    """Inyecta variables comunes como el conteo de actividades del mes."""
+    """Inyecta variables y funciones comunes en todas las plantillas."""
     search_month_idx = request.args.get('search_month', type=int)
-    if not search_month_idx:
-        target_month = datetime.now().month
-    else:
-        target_month = search_month_idx
-        
+    target_month = search_month_idx if search_month_idx else datetime.now().month
+    
     count = Event.query.filter(extract('month', Event.event_date) == target_month).count()
-    return dict(month_activity_count=count, meses_lista=MESES_ES)
+    return dict(
+        month_activity_count=count, 
+        meses_lista=MESES_ES, 
+        calculate_age=calculate_age,
+        now=datetime.now()
+    )
 
 # --- BLUEPRINTS ---
 auth_bp = Blueprint('auth', __name__)
@@ -89,71 +156,137 @@ def home():
 @main_bp.route('/admin/dashboard')
 @login_required
 def dashboard():
-    """Ruta que alimenta el Canvas de Dashboard Administrativo."""
+    """Panel de control administrativo."""
     if not current_user.is_superuser:
         flash('Acceso denegado.', 'danger')
         return redirect(url_for('main.home'))
     
-    # Cálculo de métricas para el Dashboard
-    total_count = Event.query.count()
+    today = date.today()
+    birthdays_today = Member.query.filter(
+        extract('month', Member.birth_date) == today.month,
+        extract('day', Member.birth_date) == today.day
+    ).all()
+
     stats = {
-        'total': total_count,
+        'total': Event.query.count(),
         'active': Event.query.filter_by(status='Activa').count(),
         'cancelled': Event.query.filter_by(status='Suspendido').count(),
         'moved': Event.query.filter_by(status='Se Traslado').count(),
-        'camino': Event.query.filter_by(activity_type='El Camino de Costa Rica').count(),
-        'nacionales': Event.query.filter_by(activity_type='Parque Nacional').count(),
-        'internacionales': Event.query.filter_by(activity_type='Internacional').count()
+        'members_count': Member.query.count(),
+        'birthdays_count': len(birthdays_today)
     }
     
-    # Obtener todas las reservas con la información del evento relacionado
     bookings = Booking.query.order_by(Booking.created_at.desc()).all()
+    ranking = Member.query.order_by(Member.puntos_totales.desc()).limit(10).all()
     
-    return render_template('dashboard.html', stats=stats, bookings=bookings)
+    return render_template('dashboard.html', 
+                           stats=stats, 
+                           birthdays_today=birthdays_today, 
+                           bookings=bookings,
+                           ranking=ranking)
 
-# --- API DE RESERVAS Y USUARIOS ---
+@main_bp.route('/admin/member/delete/<int:member_id>', methods=['POST'])
+@login_required
+def delete_member(member_id):
+    """Elimina un miembro y todas sus reservas por cascada."""
+    if not current_user.is_superuser:
+        return redirect(url_for('main.home'))
+    
+    member = Member.query.get_or_404(member_id)
+    try:
+        db.session.delete(member)
+        db.session.commit()
+        flash(f'El miembro {member.nombre} ha sido eliminado permanentemente.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al eliminar: {str(e)}', 'danger')
+        
+    return redirect(url_for('main.dashboard'))
+
+# --- API DE RESERVAS Y MIEMBROS ---
 
 @main_bp.route('/api/reserve', methods=['POST'])
 def api_reserve():
-    """Registra un nuevo miembro y genera un PIN único."""
+    """Registra una reserva con validación de duplicados por actividad."""
     data = request.json
     try:
-        # Generar un PIN único de 6 dígitos que no exista en la BD
-        while True:
-            new_pin = str(random.randint(100000, 999999))
-            if not Booking.query.filter_by(pin=new_pin).first():
-                break
+        pin_proporcionado = data.get('pin')
+        member = None
+        event = Event.query.get_or_404(data['event_id'])
         
+        # Procesar fecha de nacimiento
+        birth_date_obj = None
+        if data.get('birth_date'):
+            birth_date_obj = datetime.strptime(data['birth_date'], '%Y-%m-%d').date()
+
+        if pin_proporcionado:
+            member = Member.query.filter_by(pin=pin_proporcionado).first()
+
+        if not member:
+            # Generar PIN único si es un usuario nuevo
+            while True:
+                new_pin = str(random.randint(100000, 999999))
+                if not Member.query.filter_by(pin=new_pin).first():
+                    break
+            
+            member = Member(
+                pin=new_pin,
+                nombre=data['nombre'],
+                apellido1=data['apellido1'],
+                apellido2=data.get('apellido2', ''),
+                telefono=data['telefono'],
+                birth_date=birth_date_obj,
+                puntos_totales=event.points_reward or 10
+            )
+            db.session.add(member)
+            db.session.flush()
+        else:
+            # Prevención de duplicados en la misma actividad
+            existing_booking = Booking.query.filter_by(member_id=member.id, event_id=event.id).first()
+            if existing_booking:
+                return jsonify({
+                    'success': False, 
+                    'error': 'Ya te encuentras registrado en esta aventura. ¡Usa tu PIN para otras actividades!'
+                })
+
+            # Miembro recurrente: actualizar fecha y sumar puntos
+            if birth_date_obj:
+                member.birth_date = birth_date_obj
+            member.puntos_totales += (event.points_reward or 10)
+
+        # Crear el registro de la reserva
         new_booking = Booking(
-            nombre=data['nombre'],
-            apellido1=data['apellido1'],
-            apellido2=data.get('apellido2', ''),
-            telefono=data['telefono'],
-            pin=new_pin,
-            event_id=data['event_id']
+            member_id=member.id,
+            event_id=event.id,
+            nombre=member.nombre,
+            apellido1=member.apellido1,
+            telefono=member.telefono,
+            pin=member.pin
         )
+        
         db.session.add(new_booking)
         db.session.commit()
-        return jsonify({'success': True, 'pin': new_pin})
+        
+        return jsonify({'success': True, 'pin': member.pin, 'puntos': member.puntos_totales})
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)})
 
 @main_bp.route('/api/lookup/<pin>')
 def api_lookup(pin):
-    """Busca datos de usuario por PIN para auto-rellenado."""
-    booking = Booking.query.filter_by(pin=pin).first()
-    if booking:
+    """Busca datos de un Miembro por su PIN."""
+    member = Member.query.filter_by(pin=pin).first()
+    if member:
         return jsonify({
             'success': True,
-            'nombre': booking.nombre,
-            'apellido1': booking.apellido1,
-            'apellido2': booking.apellido2,
-            'telefono': booking.telefono
+            'nombre': member.nombre,
+            'apellido1': member.apellido1,
+            'puntos': member.puntos_totales,
+            'birth_date': member.birth_date.strftime('%Y-%m-%d') if member.birth_date else None
         })
-    return jsonify({'success': False})
+    return jsonify({'success': False, 'error': 'PIN no encontrado'})
 
-# --- GESTIÓN DE CALENDARIO Y EVENTOS ---
+# --- GESTIÓN DE CALENDARIO ---
 
 @calendar_bp.route('/admin/calendar')
 @login_required
@@ -169,19 +302,19 @@ def view():
 
     cal = calendar.Calendar(firstweekday=0)
     weeks = cal.monthdayscalendar(year, month)
-    
-    month_name = MESES_ES[month]
     events = Event.query.all()
+    
+    monthly_birthdays = Member.query.filter(extract('month', Member.birth_date) == month).all()
     
     return render_template('calendar.html', 
                            weeks=weeks, 
                            year=year, 
                            month=month, 
-                           month_name=month_name,
-                           events=events)
+                           month_name=MESES_ES[month],
+                           events=events,
+                           monthly_birthdays=monthly_birthdays)
 
-def to_date(date_str):
-    return datetime.strptime(date_str, '%Y-%m-%d').date() if date_str else None
+# --- CRUD DE EVENTOS ---
 
 @calendar_bp.route('/admin/event/add', methods=['POST'])
 @login_required
@@ -200,6 +333,7 @@ def add_event():
             flyer=filename,
             currency=request.form.get('currency'),
             price=float(request.form.get('price') or 0),
+            points_reward=int(request.form.get('points_reward') or 10),
             activity_type=request.form.get('activity_type'),
             duration_days=int(request.form.get('duration_days') or 1),
             event_date=to_date(request.form.get('event_date')),
@@ -212,7 +346,7 @@ def add_event():
             reservation_fee=request.form.get('reservation_fee'),
             description=request.form.get('description'),
             pickup_point=request.form.get('pickup_point'),
-            status=request.form.get('status'),
+            status=request.form.get('status') or 'Activa',
             moved_date=to_date(request.form.get('moved_date'))
         )
         db.session.add(event)
@@ -234,7 +368,6 @@ def edit_event(event_id):
     if file and file.filename != '':
         filename = secure_filename(file.filename)
         file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-        # Eliminar flyer anterior si existe
         if event.flyer:
             try: os.remove(os.path.join(app.config['UPLOAD_FOLDER'], event.flyer))
             except: pass
@@ -244,6 +377,7 @@ def edit_event(event_id):
         event.title = request.form.get('title')
         event.currency = request.form.get('currency')
         event.price = float(request.form.get('price') or 0)
+        event.points_reward = int(request.form.get('points_reward') or 10)
         event.activity_type = request.form.get('activity_type')
         event.duration_days = int(request.form.get('duration_days') or 1)
         event.event_date = to_date(request.form.get('event_date'))
@@ -291,6 +425,17 @@ app.register_blueprint(auth_bp)
 app.register_blueprint(main_bp)
 app.register_blueprint(calendar_bp)
 
+# --- INICIALIZACIÓN ---
+
+with app.app_context():
+    db.create_all()
+    # Crear superusuario inicial si no existe
+    if not User.query.filter_by(email='admin@latribu.com').first():
+        hashed_pw = bcrypt.generate_password_hash('admin123').decode('utf-8')
+        admin = User(email='admin@latribu.com', password=hashed_pw, is_superuser=True)
+        db.session.add(admin)
+        db.session.commit()
+
 if __name__ == '__main__':
-    init_db(app)
     app.run(debug=True)
+
