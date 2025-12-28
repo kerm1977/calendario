@@ -25,15 +25,38 @@
             animation: heartbeat 1.5s infinite;
             vertical-align: middle;
         }
-        
-        /* Estilo para el buscador de meses */
-        .month-search-group .form-select:focus {
-            border-color: #ffc107;
-            box-shadow: none;
+
+        /* Footer Fijo con Efecto Blur Brutal */
+        .footer-sticky-blur {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            z-index: 1030;
+            /* Efecto de desenfoque de fondo */
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            /* Fondo con opacidad al 0.8 (utilizando variables de Bootstrap para temas) */
+            background-color: rgba(var(--bs-body-bg-rgb), 0.8) !important;
+            border-top: 1px solid rgba(var(--bs-warning-rgb), 0.2);
+            box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.05);
         }
-        .month-search-group .input-group-text {
-            min-width: 40px;
-            justify-content: center;
+
+        /* Espaciado del cuerpo para que el contenido no quede tapado por el footer */
+        body {
+            padding-bottom: 70px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        main {
+            flex: 1;
+        }
+
+        /* Sombra tenue color Warning en modo oscuro para el footer también */
+        [data-bs-theme="dark"] .footer-sticky-blur {
+            box-shadow: 0 -4px 12px rgba(255, 193, 7, 0.05);
+            border-top: 1px solid rgba(255, 193, 7, 0.15);
         }
     </style>
 </head>
@@ -57,7 +80,6 @@
                     </li>
                     {% endif %}
                 </ul>
-
                 <div class="d-flex align-items-center gap-3">
                     <button class="btn btn-sm btn-outline-secondary" id="themeToggler">
                         <i class="bi bi-sun-fill" id="themeIcon"></i>
@@ -74,28 +96,6 @@
     </nav>
 
     <main class="container py-4">
-        <!-- Buscador por Mes y Contador (Fuera del Navbar) -->
-        <div class="row mb-4 justify-content-end">
-            <div class="col-auto">
-                <form action="{{ url_for('main.home') }}" method="GET" class="d-flex align-items-center month-search-group">
-                    <div class="input-group shadow-sm">
-                        <span class="input-group-text border-warning bg-body-tertiary text-warning">
-                            <i class="bi bi-funnel-fill"></i>
-                        </span>
-                        <select name="search_month" class="form-select border-warning bg-body-tertiary text-body" style="min-width: 180px;" onchange="this.form.submit()">
-                            <option value="">Todos los meses...</option>
-                            {% for m in ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'] %}
-                                <option value="{{ loop.index }}" {% if request.args.get('search_month')|int == loop.index %}selected{% endif %}>{{ m }}</option>
-                            {% endfor %}
-                        </select>
-                        <span class="input-group-text border-warning bg-warning text-dark fw-bold" title="Actividades este mes">
-                            {{ month_activity_count|default(0) }}
-                        </span>
-                    </div>
-                </form>
-            </div>
-        </div>
-
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -110,7 +110,7 @@
         {% block content %}{% endblock %}
     </main>
 
-    <footer class="footer mt-auto py-4 bg-body-tertiary text-center border-top">
+    <footer class="footer-sticky-blur py-3 text-center">
         <div class="container">
             <span class="text-body-secondary fw-medium">
                 © 2026 Hecho con <i class="bi bi-heart-fill text-danger heart-beat mx-1"></i> La Tribu De Los Libres
