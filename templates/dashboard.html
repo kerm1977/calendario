@@ -1,0 +1,161 @@
+<!-- templates/dashboard.html -->
+{% extends "base.html" %}
+
+{% block title %}Panel de Control - La Tribu{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Encabezado del Dashboard -->
+    <div class="row mb-5 align-items-center">
+        <div class="col-md-8">
+            <h1 class="display-5 fw-bold mb-0">Dashboard Administrativo</h1>
+            <p class="text-muted">Gestión de expediciones y miembros de La Tribu</p>
+        </div>
+        <div class="col-md-4 text-md-end">
+            <div class="badge bg-dark text-warning px-4 py-2 rounded-pill shadow-sm fs-6">
+                <i class="bi bi-person-circle me-2"></i> {{ current_user.email }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Estadísticas de Actividades -->
+    <div class="row g-4 mb-5">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100 bg-body">
+                <div class="card-body p-4 border-start border-warning border-5 rounded-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <small class="text-secondary fw-bold text-uppercase">Activas</small>
+                        <i class="bi bi-play-circle-fill text-warning fs-4"></i>
+                    </div>
+                    <h2 class="fw-bold mb-0">{{ stats.active }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100 bg-body">
+                <div class="card-body p-4 border-start border-danger border-5 rounded-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <small class="text-secondary fw-bold text-uppercase">Suspendidas</small>
+                        <i class="bi bi-pause-circle-fill text-danger fs-4"></i>
+                    </div>
+                    <h2 class="fw-bold mb-0">{{ stats.cancelled }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100 bg-body">
+                <div class="card-body p-4 border-start border-info border-5 rounded-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <small class="text-secondary fw-bold text-uppercase">Trasladadas</small>
+                        <i class="bi bi-arrow-right-circle-fill text-info fs-4"></i>
+                    </div>
+                    <h2 class="fw-bold mb-0">{{ stats.moved }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Desglose por Categoría -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100 bg-body">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold mb-4 border-bottom pb-2">Categorías</h5>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="small">El Camino de Costa Rica</span>
+                            <span class="fw-bold">{{ stats.camino }}</span>
+                        </div>
+                        <div class="progress" style="height: 6px;">
+                            <div class="progress-bar bg-warning" style="width: {{ (stats.camino / stats.total * 100) if stats.total > 0 else 0 }}%"></div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="small">Parques Nacionales</span>
+                            <span class="fw-bold">{{ stats.nacionales }}</span>
+                        </div>
+                        <div class="progress" style="height: 6px;">
+                            <div class="progress-bar bg-warning" style="width: {{ (stats.nacionales / stats.total * 100) if stats.total > 0 else 0 }}%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="small">Internacionales</span>
+                            <span class="fw-bold">{{ stats.internacionales }}</span>
+                        </div>
+                        <div class="progress" style="height: 6px;">
+                            <div class="progress-bar bg-warning" style="width: {{ (stats.internacionales / stats.total * 100) if stats.total > 0 else 0 }}%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla de Miembros Registrados -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-4 bg-body">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h5 class="fw-bold mb-0">Miembros Registrados ({{ bookings|length }})</h5>
+                        <button class="btn btn-sm btn-warning fw-bold rounded-pill px-3" onclick="window.location.reload()">
+                            <i class="bi bi-arrow-clockwise me-1"></i> Actualizar
+                        </button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle shadow-none border-0">
+                            <thead class="bg-body-tertiary">
+                                <tr>
+                                    <th class="border-0 px-3">Miembro</th>
+                                    <th class="border-0 text-center">PIN</th>
+                                    <th class="border-0">WhatsApp</th>
+                                    <th class="border-0">Evento</th>
+                                    <th class="border-0">Fecha Registro</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for b in bookings %}
+                                <tr>
+                                    <td class="px-3">
+                                        <div class="fw-bold text-body">{{ b.nombre }} {{ b.apellido1 }}</div>
+                                        <div class="x-small text-muted">{{ b.apellido2 or '' }}</div>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-warning text-dark px-3 rounded-pill fw-bold" style="letter-spacing: 1px;">{{ b.pin }}</span>
+                                    </td>
+                                    <td>
+                                        <a href="https://wa.me/506{{ b.telefono }}" target="_blank" class="btn btn-sm btn-outline-success rounded-pill px-3">
+                                            <i class="bi bi-whatsapp me-1"></i> {{ b.telefono }}
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <div class="text-truncate small" style="max-width: 120px;" title="{{ b.event.title }}">
+                                            {{ b.event.title }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="x-small text-muted">{{ b.created_at.strftime('%d/%m/%Y %H:%M') }}</div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% if not bookings %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-people text-muted opacity-25 display-4"></i>
+                        <p class="text-muted mt-2">Aún no hay usuarios registrados.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .x-small { font-size: 0.75rem; }
+    .table th { font-weight: 700; text-transform: uppercase; color: var(--bs-secondary); }
+    .progress-bar { border-radius: 10px; }
+</style>
+{% endblock %}

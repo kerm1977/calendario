@@ -45,15 +45,32 @@ class Event(db.Model):
     # Auditoría
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relación con reservas
+    bookings = db.relationship('Booking', backref='event', lazy=True, cascade="all, delete-orphan")
+
+class Booking(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(100), nullable=False)
+    apellido1 = db.Column(db.String(100), nullable=False)
+    apellido2 = db.Column(db.String(100))
+    telefono = db.Column(db.String(20), nullable=False)
+    pin = db.Column(db.String(10), nullable=False, unique=True)
+    event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 def init_db(app):
+    """Crea la base de datos y los superusuarios iniciales."""
     with app.app_context():
-        if not os.path.exists('db.db'):
-            db.create_all()
-            # Superusuarios
-            superusers = ["kenth1977@gmail.com", "lthikingcr@gmail.com"]
-            hashed_pw = bcrypt.generate_password_hash("CR129x7848n").decode('utf-8')
-            for email in superusers:
-                if not User.query.filter_by(email=email).first():
-                    db.session.add(User(email=email, password=hashed_pw, is_superuser=True))
-            db.session.commit()
+        db.create_all()
+        
+        superusers_emails = ["kenth1977@gmail.com", "lthikingcr@gmail.com"]
+        password_plain = "CR129x7848n"
+        hashed_pw = bcrypt.generate_password_hash(password_plain).decode('utf-8')
+        
+        for email in superusers_emails:
+            if not User.query.filter_by(email=email).first():
+                user = User(email=email, password=hashed_pw, is_superuser=True)
+                db.session.add(user)
+        
+        db.session.commit()

@@ -1,315 +1,635 @@
 <!-- templates/home.html -->
-
 {% extends "base.html" %}
 
-{% block title %}Próximas Aventuras{% endblock %}
+{% block title %}Próximas Aventuras - La Tribu{% endblock %}
 
 {% block content %}
-{# Mapeo de meses en español #}
+{# Mapeo de meses en español para visualización #}
 {% set meses = ['', 'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'] %}
 
-<div class="row align-items-center mb-5">
-<div class="col-lg-8">
-<h1 class="display-4 fw-bold mb-0">Nuestras Aventuras</h1>
-<p class="lead text-muted">Calendario de La Tribu De Los Libres.</p>
-</div>
-<div class="col-lg-4 text-lg-end d-none d-lg-block">
-<div class="p-3 bg-warning bg-opacity-10 d-inline-block rounded-circle">
-<i class="bi bi-compass display-4 text-warning"></i>
-</div>
-</div>
+<!-- TÍTULO PÚBLICO -->
+<div class="row align-items-center mb-5 animate__animated animate__fadeIn">
+    <div class="col-12">
+        <h1 class="display-4 fw-bold mb-0">Explora Nuestras Aventuras</h1>
+        <p class="lead text-muted">Calendario oficial de La Tribu De Los Libres</p>
+    </div>
 </div>
 
+<!-- GRID DE ACTIVIDADES -->
 <div class="row g-4">
-{% if events %}
-{% for event in events %}
-<div class="col-md-6 col-lg-4">
-<div class="card h-100 shadow border-0 overflow-hidden position-relative adventure-card">
-
-            <!-- Controles de Superusuario -->
-            {% if current_user.is_authenticated and current_user.is_superuser %}
-            <div class="position-absolute top-0 end-0 m-3 z-3 d-flex gap-2">
-                <button class="btn btn-warning btn-sm rounded-circle shadow-sm text-dark" title="Editar Actividad" data-bs-toggle="modal" data-bs-target="#editModal{{ event.id }}">
-                    <i class="bi bi-pencil-fill"></i>
-                </button>
-                <button class="btn btn-light btn-sm rounded-circle shadow-sm text-danger" title="Borrar Actividad" data-bs-toggle="modal" data-bs-target="#deleteModal{{ event.id }}">
-                    <i class="bi bi-trash3-fill"></i>
-                </button>
-            </div>
-            {% endif %}
-
-            <!-- Etiqueta de Estado Especial: Traslado -->
-            {% if event.status == 'Se Traslado' %}
-            <div class="position-absolute top-0 start-0 m-3 z-3">
-                <span class="badge bg-warning text-dark shadow-sm px-3 py-2 rounded-pill fw-bold">
-                    <i class="bi bi-calendar-range me-1"></i> Trasladado
-                </span>
-            </div>
-            {% endif %}
-
-            <!-- Contenedor del Flyer / Imagen -->
-            <div class="card-img-container" style="height: 240px; overflow: hidden; background: var(--bs-tertiary-bg);">
-                {% if event.flyer %}
-                    <img src="{{ url_for('static', filename='uploads/flyers/' + event.flyer) }}" class="card-img-top w-100 h-100" style="object-fit: cover;" alt="{{ event.title }}">
-                {% else %}
-                    <div class="w-100 h-100 d-flex flex-column align-items-center justify-content-center text-muted">
-                        <i class="bi bi-image display-1 opacity-25 text-warning"></i>
-                        <span class="small mt-2">Sin imagen disponible</span>
-                    </div>
+    {% if events %}
+        {% for event in events %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow border-0 overflow-hidden position-relative adventure-card">
+                
+                <!-- ACCIONES DE ADMIN EN LA TARJETA -->
+                {% if current_user.is_authenticated and current_user.is_superuser %}
+                <div class="position-absolute top-0 end-0 m-3 z-3 d-flex gap-2">
+                    <button class="btn btn-warning btn-sm rounded-circle shadow-sm text-dark" title="Editar Actividad" data-bs-toggle="modal" data-bs-target="#editModal{{ event.id }}">
+                        <i class="bi bi-pencil-fill"></i>
+                    </button>
+                    <button class="btn btn-light btn-sm rounded-circle shadow-sm text-danger" title="Borrar Actividad" data-bs-toggle="modal" data-bs-target="#deleteModal{{ event.id }}">
+                        <i class="bi bi-trash3-fill"></i>
+                    </button>
+                </div>
                 {% endif %}
-            </div>
 
-            <div class="card-body p-4">
-                <!-- Fila de Categoría y Precio -->
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <span class="badge bg-warning bg-opacity-10 text-warning-emphasis border border-warning px-3 py-2">
-                        {{ event.activity_type }}
+                <!-- BADGE DE TRASLADADO -->
+                {% if event.status == 'Se Traslado' %}
+                <div class="position-absolute top-0 start-0 m-3 z-3">
+                    <span class="badge bg-warning text-dark shadow-sm px-3 py-2 rounded-pill fw-bold">
+                        <i class="bi bi-calendar-range me-1"></i> Trasladado
                     </span>
-                    <div class="text-success fw-bold h5 mb-0">
-                        {{ event.currency }}{{ "{:,.2f}".format(event.price) }}
-                    </div>
+                </div>
+                {% endif %}
+
+                <!-- FLYER -->
+                <div class="card-img-container" style="height: 250px; background: var(--bs-tertiary-bg); position: relative;">
+                    {% if event.flyer %}
+                        <img src="{{ url_for('static', filename='uploads/flyers/' + event.flyer) }}" class="card-img-top w-100 h-100" style="object-fit: cover;" alt="{{ event.title }}">
+                    {% else %}
+                        <div class="w-100 h-100 d-flex flex-column align-items-center justify-content-center text-muted">
+                            <i class="bi bi-image display-1 opacity-10 text-warning"></i>
+                        </div>
+                    {% endif %}
                 </div>
 
-                <h4 class="card-title fw-bold mb-3 text-truncate-2">{{ event.title }}</h4>
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="badge bg-warning bg-opacity-10 text-warning-emphasis border border-warning px-3 py-2">{{ event.activity_type }}</span>
+                        <div class="text-success fw-bold h5 mb-0">{{ event.currency }}{{ "{:,.2f}".format(event.price) }}</div>
+                    </div>
+                    
+                    <h4 class="card-title fw-bold mb-3 text-truncate-2">{{ event.title }}</h4>
 
-                <!-- Bloque de Fechas en Español -->
-                <div class="mb-4 p-3 bg-body-tertiary rounded-4 small border border-warning border-opacity-25">
-                    <div class="d-flex align-items-center mb-2">
-                        <i class="bi bi-calendar3 me-3 text-warning h5 mb-0"></i>
-                        <div>
+                    <!-- FECHAS -->
+                    <div class="mb-4 p-3 bg-body-tertiary rounded-4 small border border-warning border-opacity-10">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-calendar3 me-3 text-warning h5 mb-0"></i>
                             <div class="fw-bold text-body">
                                 {% if event.duration_days > 1 %}
-                                    Del {{ event.event_date.day }} de {{ meses[event.event_date.month] }} al {{ event.end_date.day }} de {{ meses[event.end_date.month] }}, {{ event.end_date.year }}
+                                    Del {{ event.event_date.day }} al {{ event.end_date.day }} de {{ meses[event.end_date.month] }}, {{ event.end_date.year }}
                                 {% else %}
                                     {{ event.event_date.day }} de {{ meses[event.event_date.month] }}, {{ event.event_date.year }}
                                 {% endif %}
                             </div>
-                            <div class="text-secondary">{{ event.duration_days }} día(s) de aventura</div>
                         </div>
                     </div>
-                    
-                    {% if event.status == 'Se Traslado' and event.moved_date %}
-                    <div class="text-warning-emphasis fw-bold border-top border-warning border-opacity-25 mt-2 pt-2 d-flex align-items-center">
-                        <i class="bi bi-arrow-right-circle-fill me-2 h6 mb-0 text-warning"></i> 
-                        Nueva fecha: {{ event.moved_date.day }} de {{ meses[event.moved_date.month] }}
-                    </div>
-                    {% endif %}
-                </div>
 
-                <!-- Cuadrícula de Detalles Logísticos -->
-                <div class="row g-3 mb-4 small text-body">
-                    <div class="col-6">
-                        <div class="d-flex align-items-center">
-                            <i class="bi bi-geo-alt-fill me-2 text-warning"></i>
-                            <span class="text-truncate">
-                                {{ event.departure_point.replace('Parque de Tres Ríos - ', '') }}
-                            </span>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="d-flex align-items-center justify-content-end">
-                            <i class="bi bi-speedometer2 me-2 text-warning"></i>
-                            <span>{{ event.difficulty }}</span>
-                        </div>
+                    <div class="row g-3 mb-1 small text-secondary">
+                        <div class="col-6"><i class="bi bi-geo-alt-fill me-1 text-warning"></i>{{ event.departure_point.split('-')[-1]|default('Punto Oficial') }}</div>
+                        <div class="col-6 text-end"><i class="bi bi-speedometer2 me-1 text-warning"></i>{{ event.difficulty }}</div>
                     </div>
                 </div>
 
-                <p class="card-text text-secondary small line-clamp-3 mb-0">
-                    {{ event.description or 'Ven y disfruta de una experiencia inolvidable diseñada para los amantes de la naturaleza.' }}
-                </p>
-            </div>
-
-            <div class="card-footer bg-body border-0 p-4 pt-0 text-center">
-                <button class="btn btn-warning rounded-pill fw-bold py-2 shadow-sm w-100 text-dark" data-bs-toggle="modal" data-bs-target="#detailsModal{{ event.id }}">
-                    <i class="bi bi-info-circle me-2"></i>Ver Detalles / Reservar
-                </button>
+                <div class="card-footer bg-body border-0 p-4 pt-0 text-center">
+                    <button class="btn btn-warning rounded-pill fw-bold py-2 shadow-sm w-100 text-dark transition-all" data-bs-toggle="modal" data-bs-target="#detailsModal{{ event.id }}">
+                        <i class="bi bi-info-circle me-1"></i> Ver Detalles / Reservar
+                    </button>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- Modal de Detalles -->
-    <div class="modal fade" id="detailsModal{{ event.id }}" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-scrollable">
-            <div class="modal-content border-0 rounded-4 overflow-hidden">
-                <div class="modal-header border-0 p-0 position-relative">
-                    {% if event.flyer %}
-                        <img src="{{ url_for('static', filename='uploads/flyers/' + event.flyer) }}" class="w-100" style="height: 300px; object-fit: cover;">
-                    {% else %}
-                        <div class="w-100 bg-secondary d-flex align-items-center justify-content-center" style="height: 200px;">
-                            <i class="bi bi-image display-1 text-white opacity-25"></i>
-                        </div>
-                    {% endif %}
-                    <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-3 shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body p-4 text-body">
-                    <div class="row g-4">
-                        <div class="col-lg-8">
-                            <div class="mb-4">
-                                <span class="badge bg-warning text-dark px-3 py-2 mb-2 fw-bold">{{ event.activity_type }}</span>
-                                <h2 class="fw-bold mb-3">{{ event.title }}</h2>
-                                <div class="p-3 bg-body-tertiary rounded-4 border border-warning border-opacity-25">
-                                    <h6 class="fw-bold text-warning-emphasis mb-2 small text-uppercase">Descripción de la actividad</h6>
-                                    <p class="mb-0 text-secondary">{{ event.description or 'No hay una descripción detallada disponible.' }}</p>
+        <!-- ========================================== -->
+        <!-- MODAL DE DETALLES COMPLETO -->
+        <!-- ========================================== -->
+        <div class="modal fade" id="detailsModal{{ event.id }}" tabindex="-1">
+            <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                <div class="modal-content border-0 rounded-4 overflow-hidden shadow-2xl">
+                    <div class="modal-header border-0 p-0 position-relative">
+                        {% if event.flyer %}
+                            <img src="{{ url_for('static', filename='uploads/flyers/' + event.flyer) }}" class="w-100" style="height: 350px; object-fit: cover; filter: brightness(0.9);">
+                        {% endif %}
+                        <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-3 shadow-none" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4 text-body bg-body">
+                        <div class="row g-4">
+                            <div class="col-lg-8">
+                                <span class="badge bg-warning text-dark px-3 py-2 mb-2 fw-bold text-uppercase">{{ event.activity_type }}</span>
+                                <h2 class="fw-bold mb-3 display-6 card-title">{{ event.title }}</h2>
+                                <div class="bg-body-tertiary p-3 rounded-4 border border-warning border-opacity-10 mb-4">
+                                    <h6 class="small fw-bold text-warning-emphasis text-uppercase mb-2">Itinerario y Descripción</h6>
+                                    <p class="text-secondary mb-0" style="white-space: pre-line;">{{ event.description or 'No hay una descripción detallada para este evento.' }}</p>
                                 </div>
-                            </div>
-
-                            <h6 class="fw-bold text-body mb-3 text-uppercase small border-bottom border-warning border-opacity-25 pb-2">Logística y Detalles</h6>
-                            <div class="row g-3">
-                                <div class="col-6">
-                                    <div class="d-flex align-items-center p-2 border border-warning border-opacity-10 rounded-3 bg-warning bg-opacity-10">
-                                        <i class="bi bi-geo-alt-fill text-warning me-2 h5 mb-0"></i>
-                                        <div>
-                                            <small class="d-block text-secondary x-small">Salida de</small>
-                                            <span class="small fw-bold">{{ event.departure_point }}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="d-flex align-items-center p-2 border border-warning border-opacity-10 rounded-3 bg-warning bg-opacity-10">
-                                        <i class="bi bi-clock-fill text-warning me-2 h5 mb-0"></i>
-                                        <div>
-                                            <small class="d-block text-secondary x-small">Hora</small>
-                                            <span class="small fw-bold">{{ event.departure_time }}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="d-flex align-items-center p-2 border border-warning border-opacity-10 rounded-3 bg-warning bg-opacity-10">
-                                        <i class="bi bi-map-fill text-warning me-2 h5 mb-0"></i>
-                                        <div>
-                                            <small class="d-block text-secondary x-small">Distancia</small>
-                                            <span class="small fw-bold">{{ event.distance or 'N/A' }}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="d-flex align-items-center p-2 border border-warning border-opacity-10 rounded-3 bg-warning bg-opacity-10">
-                                        <i class="bi bi-bar-chart-fill text-warning me-2 h5 mb-0"></i>
-                                        <div>
-                                            <small class="d-block text-secondary x-small">Dificultad</small>
-                                            <span class="small fw-bold">{{ event.difficulty }}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-lg-4">
-                            <div class="card bg-warning text-dark border-0 rounded-4 p-3 mb-3 shadow">
-                                <h6 class="small text-uppercase opacity-75 fw-bold mb-3">Información de Reserva</h6>
-                                <div class="display-6 fw-bold mb-1">{{ event.currency }}{{ "{:,.0f}".format(event.price) }}</div>
-                                <p class="small mb-4 opacity-75">Costo total por persona</p>
                                 
-                                {% if event.reservation_fee %}
-                                <div class="bg-dark bg-opacity-10 rounded-3 p-2 mb-4">
-                                    <small class="d-block opacity-75">Reserva con solo:</small>
-                                    <span class="h5 fw-bold">{{ event.currency }}{{ event.reservation_fee }}</span>
+                                <h6 class="fw-bold text-body mb-3 text-uppercase small border-bottom border-warning border-opacity-25 pb-2">Logística Requerida</h6>
+                                <div class="row g-3">
+                                    <div class="col-6 p-2"><div class="p-2 border border-warning border-opacity-10 rounded-3 bg-warning bg-opacity-5"><i class="bi bi-geo-alt text-warning me-2 fw-bold"></i><small class="d-block opacity-75">Salida:</small> <strong class="logistics-value">{{ event.departure_point }}</strong></div></div>
+                                    <div class="col-6 p-2"><div class="p-2 border border-warning border-opacity-10 rounded-3 bg-warning bg-opacity-5"><i class="bi bi-clock text-warning me-2 fw-bold"></i><small class="d-block opacity-75">Hora:</small> <strong class="logistics-value">{{ event.departure_time }}</strong></div></div>
+                                    <div class="col-6 p-2"><div class="p-2 border border-warning border-opacity-10 rounded-3 bg-warning bg-opacity-5"><i class="bi bi-map text-warning me-2 fw-bold"></i><small class="d-block opacity-75">Distancia:</small> <strong class="logistics-value">{{ event.distance or 'N/A' }}</strong></div></div>
+                                    <div class="col-6 p-2"><div class="p-2 border border-warning border-opacity-10 rounded-3 bg-warning bg-opacity-5"><i class="bi bi-bar-chart text-warning me-2 fw-bold"></i><small class="d-block opacity-75">Dificultad:</small> <strong class="logistics-value">{{ event.difficulty }}</strong></div></div>
                                 </div>
-                                {% endif %}
+                            </div>
+                            <div class="col-lg-4">
+                                <div class="card bg-warning text-dark border-0 rounded-4 p-4 shadow-sm text-center h-100 sticky-lg-top" style="top: 20px; z-index: 1;">
+                                    <div class="mb-4">
+                                        <div class="display-5 fw-bold mb-1">{{ event.currency }}{{ "{:,.0f}".format(event.price) }}</div>
+                                        <p class="small opacity-75 fw-bold text-uppercase">Costo total de la actividad</p>
+                                    </div>
 
-                                <button class="btn btn-dark w-100 rounded-pill fw-bold py-2 shadow-sm">
-                                    ¡Reservar Ahora!
+                                    {% if event.reservation_fee %}
+                                    <div class="bg-dark bg-opacity-10 rounded-4 p-3 mb-4">
+                                        <small class="d-block opacity-75 fw-bold">RESERVA TU ESPACIO CON:</small>
+                                        <span class="h4 fw-bold">{{ event.currency }}{{ event.reservation_fee }}</span>
+                                    </div>
+                                    {% endif %}
+
+                                    <div class="d-grid gap-3">
+                                        <button class="btn btn-dark rounded-pill fw-bold py-3 shadow-sm hover-grow" data-bs-toggle="modal" data-bs-target="#reserveModal{{ event.id }}">
+                                            <i class="bi bi-person-plus-fill me-2"></i>¡RESERVAR AHORA!
+                                        </button>
+                                        <button class="btn btn-success rounded-pill fw-bold py-2 shadow-sm" onclick="exportToWhatsApp('{{ event.title|e }}', '{{ event.activity_type|e }}', '{{ event.currency }}{{ event.price }}', '{% if event.duration_days > 1 %}Del {{ event.event_date.day }} al {{ event.end_date.day }} de {{ meses[event.end_date.month] }}{% else %}{{ event.event_date.day }} de {{ meses[event.event_date.month] }}{% endif %}', '{{ event.departure_point|e }}', '{{ event.departure_time|e }}', '{{ event.difficulty|e }}', '{{ event.distance|e }}', '{{ event.pickup_point|e }}', '{{ event.reservation_fee|e }}', '{{ event.description|e }}')">
+                                            <i class="bi bi-whatsapp me-2"></i>Compartir Info
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- MODAL DE RESERVA INTELIGENTE (PIN/VALIDACIÓN) -->
+        <!-- ========================================== -->
+        <div class="modal fade" id="reserveModal{{ event.id }}" tabindex="-1" data-bs-backdrop="static">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-2xl rounded-4">
+                    <div id="reserveFormContainer{{ event.id }}">
+                        <div class="modal-header border-0 pt-4 px-4">
+                            <h5 class="modal-title fw-bold">Formulario de Registro</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body px-4 pb-4">
+                            <!-- Acceso por PIN -->
+                            <div class="pin-access-card p-3 rounded-4 border border-warning mb-4 shadow-sm bg-warning bg-opacity-10" style="border-style: dashed !important;">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-key-fill me-2"></i>¿Cuentas con un PIN?</h6>
+                                    <button type="button" class="btn btn-xs btn-outline-dark rounded-pill py-1 px-3 small fw-bold" onclick="togglePinSection({{ event.id }})" id="btnTogglePin{{ event.id }}">Ingresar Código</button>
+                                </div>
+                                <div id="pinEntrySection{{ event.id }}" class="d-none mt-3 animate__animated animate__fadeIn">
+                                    <div class="input-group">
+                                        <input type="text" id="lookupPin{{ event.id }}" class="form-control form-control-lg border-warning text-center fw-bold fs-3 text-primary" placeholder="000000" maxlength="6" oninput="checkInputs({{ event.id }})">
+                                        <button class="btn btn-warning text-dark fw-bold px-4 disabled shadow-sm" id="btnValidatePin{{ event.id }}" type="button" onclick="lookupUserByPin({{ event.id }})">CARGAR</button>
+                                    </div>
+                                    <div id="pinError{{ event.id }}" class="text-danger x-small fw-bold d-none mt-2 text-center animate__animated animate__shakeX">
+                                        <i class="bi bi-x-circle-fill"></i> El PIN ingresado no es válido o no existe.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <p class="text-secondary small mb-4" id="instructionText{{ event.id }}">Ingresa tus datos para registrarte en:<br><strong class="text-body">{{ event.title }}</strong></p>
+
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label class="form-label small fw-bold">Nombre</label>
+                                    <input type="text" id="resNombre{{ event.id }}" class="form-control border-warning bg-body py-2" placeholder="Ej: Juan" oninput="checkInputs({{ event.id }})">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small fw-bold">Primer Apellido</label>
+                                    <input type="text" id="resApellido1{{ event.id }}" class="form-control border-warning bg-body py-2" placeholder="Ej: Pérez" oninput="checkInputs({{ event.id }})">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small fw-bold">Segundo Apellido</label>
+                                    <input type="text" id="resApellido2{{ event.id }}" class="form-control border-warning bg-body py-2" placeholder="Ej: Arce" oninput="checkInputs({{ event.id }})">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label small fw-bold">Número de Teléfono</label>
+                                    <input type="tel" id="resTel{{ event.id }}" class="form-control border-warning bg-body py-2" placeholder="88888888" oninput="checkInputs({{ event.id }})">
+                                    <div id="phoneWarning{{ event.id }}" class="text-danger x-small mt-2 d-none fw-bold bg-danger bg-opacity-10 p-2 rounded-3 border border-danger border-opacity-25">
+                                        <i class="bi bi-exclamation-triangle-fill"></i> Debe colocar un Celular para que este mensaje le llegue a su Movil.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="d-grid mt-4">
+                                <button type="button" id="btnSubmitRes{{ event.id }}" class="btn btn-warning py-3 fw-bold rounded-pill text-dark disabled shadow-sm transition-all" onclick="processReservation({{ event.id }}, '{{ event.title|e }}', '{{ event.event_date }}', '{{ event.currency }}{{ event.price }}')">
+                                    CONFIRMAR MI REGISTRO
                                 </button>
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <!-- Modal de Edición -->
-    {% if current_user.is_authenticated and current_user.is_superuser %}
-    <div class="modal fade" id="editModal{{ event.id }}" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <form class="modal-content border-0 shadow-lg rounded-4" action="/admin/event/edit/{{ event.id }}" method="POST" enctype="multipart/form-data">
-                <div class="modal-header bg-warning text-dark">
-                    <h5 class="modal-title fw-bold">Editar Actividad: {{ event.title }}</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body p-4 text-body">
-                    <div class="row g-3">
-                        <div class="col-md-12"><h6 class="border-bottom border-warning pb-2 fw-bold text-warning-emphasis">Información General</h6></div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-bold">Flyer</label>
-                            <input type="file" name="flyer" class="form-control border-warning bg-body" accept="image/*">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-bold">Nombre</label>
-                            <input type="text" name="title" class="form-control border-warning bg-body" required value="{{ event.title }}">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label small fw-bold">Moneda</label>
-                            <select name="currency" class="form-select border-warning bg-body">
-                                <option value="¢" {% if event.currency == '¢' %}selected{% endif %}>Colones (¢)</option>
-                                <option value="$" {% if event.currency == '$' %}selected{% endif %}>Dólares ($)</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label small fw-bold">Precio</label>
-                            <input type="number" step="0.01" name="price" class="form-control border-warning bg-body" value="{{ event.price }}">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-bold">Actividad</label>
-                            <select name="activity_type" class="form-select border-warning bg-body">
-                                {% for act in ['Caminata', 'El Camino de Costa Rica', 'Parque Nacional', 'Internacional', 'Convivio', 'Fiesta de Fin de Año', 'Taller'] %}
-                                    <option value="{{ act }}" {% if event.activity_type == act %}selected{% endif %}>{{ act }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-
-                        <div class="col-md-12"><h6 class="border-bottom border-warning pb-2 fw-bold text-warning-emphasis">Fechas</h6></div>
-                        <div class="col-md-4">
-                            <label class="form-label small fw-bold">Días</label>
-                            <input type="number" name="duration_days" id="durationDaysEdit{{ event.id }}" class="form-control border-warning bg-body" min="1" max="10" value="{{ event.duration_days }}">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label small fw-bold" id="labelEventDateEdit{{ event.id }}">Fecha Actividad</label>
-                            <input type="date" name="event_date" class="form-control border-warning bg-body" required value="{{ event.event_date.strftime('%Y-%m-%d') }}">
-                        </div>
-                        <div class="col-md-4 {% if event.duration_days == 1 %}d-none{% endif %}" id="endDateContainerEdit{{ event.id }}">
-                            <label class="form-label small fw-bold">Cierre</label>
-                            <input type="date" name="end_date" class="form-control border-warning bg-body" value="{{ event.end_date.strftime('%Y-%m-%d') if event.end_date else '' }}">
-                        </div>
-
-                        <div class="col-md-12"><h6 class="border-bottom border-warning pb-2 fw-bold text-warning-emphasis">Logística</h6></div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-bold">Salida</label>
-                            <select name="departure_point" class="form-select border-warning bg-body">
-                                {% for dp in ['Parque de Tres Ríos - Escuela', 'Parque de Tres Ríos - Cruz Roja', 'Parque de Tres Ríos - Letras'] %}
-                                    <option value="{{ dp }}" {% if event.departure_point == dp %}selected{% endif %}>{{ dp }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-bold">Estado</label>
-                            <select name="status" id="statusSelectEdit{{ event.id }}" class="form-select border-warning bg-body">
-                                {% for st in ['Activa', 'Pendiente', 'Suspendido', 'Se Traslado'] %}
-                                    <option value="{{ st }}" {% if event.status == st %}selected{% endif %}>{{ st }}</option>
-                                {% endfor %}
-                            </select>
+                    <!-- Mensaje de Éxito (Hidden) -->
+                    <div id="reserveSuccessContainer{{ event.id }}" class="d-none">
+                        <div class="modal-body p-5 text-center bg-body">
+                            <div class="bg-success bg-opacity-10 d-inline-block p-4 rounded-circle mb-4 text-success animate__animated animate__bounceIn">
+                                <i class="bi bi-check-circle-fill display-2"></i>
+                            </div>
+                            <h3 class="fw-bold">¡Usted se ha apuntado correctamente!</h3>
+                            <p class="text-secondary mt-3 fs-6">Guarde su número de PIN único e irrepetible:</p>
+                            <div class="bg-primary bg-opacity-5 p-3 rounded-4 border-2 border border-primary border-opacity-25 mb-4 shadow-sm">
+                                <h2 class="display-4 fw-bold text-primary mb-0" id="pinDisplay{{ event.id }}" style="letter-spacing: 5px;">XXXX</h2>
+                            </div>
+                            
+                            <hr class="my-4 opacity-10">
+                            
+                            <p class="fw-bold text-dark">¿Desea enviar la información del evento a su WhatsApp?</p>
+                            <div class="d-grid gap-2 mt-4">
+                                <button type="button" class="btn btn-success py-3 fw-bold rounded-pill shadow-sm" id="btnSendWa{{ event.id }}">
+                                    <i class="bi bi-whatsapp me-2"></i>SÍ, ENVIAR AHORA
+                                </button>
+                                <button type="button" class="btn btn-light py-2 fw-bold rounded-pill" data-bs-dismiss="modal" onclick="window.location.reload()">Cerrar Ventana</button>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer bg-body-tertiary">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-warning px-4 fw-bold text-dark">Guardar Cambios</button>
-                </div>
-            </form>
+            </div>
         </div>
-    </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const durationInput = document.getElementById('durationDaysEdit{{ event.id }}');
-            const labelDate = document.getElementById('labelEventDateEdit{{ event.id }}');
-            const endDateContainer = document.getElementById('endDateContainerEdit{{ event.id }}');
-            const statusSelect = document.getElementById('statusSelectEdit{{ event.id }}');
-            const movedDateContainer = document.getElementById('movedDateContainerEdit{{ event.id }}');
+        {% if current_user.is_authenticated and current_user.is_superuser %}
+        <!-- ========================================== -->
+        <!-- MODAL DE EDICIÓN (ADMIN) - ACTUALIZADO -->
+        <!-- ========================================== -->
+        <div class="modal fade" id="editModal{{ event.id }}" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <form class="modal-content border-0 shadow-lg rounded-4" action="{{ url_for('calendar_view.edit_event', event_id=event.id) }}" method="POST" enctype="multipart/form-data">
+                    <div class="modal-header bg-warning text-dark border-0">
+                        <h5 class="modal-title fw-bold"><i class="bi bi-pencil-square me-2"></i>Editar Actividad</h5>
+                        <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4 bg-body">
+                        <div class="row g-3">
+                            <!-- Sección 1: Datos Principales -->
+                            <div class="col-md-12"><h6 class="border-bottom pb-2 fw-bold text-warning">Información General</h6></div>
+                            
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Imagen del Evento (Flyer)</label>
+                                <input type="file" name="flyer" class="form-control border-warning" accept="image/*">
+                                {% if event.flyer %}
+                                <div class="x-small text-muted mt-1 italic"><i class="bi bi-image"></i> Archivo actual: {{ event.flyer }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Nombre del Evento</label>
+                                <input type="text" name="title" class="form-control border-warning" value="{{ event.title }}" required>
+                            </div>
 
-            durationInput.addEventListener('input', function() {
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold">Moneda</label>
+                                <select name="currency" class="form-select border-warning">
+                                    <option value="¢" {% if event.currency == '¢' %}selected{% endif %}>Colones (¢)</option>
+                                    <option value="$" {% if event.currency == '$' %}selected{% endif %}>Dólares ($)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold">Precio (Monto)</label>
+                                <input type="number" step="0.01" name="price" class="form-control border-warning" value="{{ event.price }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Actividad</label>
+                                <select name="activity_type" class="form-select border-warning">
+                                    <option {% if event.activity_type == 'Caminata' %}selected{% endif %}>Caminata</option>
+                                    <option {% if event.activity_type == 'El Camino de Costa Rica' %}selected{% endif %}>El Camino de Costa Rica</option>
+                                    <option {% if event.activity_type == 'Parque Nacional' %}selected{% endif %}>Parque Nacional</option>
+                                    <option {% if event.activity_type == 'Internacional' %}selected{% endif %}>Internacional</option>
+                                    <option {% if event.activity_type == 'Convivio' %}selected{% endif %}>Convivio</option>
+                                    <option {% if event.activity_type == 'Fiesta de Fin de Año' %}selected{% endif %}>Fiesta de Fin de Año</option>
+                                    <option {% if event.activity_type == 'Taller' %}selected{% endif %}>Taller</option>
+                                </select>
+                            </div>
+
+                            <!-- Sección 2: Tiempos -->
+                            <div class="col-md-12"><h6 class="border-bottom pb-2 fw-bold text-warning">Duración y Fechas</h6></div>
+                            
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold">Cantidad Días (1 al 10)</label>
+                                <input type="number" name="duration_days" class="form-control border-warning edit-duration-input" data-event-id="{{ event.id }}" min="1" max="10" value="{{ event.duration_days }}">
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold edit-label-date" data-event-id="{{ event.id }}">{% if event.duration_days > 1 %}Fecha de Inicio de Actividad{% else %}Fecha de Actividad{% endif %}</label>
+                                <input type="date" name="event_date" class="form-control border-warning" value="{{ event.event_date }}" required>
+                            </div>
+
+                            <div class="col-md-4 {% if event.duration_days <= 1 %}d-none{% endif %} edit-end-date-container" data-event-id="{{ event.id }}">
+                                <label class="form-label small fw-bold">Fecha de Cierre de Actividad</label>
+                                <input type="date" name="end_date" class="form-control border-warning" value="{{ event.end_date }}">
+                            </div>
+
+                            <!-- Sección 3: Detalle del Evento -->
+                            <div class="col-md-12"><h6 class="border-bottom pb-2 fw-bold text-warning">Detalle del Evento</h6></div>
+                            
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Salida de</label>
+                                <input type="text" name="departure_point" class="form-control border-warning" value="{{ event.departure_point }}" placeholder="Ej: Parque de Tres Ríos">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold">Hora de Salida</label>
+                                <input type="time" name="departure_time" class="form-control border-warning" value="{{ event.departure_time }}">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold">Dificultad</label>
+                                <select name="difficulty" class="form-select border-warning">
+                                    <option {% if event.difficulty == 'Básica' %}selected{% endif %}>Básica</option>
+                                    <option {% if event.difficulty == 'Paseo' %}selected{% endif %}>Paseo</option>
+                                    <option {% if event.difficulty == 'Intermedio' %}selected{% endif %}>Intermedio</option>
+                                    <option {% if event.difficulty == 'Intermedio - Dificil' %}selected{% endif %}>Intermedio - Dificil</option>
+                                    <option {% if event.difficulty == 'Dificil' %}selected{% endif %}>Dificil</option>
+                                    <option {% if event.difficulty == 'Avanzado' %}selected{% endif %}>Avanzado</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold">Distancia</label>
+                                <input type="text" name="distance" class="form-control border-warning" value="{{ event.distance }}" placeholder="Ej: 15km">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold">Capacidad</label>
+                                <input type="number" name="capacity" class="form-control border-warning" value="{{ event.capacity }}" placeholder="Lugares disponibles">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold">Reserva con</label>
+                                <input type="text" name="reservation_fee" class="form-control border-warning" value="{{ event.reservation_fee }}" placeholder="Monto para reservar">
+                            </div>
+
+                            <div class="col-md-12">
+                                <label class="form-label small fw-bold">Se recoge en</label>
+                                <input type="text" name="pickup_point" class="form-control border-warning" value="{{ event.pickup_point }}" placeholder="Puntos adicionales de recogida">
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label small fw-bold">Descripción / Itinerario</label>
+                                <textarea name="description" class="form-control border-warning" rows="4">{{ event.description }}</textarea>
+                            </div>
+
+                            <!-- Sección 4: Estados y Traslados -->
+                            <div class="col-md-12"><h6 class="border-bottom pb-2 fw-bold text-warning">Estado de la Actividad</h6></div>
+                            
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Estado</label>
+                                <select name="status" class="form-select border-warning edit-status-select" data-event-id="{{ event.id }}">
+                                    <option value="Activa" {% if event.status == 'Activa' %}selected{% endif %}>Activa</option>
+                                    <option value="Pendiente" {% if event.status == 'Pendiente' %}selected{% endif %}>Pendiente</option>
+                                    <option value="Suspendido" {% if event.status == 'Suspendido' %}selected{% endif %}>Suspendido</option>
+                                    <option value="Se Traslado" {% if event.status == 'Se Traslado' %}selected{% endif %}>Se Traslado</option>
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-6 {% if event.status != 'Se Traslado' %}d-none{% endif %} edit-moved-date-container" data-event-id="{{ event.id }}">
+                                <label class="form-label small fw-bold">Nueva Fecha de Traslado</label>
+                                <input type="date" name="moved_date" class="form-control border-warning" value="{{ event.moved_date }}">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light border-0">
+                        <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cerrar</button>
+                        <button type="submit" class="btn btn-warning fw-bold text-dark rounded-pill px-4 shadow-sm">Actualizar Información</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- MODAL DE ELIMINACIÓN CON DOBLE CHECK (ADMIN) -->
+        <!-- ========================================== -->
+        <div class="modal fade" id="deleteModal{{ event.id }}" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg rounded-4">
+                    <div class="modal-header bg-danger text-white border-0 py-3">
+                        <h5 class="modal-title fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i>Peligro: Borrado Irreversible</h5>
+                        <button type="button" class="btn-close btn-close-white shadow-none" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4 text-center">
+                        <i class="bi bi-trash3-fill text-danger display-1 opacity-25 mb-3"></i>
+                        <p class="fs-5">¿Está seguro que desea eliminar permanentemente la aventura:<br><strong>"{{ event.title }}"</strong>?</p>
+                        
+                        <div class="bg-danger bg-opacity-5 p-3 rounded-4 text-start small mb-4 border border-danger border-opacity-10">
+                            <h6 class="fw-bold text-danger mb-3">Confirme los siguientes puntos:</h6>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input border-danger" type="checkbox" id="check1{{ event.id }}" onchange="validateDelete({{ event.id }})">
+                                <label class="form-check-label text-dark fw-medium" for="check1{{ event.id }}">Entiendo que esta acción no tiene marcha atrás.</label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input border-danger" type="checkbox" id="check2{{ event.id }}" onchange="validateDelete({{ event.id }})">
+                                <label class="form-check-label text-dark fw-medium" for="check2{{ event.id }}">Se eliminarán también todos los miembros registrados.</label>
+                            </div>
+                            <div class="form-check mb-0">
+                                <input class="form-check-input border-danger" type="checkbox" id="check3{{ event.id }}" onchange="validateDelete({{ event.id }})">
+                                <label class="form-check-label text-dark fw-medium" for="check3{{ event.id }}">Doy fe de que es la actividad correcta para borrar.</label>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <a href="{{ url_for('calendar_view.delete_event', event_id=event.id) }}" id="deleteBtn{{ event.id }}" class="btn btn-danger py-3 fw-bold rounded-pill disabled shadow-sm">
+                                <i class="bi bi-trash-fill me-2"></i>BORRAR PERMANENTEMENTE
+                            </a>
+                            <button type="button" class="btn btn-light py-2 fw-bold rounded-pill" data-bs-dismiss="modal">Conservar Actividad</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+    {% else %}
+        <!-- ESTADO VACÍO -->
+        <div class="col-12 text-center py-5">
+            <div class="bg-body-tertiary d-inline-block p-5 rounded-5 border border-dashed border-warning border-opacity-50 shadow-sm animate__animated animate__pulse animate__infinite">
+                <i class="bi bi-calendar-x display-1 text-warning opacity-25"></i>
+                <h3 class="text-muted mt-4 fw-bold">No hay expediciones próximas registradas</h3>
+                <p class="text-secondary small">Vuelva pronto para nuevas rutas de senderismo.</p>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- ============================================================== -->
+<!-- SCRIPTS DE LÓGICA FRONTEND "BRUTAL" -->
+<!-- ============================================================== -->
+<script>
+    /**
+     * Valida campos obligatorios y habilitación de botones en tiempo real.
+     */
+    function checkInputs(id) {
+        const nombre = document.getElementById(`resNombre${id}`).value.trim();
+        const apellido1 = document.getElementById(`resApellido1${id}`).value.trim();
+        const tel = document.getElementById(`resTel${id}`).value.trim();
+        const pin = document.getElementById(`lookupPin${id}`).value.trim();
+        
+        const btnSubmit = document.getElementById(`btnSubmitRes${id}`);
+        const btnValidate = document.getElementById(`btnValidatePin${id}`);
+        const warning = document.getElementById(`phoneWarning${id}`);
+
+        // Validación de PIN (Habilitar sólo si tiene 6 caracteres)
+        btnValidate.classList.toggle('disabled', pin.length !== 6);
+
+        // Validación de celular CR (Inicio prohibido según especificación: 0,1,2,3,4,5,9)
+        const invalidStarts = ['0', '1', '2', '3', '4', '5', '9'];
+        const isPhoneInvalid = tel.length > 0 && invalidStarts.includes(tel[0]);
+        warning.classList.toggle('d-none', !isPhoneInvalid);
+
+        // Habilitar botón de envío principal
+        const canSubmit = nombre && apellido1 && tel.length >= 8 && !isPhoneInvalid;
+        btnSubmit.classList.toggle('disabled', !canSubmit);
+    }
+
+    /**
+     * Muestra/Oculta la sección de carga de datos por PIN.
+     */
+    function togglePinSection(id) {
+        const section = document.getElementById(`pinEntrySection${id}`);
+        const btn = document.getElementById(`btnTogglePin${id}`);
+        const instruction = document.getElementById(`instructionText${id}`);
+        
+        if (section.classList.contains('d-none')) {
+            section.classList.remove('d-none');
+            btn.innerHTML = '<i class="bi bi-x-circle-fill me-1"></i> Cancelar';
+            instruction.classList.add('opacity-50');
+            setTimeout(() => document.getElementById(`lookupPin${id}`).focus(), 100);
+        } else {
+            section.classList.add('d-none');
+            btn.innerHTML = 'Ingresar Código';
+            instruction.classList.remove('opacity-50');
+            document.getElementById(`pinError${id}`).classList.add('d-none');
+        }
+    }
+
+    /**
+     * Consume el API para buscar un usuario por PIN y auto-rellenar los campos.
+     */
+    async function lookupUserByPin(id) {
+        const pin = document.getElementById(`lookupPin${id}`).value.trim();
+        const error = document.getElementById(`pinError${id}`);
+        const btnValidate = document.getElementById(`btnValidatePin${id}`);
+        
+        btnValidate.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+        
+        try {
+            const res = await fetch(`/api/lookup/${pin}`);
+            const data = await res.json();
+            
+            if (data.success) {
+                // Rellenar campos automáticamente
+                document.getElementById(`resNombre${id}`).value = data.nombre;
+                document.getElementById(`resApellido1${id}`).value = data.apellido1;
+                document.getElementById(`resApellido2${id}`).value = data.apellido2 || '';
+                document.getElementById(`resTel${id}`).value = data.telefono;
+                
+                // Efecto visual de éxito
+                const instr = document.getElementById(`instructionText${id}`);
+                instr.innerHTML = `<div class="alert alert-success border-0 py-2 animate__animated animate__flash"><i class="bi bi-person-check-fill me-2"></i> ¡Bienvenido de nuevo, ${data.nombre}! Datos cargados.</div>`;
+                
+                togglePinSection(id);
+                checkInputs(id);
+                error.classList.add('d-none');
+            } else {
+                error.classList.remove('d-none');
+            }
+        } catch (e) {
+            console.error("Fallo de conexión API:", e);
+        } finally {
+            btnValidate.innerHTML = 'CARGAR';
+        }
+    }
+
+    /**
+     * Procesa la reserva final llamando al servidor y manejando la UI de éxito.
+     */
+    async function processReservation(id, title, date, price) {
+        const payload = {
+            nombre: document.getElementById(`resNombre${id}`).value.trim(),
+            apellido1: document.getElementById(`resApellido1${id}`).value.trim(),
+            apellido2: document.getElementById(`resApellido2${id}`).value.trim(),
+            telefono: document.getElementById(`resTel${id}`).value.trim(),
+            event_id: id
+        };
+
+        const btn = document.getElementById(`btnSubmitRes${id}`);
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> PROCESANDO...';
+        btn.classList.add('disabled');
+
+        try {
+            const res = await fetch('/api/reserve', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                document.getElementById(`reserveFormContainer${id}`).classList.add('d-none');
+                document.getElementById(`reserveSuccessContainer${id}`).classList.remove('d-none');
+                document.getElementById(`pinDisplay${id}`).innerText = data.pin;
+
+                // Configurar botón dinámico de WhatsApp para esta reserva
+                document.getElementById(`btnSendWa${id}`).onclick = () => {
+                    let msg = `*✅ RESERVA REGISTRADA - LA TRIBU DE LOS LIBRES*%0A%0A`;
+                    msg += `¡Hola ${payload.nombre}! Te has registrado correctamente para:*%0A`;
+                    msg += `*📍 Actividad:* ${title}%0A`;
+                    msg += `*📅 Fecha:* ${date}%0A`;
+                    msg += `*💰 Inversión:* ${price}%0A%0A`;
+                    msg += `🔑 *Tu PIN único es:* ${data.pin}%0A%0A`;
+                    msg += `✨ *Somos la tribu de los libres* ✨`;
+                    window.open(`https://wa.me/506${payload.telefono}?text=${msg}`, '_blank');
+                    window.location.reload();
+                };
+            } else {
+                alert("Error del servidor: " + data.error);
+                btn.innerHTML = originalText;
+                btn.classList.remove('disabled');
+            }
+        } catch (e) {
+            alert("No se pudo conectar con el servidor. Verifique su conexión.");
+            btn.innerHTML = originalText;
+            btn.classList.remove('disabled');
+        }
+    }
+
+    /**
+     * Exportación de información logística de la tarjeta a WhatsApp.
+     */
+    function exportToWhatsApp(title, type, price, date, departure, time, difficulty, distance, pickup, fee, desc) {
+        let msg = `*🌟 AVENTURA: ${title.toUpperCase()} 🌟*%0A%0A`;
+        msg += `*🧗 Tipo:* ${type}%0A`;
+        msg += `*📅 Fecha:* ${date}%0A`;
+        msg += `*💰 Precio:* ${price}%0A%0A`;
+        msg += `*📍 DETALLES LOGÍSTICOS:*%0A`;
+        msg += `• Salida: ${departure}%0A`;
+        msg += `• Hora: ${time}%0A`;
+        msg += `• Nivel: ${difficulty}%0A`;
+        if (distance && distance !== 'N/A') msg += `• Distancia: ${distance}%0A`;
+        if (pickup && pickup !== 'Punto oficial') msg += `• Recogida: ${pickup}%0A`;
+        if (fee && fee !== 'None') msg += `• Reserva con: ${fee}%0A`;
+        
+        msg += `%0A*✨ Somos la tribu de los libres ✨*`;
+        window.open(`https://wa.me/?text=${msg}`, '_blank');
+    }
+
+    /**
+     * Lógica de seguridad para el botón de eliminación.
+     */
+    function validateDelete(eventId) {
+        const c1 = document.getElementById('check1' + eventId).checked;
+        const c2 = document.getElementById('check2' + eventId).checked;
+        const c3 = document.getElementById('check3' + eventId).checked;
+        const btn = document.getElementById('deleteBtn' + eventId);
+        
+        if (c1 && c2 && c3) {
+            btn.classList.remove('disabled');
+            btn.classList.add('animate__animated', 'animate__pulse', 'animate__infinite');
+        } else {
+            btn.classList.add('disabled');
+            btn.classList.remove('animate__animated', 'animate__pulse', 'animate__infinite');
+        }
+    }
+
+    /**
+     * Lógica dinámica para los formularios de edición (Show/Hide dependiente de valores)
+     */
+    document.addEventListener('DOMContentLoaded', function() {
+        // Manejar cambios en la duración de los días para modales de edición
+        document.querySelectorAll('.edit-duration-input').forEach(input => {
+            input.addEventListener('input', function() {
+                const eventId = this.getAttribute('data-event-id');
                 const days = parseInt(this.value) || 1;
+                const labelDate = document.querySelector(`.edit-label-date[data-event-id="${eventId}"]`);
+                const endDateContainer = document.querySelector(`.edit-end-date-container[data-event-id="${eventId}"]`);
+                
                 if (days > 1) {
-                    labelDate.innerText = "Fecha de Inicio";
+                    labelDate.innerText = "Fecha de Inicio de Actividad";
                     endDateContainer.classList.remove('d-none');
                 } else {
                     labelDate.innerText = "Fecha de Actividad";
@@ -317,111 +637,102 @@
                 }
             });
         });
-    </script>
-    {% endif %}
 
-    <!-- Modal de Eliminación -->
-    {% if current_user.is_authenticated and current_user.is_superuser %}
-    <div class="modal fade" id="deleteModal{{ event.id }}" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg rounded-4">
-                <div class="modal-header border-0 pt-4 px-4">
-                    <h5 class="modal-title fw-bold text-danger">
-                        <i class="bi bi-exclamation-triangle-fill me-2 text-warning"></i>Confirmar Eliminación
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body px-4 pb-4 text-body">
-                    <p class="text-secondary small mb-4">Vas a eliminar: <strong>{{ event.title }}</strong>.</p>
-                    
-                    <div class="bg-warning bg-opacity-10 p-3 rounded-4 border border-warning border-opacity-25 mb-4">
-                        <h6 class="fw-bold text-body small text-uppercase mb-3">Protocolo de Seguridad:</h6>
-                        <div class="form-check mb-2">
-                            <input class="form-check-input confirm-check" type="checkbox" id="check1{{ event.id }}" onchange="validateDelete({{ event.id }})">
-                            <label class="form-check-label small" for="check1{{ event.id }}">Es irreversible.</label>
-                        </div>
-                        <div class="form-check mb-2">
-                            <input class="form-check-input confirm-check" type="checkbox" id="check2{{ event.id }}" onchange="validateDelete({{ event.id }})">
-                            <label class="form-check-label small" for="check2{{ event.id }}">Es la actividad correcta.</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input confirm-check" type="checkbox" id="check3{{ event.id }}" onchange="validateDelete({{ event.id }})">
-                            <label class="form-check-label small" for="check3{{ event.id }}">Deseo eliminarla ahora.</label>
-                        </div>
-                    </div>
-
-                    <div class="d-grid gap-2">
-                        <button type="button" id="deleteBtn{{ event.id }}" class="btn btn-warning py-2 fw-bold rounded-pill text-dark disabled" onclick="location.href='/admin/event/delete/{{ event.id }}'">
-                            <i class="bi bi-trash3 me-2"></i>Confirmar Borrado
-                        </button>
-                        <button type="button" class="btn btn-light py-2 fw-bold rounded-pill text-dark" data-bs-dismiss="modal">Cancelar</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    {% endfor %}
-{% else %}
-    <div class="col-12 text-center py-5">
-        <div class="bg-body-tertiary d-inline-block p-5 rounded-5 border border-2 border-dashed border-warning border-opacity-25">
-            <i class="bi bi-calendar-x display-1 text-warning opacity-25"></i>
-            <h3 class="text-muted mt-4 fw-bold">No hay expediciones próximas</h3>
-        </div>
-    </div>
-{% endif %}
-
-
-</div>
-
-<script>
-function validateDelete(eventId) {
-const c1 = document.getElementById('check1' + eventId).checked;
-const c2 = document.getElementById('check2' + eventId).checked;
-const c3 = document.getElementById('check3' + eventId).checked;
-const btn = document.getElementById('deleteBtn' + eventId);
-if (c1 && c2 && c3) btn.classList.remove('disabled');
-else btn.classList.add('disabled');
-}
+        // Manejar cambios en el estado para modales de edición
+        document.querySelectorAll('.edit-status-select').forEach(select => {
+            select.addEventListener('change', function() {
+                const eventId = this.getAttribute('data-event-id');
+                const movedDateContainer = document.querySelector(`.edit-moved-date-container[data-event-id="${eventId}"]`);
+                
+                if (this.value === 'Se Traslado') {
+                    movedDateContainer.classList.remove('d-none');
+                } else {
+                    movedDateContainer.classList.add('d-none');
+                }
+            });
+        });
+    });
 </script>
 
 <style>
-.adventure-card { transition: transform 0.4s ease, box-shadow 0.4s ease; }
+    /* Estilos de Tarjetas de Aventura */
+    .adventure-card { 
+        transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s ease; 
+        border-radius: 1.25rem !important;
+    }
+    .adventure-card:hover { 
+        transform: translateY(-12px); 
+        box-shadow: 0 1.5rem 4rem rgba(0,0,0,0.12) !important; 
+    }
+    
+    .hover-grow { transition: transform 0.2s ease; }
+    .hover-grow:hover { transform: scale(1.03); }
+    
+    .text-truncate-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .italic { font-style: italic; }
+    .shadow-2xl { box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); }
+    
+    .btn-xs { font-size: 0.75rem; padding: 0.25rem 0.75rem; }
+    
+    /* Adaptación a Modo Oscuro Refinada */
+    [data-bs-theme="dark"] .adventure-card {
+        background: #1e1e1e !important;
+        border: 1px solid rgba(255, 193, 7, 0.25) !important;
+    }
+    
+    /* Forzar visibilidad de textos en tarjetas */
+    [data-bs-theme="dark"] .adventure-card .card-title { color: #ffffff !important; }
+    [data-bs-theme="dark"] .adventure-card .text-body { color: #f8f9fa !important; }
+    [data-bs-theme="dark"] .adventure-card .text-secondary,
+    [data-bs-theme="dark"] .adventure-card .text-muted,
+    [data-bs-theme="dark"] .adventure-card .small { color: #ced4da !important; }
 
-/* Sombra en modo claro */
-.adventure-card:hover { 
-    transform: translateY(-10px); 
-    box-shadow: 0 1.5rem 4rem rgba(0,0,0,0.15) !important; 
-}
+    /* Bloque de Fechas - Mayor contraste */
+    [data-bs-theme="dark"] .adventure-card .bg-body-tertiary { 
+        background-color: #2c2c2c !important; 
+        border: 1px solid rgba(255, 193, 7, 0.15) !important;
+    }
 
-/* Sombra tenue color Warning en modo oscuro */
-[data-bs-theme=&quot;dark&quot;] .adventure-card {
-    box-shadow: 0 0.25rem 0.75rem rgba(255, 193, 7, 0.08) !important;
-    border: 1px solid rgba(255, 193, 7, 0.1) !important;
-}
+    /* Títulos de sección */
+    [data-bs-theme="dark"] h1,
+    [data-bs-theme="dark"] h2,
+    [data-bs-theme="dark"] h5,
+    [data-bs-theme="dark"] .modal-title,
+    [data-bs-theme="dark"] .logistics-value { color: #f8f9fa !important; }
 
-[data-bs-theme=&quot;dark&quot;] .adventure-card:hover {
-    box-shadow: 0 1rem 3rem rgba(255, 193, 7, 0.18) !important;
-    border-color: rgba(255, 193, 7, 0.3) !important;
-}
+    [data-bs-theme="dark"] .modal-content { 
+        background-color: #1a1a1a !important; 
+        color: #f8f9fa !important;
+        border: 1px solid rgba(255, 193, 7, 0.2) !important;
+    }
+    
+    [data-bs-theme="dark"] .modal-header, 
+    [data-bs-theme="dark"] .modal-footer { border-color: rgba(255, 255, 255, 0.1) !important; }
+    
+    [data-bs-theme="dark"] .bg-body { background-color: #1a1a1a !important; }
+    
+    /* Mantener legibilidad de botones amarillos en modo oscuro */
+    [data-bs-theme="dark"] .btn-warning.text-dark,
+    [data-bs-theme="dark"] .badge.bg-warning.text-dark { color: #212529 !important; }
 
-.line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-.text-truncate-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.x-small { font-size: 0.7rem; }
-
-/* Enfoque Warning para inputs */
-.form-control:focus, .form-select:focus {
-    border-color: #ffc107;
-    box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.25);
-}
-
-.confirm-check:checked {
-    background-color: #ffc107;
-    border-color: #ffc107;
-}
-
-
+    /* Estilos de inputs en modo oscuro */
+    [data-bs-theme="dark"] .form-control {
+        background-color: #2a2a2a !important;
+        border-color: #444 !important;
+        color: #fff !important;
+    }
+    [data-bs-theme="dark"] .form-control::placeholder { color: #888 !important; }
+    
+    /* Animación de entrada de tarjetas */
+    .adventure-card {
+        animation: fadeInUp 0.5s ease backwards;
+    }
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
 </style>
 
+<!-- Importar Animate.css para efectos visuales -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
 {% endblock %}
