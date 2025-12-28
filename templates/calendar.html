@@ -4,7 +4,7 @@
 {% block title %}Panel Admin - Calendario{% endblock %}
 
 {% block content %}
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4 gap-3">
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4 gap-3 animate__animated animate__fadeIn">
     <h2 class="mb-0 fw-bold">{{ month_name }} {{ year }}</h2>
     
     <div class="btn-group shadow-sm">
@@ -17,38 +17,43 @@
         </a>
     </div>
 
-    <button class="btn btn-warning fw-bold" data-bs-toggle="modal" data-bs-target="#addEventModal">
+    <button class="btn btn-warning fw-bold shadow-sm text-dark px-4 rounded-pill" data-bs-toggle="modal" data-bs-target="#addEventModal">
         <i class="bi bi-plus-lg me-2"></i>Crear Actividad
     </button>
 </div>
 
-<!-- Estructura Flexbox del Calendario -->
-<div class="calendar-wrapper shadow-sm rounded-4 overflow-hidden border">
-    <div class="calendar-header-grid bg-warning text-dark">
-        <div class="day-name">Lun</div>
-        <div class="day-name">Mar</div>
-        <div class="day-name">Mié</div>
-        <div class="day-name">Jue</div>
-        <div class="day-name">Vie</div>
-        <div class="day-name">Sáb</div>
-        <div class="day-name">Dom</div>
+<!-- Estructura del Calendario con CSS Grid -->
+<div class="calendar-wrapper shadow-sm rounded-4 overflow-hidden border bg-white">
+    <!-- Encabezado de días -->
+    <div class="calendar-header-grid bg-warning text-dark py-3 fw-bold border-bottom text-center">
+        <div>Lun</div>
+        <div>Mar</div>
+        <div>Mié</div>
+        <div>Jue</div>
+        <div>Vie</div>
+        <div>Sáb</div>
+        <div>Dom</div>
     </div>
 
+    <!-- Cuadrícula de días -->
     <div class="calendar-days-grid">
         {% for week in weeks %}
             {% for day in week %}
-                <div class="calendar-cell {% if day == 0 %}empty{% else %}clickable-cell{% endif %}" 
+                <div class="calendar-cell {% if day == 0 %}empty bg-light bg-opacity-50{% else %}clickable-cell{% endif %}" 
                      {% if day != 0 %}onclick="openAddModal({{ day }})"{% endif %}>
+                    
                     {% if day != 0 %}
-                        <span class="day-number">{{ day }}</span>
-                        <div class="event-list">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <span class="day-number fw-bold fs-5">{{ day }}</span>
+                        </div>
+                        
+                        <div class="event-stack">
                             {% for event in events %}
                                 {% if event.event_date.day == day and event.event_date.month == month and event.event_date.year == year %}
-                                    <div class="event-item {{ 'bg-warning text-dark border-warning' if event.status == 'Se Traslado' else 'bg-warning-subtle text-warning-emphasis border-warning' }}" 
-                                         style="border-left: 3px solid #ffc107;"
+                                    <div class="event-pill {{ 'bg-warning text-dark border-warning' if event.status == 'Se Traslado' else 'bg-warning bg-opacity-10 text-warning-emphasis border-warning' }}" 
                                          title="{{ event.title }}">
                                         {% if event.status == 'Se Traslado' %}<i class="bi bi-arrow-right-circle me-1"></i>{% endif %}
-                                        {{ event.title }}
+                                        <span class="text-truncate">{{ event.title }}</span>
                                     </div>
                                 {% endif %}
                             {% endfor %}
@@ -63,12 +68,12 @@
 <!-- Modal para añadir evento (Crear Actividad) -->
 <div class="modal fade" id="addEventModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
-        <form class="modal-content" id="addEventForm" action="{{ url_for('calendar_view.add_event') }}" method="POST" enctype="multipart/form-data">
-            <div class="modal-header bg-warning text-dark">
-                <h5 class="modal-title fw-bold">Configurar Nueva Actividad</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <form class="modal-content border-0 shadow-lg rounded-4 overflow-hidden" id="addEventForm" action="{{ url_for('calendar_view.add_event') }}" method="POST" enctype="multipart/form-data">
+            <div class="modal-header bg-warning text-dark border-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-calendar-plus me-2"></i>Configurar Nueva Actividad</h5>
+                <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body p-4 bg-body">
                 <div class="row g-3">
                     <!-- Sección 1: Datos Principales -->
                     <div class="col-md-12"><h6 class="border-bottom pb-2 fw-bold text-warning">Información General</h6></div>
@@ -93,7 +98,11 @@
                         <label class="form-label small fw-bold">Precio (Monto)</label>
                         <input type="number" step="0.01" name="price" class="form-control border-warning" placeholder="0.00">
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Puntos a otorgar</label>
+                        <input type="number" name="points_reward" class="form-control border-warning" value="10">
+                    </div>
+                    <div class="col-md-3">
                         <label class="form-label small fw-bold">Actividad</label>
                         <select name="activity_type" class="form-select border-warning">
                             <option>Caminata</option>
@@ -193,13 +202,90 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-footer bg-light">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="submit" class="btn btn-warning px-4 fw-bold shadow-sm text-dark">Guardar Actividad</button>
+            <div class="modal-footer bg-light border-0">
+                <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-warning fw-bold text-dark rounded-pill px-4">Guardar Actividad</button>
             </div>
         </form>
     </div>
 </div>
+
+<style>
+    /* RECONSTRUCCIÓN DEL CALENDARIO VISUAL */
+    .calendar-header-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        text-align: center;
+        background-color: #ffc107;
+    }
+
+    .calendar-days-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        background-color: #dee2e6;
+        gap: 1px; /* Espacio para las líneas de división */
+    }
+
+    .calendar-cell {
+        min-height: 140px;
+        background-color: #fff;
+        padding: 10px;
+        transition: background-color 0.2s ease;
+    }
+
+    .clickable-cell:hover {
+        background-color: #fffdf5;
+        cursor: pointer;
+    }
+
+    .day-number {
+        color: #adb5bd;
+    }
+
+    .clickable-cell .day-number {
+        color: #212529;
+    }
+
+    .event-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .event-pill {
+        font-size: 0.75rem;
+        padding: 4px 8px;
+        border-radius: 6px;
+        border-left: 3px solid #ffc107;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-weight: 600;
+    }
+
+    /* Adaptación a Modo Oscuro */
+    [data-bs-theme="dark"] .calendar-cell {
+        background-color: #1a1a1a;
+    }
+    [data-bs-theme="dark"] .calendar-cell.empty {
+        background-color: #121212;
+    }
+    [data-bs-theme="dark"] .clickable-cell:hover {
+        background-color: #252525;
+    }
+    [data-bs-theme="dark"] .day-number {
+        color: #fff;
+    }
+    [data-bs-theme="dark"] .calendar-days-grid {
+        background-color: #333;
+    }
+
+    /* Mejora de inputs */
+    .form-control:focus, .form-select:focus {
+        border-color: #ffc107;
+        box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.25);
+    }
+</style>
 
 <script>
 /**
@@ -268,22 +354,4 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
-
-<style>
-    /* Estilos adicionales para reforzar el tema Warning */
-    .calendar-header-grid {
-        background-color: #ffc107 !important;
-        color: #212529 !important;
-    }
-    .event-item {
-        border-color: #ffc107 !important;
-    }
-    .btn-outline-warning:hover {
-        color: #212529 !important;
-    }
-    .form-control:focus, .form-select:focus {
-        border-color: #ffc107;
-        box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.25);
-    }
-</style>
 {% endblock %}

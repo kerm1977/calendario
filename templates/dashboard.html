@@ -9,7 +9,7 @@
     <div class="row mb-5 align-items-center">
         <div class="col-md-8">
             <h1 class="display-5 fw-bold mb-0">Dashboard Administrativo</h1>
-            <p class="text-muted">Gestión de expediciones y miembros de La Tribu</p>
+            <p class="text-muted">Gestión de expediciones, miembros y programa de puntos</p>
         </div>
         <div class="col-md-4 text-md-end">
             <div class="badge bg-dark text-warning px-4 py-2 rounded-pill shadow-sm fs-6">
@@ -18,9 +18,9 @@
         </div>
     </div>
 
-    <!-- Estadísticas de Actividades -->
+    <!-- Estadísticas de Actividades y Fidelidad -->
     <div class="row g-4 mb-5">
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="card border-0 shadow-sm rounded-4 h-100 bg-body">
                 <div class="card-body p-4 border-start border-warning border-5 rounded-4">
                     <div class="d-flex justify-content-between align-items-center mb-2">
@@ -31,7 +31,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="card border-0 shadow-sm rounded-4 h-100 bg-body">
                 <div class="card-body p-4 border-start border-danger border-5 rounded-4">
                     <div class="d-flex justify-content-between align-items-center mb-2">
@@ -42,7 +42,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="card border-0 shadow-sm rounded-4 h-100 bg-body">
                 <div class="card-body p-4 border-start border-info border-5 rounded-4">
                     <div class="d-flex justify-content-between align-items-center mb-2">
@@ -53,14 +53,25 @@
                 </div>
             </div>
         </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100 bg-body">
+                <div class="card-body p-4 border-start border-success border-5 rounded-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <small class="text-secondary fw-bold text-uppercase">Puntos de la Tribu</small>
+                        <i class="bi bi-star-fill text-success fs-4"></i>
+                    </div>
+                    <h2 class="fw-bold mb-0">2,450</h2> <!-- Placeholder de diseño -->
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="row g-4">
-        <!-- Desglose por Categoría -->
+        <!-- Sidebar: Categorías y Ranking de Puntos -->
         <div class="col-lg-4">
-            <div class="card border-0 shadow-sm rounded-4 h-100 bg-body">
+            <div class="card border-0 shadow-sm rounded-4 mb-4 bg-body">
                 <div class="card-body p-4">
-                    <h5 class="fw-bold mb-4 border-bottom pb-2">Categorías</h5>
+                    <h5 class="fw-bold mb-4 border-bottom pb-2">Distribución de Rutas</h5>
                     <div class="mb-3">
                         <div class="d-flex justify-content-between mb-1">
                             <span class="small">El Camino de Costa Rica</span>
@@ -90,17 +101,57 @@
                     </div>
                 </div>
             </div>
+
+            <!-- SECCIÓN NUEVA: RANKING DE PUNTOS (DISEÑO) -->
+            <div class="card border-0 shadow-sm rounded-4 bg-body animate__animated animate__fadeInUp">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold mb-4 border-bottom pb-2">
+                        <i class="bi bi-trophy-fill text-warning me-2"></i>Líderes de Puntos
+                    </h5>
+                    <!-- Item de Ranking -->
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="flex-shrink-0">
+                            <div class="rounded-circle bg-warning text-dark fw-bold d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">1</div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <div class="fw-bold small">Juan Pérez</div>
+                            <div class="x-small text-muted">12 expediciones</div>
+                        </div>
+                        <div class="fw-bold text-success">350 pts</div>
+                    </div>
+                    <!-- Item de Ranking -->
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="flex-shrink-0">
+                            <div class="rounded-circle bg-secondary text-white fw-bold d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">2</div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <div class="fw-bold small">Maria Arce</div>
+                            <div class="x-small text-muted">8 expediciones</div>
+                        </div>
+                        <div class="fw-bold text-success">240 pts</div>
+                    </div>
+                    <div class="d-grid mt-4">
+                        <button class="btn btn-sm btn-outline-warning rounded-pill fw-bold">Ver Tabla Completa</button>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <!-- Tabla de Miembros Registrados -->
+        <!-- Tabla de Miembros Registrados con Acciones de Eliminación -->
         <div class="col-lg-8">
-            <div class="card border-0 shadow-sm rounded-4 bg-body">
+            <div class="card border-0 shadow-sm rounded-4 bg-body h-100">
                 <div class="card-body p-4">
                     <div class="d-flex justify-content-between align-items-center mb-4">
                         <h5 class="fw-bold mb-0">Miembros Registrados ({{ bookings|length }})</h5>
-                        <button class="btn btn-sm btn-warning fw-bold rounded-pill px-3" onclick="window.location.reload()">
-                            <i class="bi bi-arrow-clockwise me-1"></i> Actualizar
-                        </button>
+                        <div class="d-flex gap-2">
+                             <div class="input-group input-group-sm" style="width: 200px;">
+                                <span class="input-group-text bg-transparent border-end-0"><i class="bi bi-search"></i></span>
+                                <input type="text" class="form-control border-start-0" placeholder="Buscar por nombre o PIN">
+                            </div>
+                            <button class="btn btn-sm btn-warning fw-bold rounded-pill px-3" onclick="window.location.reload()">
+                                <i class="bi bi-arrow-clockwise"></i>
+                            </button>
+                        </div>
                     </div>
                     <div class="table-responsive">
                         <table class="table table-hover align-middle shadow-none border-0">
@@ -108,9 +159,9 @@
                                 <tr>
                                     <th class="border-0 px-3">Miembro</th>
                                     <th class="border-0 text-center">PIN</th>
+                                    <th class="border-0 text-center">Puntos</th>
                                     <th class="border-0">WhatsApp</th>
-                                    <th class="border-0">Evento</th>
-                                    <th class="border-0">Fecha Registro</th>
+                                    <th class="border-0 text-end">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -118,31 +169,57 @@
                                 <tr>
                                     <td class="px-3">
                                         <div class="fw-bold text-body">{{ b.nombre }} {{ b.apellido1 }}</div>
-                                        <div class="x-small text-muted">{{ b.apellido2 or '' }}</div>
+                                        <div class="x-small text-muted text-uppercase">{{ b.event.title }}</div>
                                     </td>
                                     <td class="text-center">
                                         <span class="badge bg-warning text-dark px-3 rounded-pill fw-bold" style="letter-spacing: 1px;">{{ b.pin }}</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="fw-bold text-success"><i class="bi bi-star-fill x-small"></i> 25</span> <!-- Placeholder puntos -->
                                     </td>
                                     <td>
                                         <a href="https://wa.me/506{{ b.telefono }}" target="_blank" class="btn btn-sm btn-outline-success rounded-pill px-3">
                                             <i class="bi bi-whatsapp me-1"></i> {{ b.telefono }}
                                         </a>
                                     </td>
-                                    <td>
-                                        <div class="text-truncate small" style="max-width: 120px;" title="{{ b.event.title }}">
-                                            {{ b.event.title }}
+                                    <td class="text-end">
+                                        <div class="d-flex justify-content-end gap-2">
+                                            <!-- Botón Historial de Puntos -->
+                                            <button class="btn btn-sm btn-light border rounded-circle text-primary" title="Historial de Puntos">
+                                                <i class="bi bi-clock-history"></i>
+                                            </button>
+                                            <!-- Botón Eliminar Registro -->
+                                            <button class="btn btn-sm btn-light border rounded-circle text-danger" title="Eliminar Registro" data-bs-toggle="modal" data-bs-target="#deleteBookingModal{{ b.id }}">
+                                                <i class="bi bi-trash3-fill"></i>
+                                            </button>
                                         </div>
                                     </td>
-                                    <td>
-                                        <div class="x-small text-muted">{{ b.created_at.strftime('%d/%m/%Y %H:%M') }}</div>
-                                    </td>
                                 </tr>
+
+                                <!-- MODAL DE ELIMINACIÓN DE MIEMBRO (DISEÑO) -->
+                                <div class="modal fade" id="deleteBookingModal{{ b.id }}" tabindex="-1">
+                                    <div class="modal-dialog modal-sm modal-dialog-centered">
+                                        <div class="modal-content border-0 shadow-lg rounded-4">
+                                            <div class="modal-body p-4 text-center">
+                                                <div class="text-danger mb-3">
+                                                    <i class="bi bi-person-x-fill display-4"></i>
+                                                </div>
+                                                <h5 class="fw-bold">¿Eliminar registro?</h5>
+                                                <p class="small text-muted mb-4">Vas a borrar a <strong>{{ b.nombre }}</strong> de la expedición <strong>{{ b.event.title }}</strong>. Esto no se puede deshacer.</p>
+                                                <div class="d-grid gap-2">
+                                                    <button type="button" class="btn btn-danger fw-bold rounded-pill shadow-sm">SÍ, ELIMINAR</button>
+                                                    <button type="button" class="btn btn-light fw-bold rounded-pill" data-bs-dismiss="modal">CANCELAR</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                                 {% endfor %}
                             </tbody>
                         </table>
                     </div>
                     {% if not bookings %}
-                    <div class="text-center py-4">
+                    <div class="text-center py-5">
                         <i class="bi bi-people text-muted opacity-25 display-4"></i>
                         <p class="text-muted mt-2">Aún no hay usuarios registrados.</p>
                     </div>
@@ -155,7 +232,33 @@
 
 <style>
     .x-small { font-size: 0.75rem; }
-    .table th { font-weight: 700; text-transform: uppercase; color: var(--bs-secondary); }
+    .table th { font-weight: 700; text-transform: uppercase; color: var(--bs-secondary); font-size: 0.8rem; }
     .progress-bar { border-radius: 10px; }
+    
+    /* Efecto hover refinado para las filas de la tabla */
+    .table-hover tbody tr:hover {
+        background-color: rgba(255, 193, 7, 0.03);
+        transition: background-color 0.2s ease;
+    }
+
+    [data-bs-theme="dark"] .table-hover tbody tr:hover {
+        background-color: rgba(255, 193, 7, 0.05);
+    }
+
+    /* Estilo para los botones de acción circulares */
+    .btn-light.border.rounded-circle {
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+    }
+    .btn-light.border.rounded-circle:hover {
+        transform: scale(1.1);
+        background-color: #fff;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
 </style>
 {% endblock %}

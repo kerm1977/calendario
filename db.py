@@ -9,53 +9,69 @@ db = SQLAlchemy()
 bcrypt = Bcrypt()
 
 class User(db.Model, UserMixin):
+    """Modelo para los administradores del sistema."""
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(60), nullable=False)
     is_superuser = db.Column(db.Boolean, default=False)
 
 class Event(db.Model):
+    """Modelo para las aventuras y expediciones."""
     id = db.Column(db.Integer, primary_key=True)
-    # Datos Principales
-    title = db.Column(db.String(100), nullable=False) # Nombre del Evento
-    flyer = db.Column(db.String(255), nullable=True) # Imagen
-    currency = db.Column(db.String(5), default='¢') # $, ¢
+    title = db.Column(db.String(100), nullable=False)
+    flyer = db.Column(db.String(255), nullable=True)
+    currency = db.Column(db.String(5), default='¢')
     price = db.Column(db.Float, default=0.0)
-    activity_type = db.Column(db.String(100)) # Caminata, Taller, etc.
-    
-    # Tiempos
+    activity_type = db.Column(db.String(100))
     duration_days = db.Column(db.Integer, default=1)
-    event_date = db.Column(db.Date, nullable=False) # Inicio o Fecha única
-    end_date = db.Column(db.Date, nullable=True) # Solo si días > 1
-    
-    # Detalles
+    event_date = db.Column(db.Date, nullable=False)
+    end_date = db.Column(db.Date, nullable=True)
     departure_point = db.Column(db.String(150))
     departure_time = db.Column(db.String(50))
     difficulty = db.Column(db.String(50))
     distance = db.Column(db.String(50))
     capacity = db.Column(db.Integer)
-    reservation_fee = db.Column(db.String(100)) # Reserva con
+    reservation_fee = db.Column(db.String(100))
     description = db.Column(db.Text)
-    pickup_point = db.Column(db.String(150)) # Se recoge en
+    pickup_point = db.Column(db.String(150))
+    status = db.Column(db.String(50), default='Activa')
+    moved_date = db.Column(db.Date, nullable=True)
     
-    # Estado
-    status = db.Column(db.String(50), default='Activa') # Activa, Pendiente, Suspendido, Se Traslado
-    moved_date = db.Column(db.Date, nullable=True) # Nueva fecha si se trasladó
+    # Puntos que otorga esta actividad al completarse
+    points_reward = db.Column(db.Integer, default=15)
     
-    # Auditoría
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Relación con reservas
     bookings = db.relationship('Booking', backref='event', lazy=True, cascade="all, delete-orphan")
 
-class Booking(db.Model):
+class Member(db.Model):
+    """
+    Nuevo Modelo: Representa a una persona única en La Tribu.
+    Aquí es donde se acumulan los puntos reales.
+    """
     id = db.Column(db.Integer, primary_key=True)
+    pin = db.Column(db.String(10), unique=True, nullable=False) # El PIN identifica al socio
     nombre = db.Column(db.String(100), nullable=False)
     apellido1 = db.Column(db.String(100), nullable=False)
     apellido2 = db.Column(db.String(100))
     telefono = db.Column(db.String(20), nullable=False)
-    pin = db.Column(db.String(10), nullable=False, unique=True)
+    puntos_totales = db.Column(db.Integer, default=10) # Puntos de bienvenida
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    bookings = db.relationship('Booking', backref='member', lazy=True)
+
+class Booking(db.Model):
+    """Relaciona a un miembro con un evento específico."""
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Campos redundantes para histórico o facilidad de consulta rápida
+    nombre = db.Column(db.String(100), nullable=False)
+    apellido1 = db.Column(db.String(100), nullable=False)
+    telefono = db.Column(db.String(20), nullable=False)
+    pin = db.Column(db.String(10), nullable=False) # IMPORTANTE: Se quitó el unique=True
+    
+    member_id = db.Column(db.Integer, db.ForeignKey('member.id'), nullable=True)
     event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
