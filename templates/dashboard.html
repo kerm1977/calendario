@@ -5,28 +5,7 @@
 {% block content %}
 
 <div class="container py-4">
-<!-- ========================================== -->
-<!-- ALERTA DE CUMPLEAÑOS DEL DÍA -->
-<!-- ========================================== -->
-{% if birthdays_today %}
-<div class="alert alert-primary border-0 shadow-lg rounded-5 mb-5 animate__animated animate__bounceIn">
-<div class="d-flex align-items-center p-2">
-<div class="display-5 me-4 text-primary animate__animated animate__pulse animate__infinite">
-<i class="bi bi-cake2-fill"></i>
-</div>
-<div>
-<h4 class="fw-bold mb-1">¡Celebración en La Tribu!</h4>
-<p class="mb-0 fs-5">
-Hoy es el cumpleaños de:
-{% for m in birthdays_today %}
-<span class="badge bg-primary text-white px-3 py-2 rounded-pill shadow-sm">{{ m.nombre }} {{ m.apellido1 }}</span>{{ ", " if not loop.last }}
-{% endfor %}.
-<span class="fw-bold">¡Dales una felicitación especial!</span>
-</p>
-</div>
-</div>
-</div>
-{% endif %}
+<!-- Se ha eliminado la alerta de cumpleaños de este archivo ya que ahora es global y se gestiona en base.html -->
 
 <!-- Encabezado -->
 <div class="row mb-5 align-items-end">
@@ -100,7 +79,7 @@ Hoy es el cumpleaños de:
                     <small class="text-secondary fw-bold text-uppercase" style="letter-spacing: 1px;">Cumpleaños</small>
                     <div class="p-2 bg-primary bg-opacity-10 rounded-3 text-primary"><i class="bi bi-balloon-fill fs-4"></i></div>
                 </div>
-                <h2 class="fw-bold mb-0">{{ stats.birthdays_count }}</h2>
+                <h2 class="fw-bold mb-0">{{ stats.birthdays_count if stats.birthdays_count else birthdays_today|length }}</h2>
                 <div class="x-small text-muted mt-2">Miembros celebrando hoy</div>
             </div>
         </div>
@@ -232,11 +211,9 @@ Hoy es el cumpleaños de:
                                 </td>
                                 <td class="text-end pe-3">
                                     <div class="d-flex justify-content-end gap-2">
-                                        <!-- Botón Historial (Temporalmente desactivado para evitar BuildError) -->
                                         <a href="#" class="btn btn-sm btn-light border rounded-circle text-muted" title="Ver historial">
                                             <i class="bi bi-clock-history"></i>
                                         </a>
-                                        <!-- Botón Eliminar -->
                                         <button class="btn btn-sm btn-white border border-danger-subtle rounded-circle text-danger shadow-sm transition-all hover-scale" 
                                                 title="Eliminar Miembro" 
                                                 data-bs-toggle="modal" 
@@ -296,22 +273,20 @@ const searchInput = document.getElementById('memberSearchInput');
 const tableRows = document.querySelectorAll('.member-row');
 
     if (searchInput) {
-        searchInput.addEventListener(&#39;input&#39;, function() {
+        searchInput.addEventListener('input', function() {
             const term = this.value.toLowerCase();
-            tableRows.forEach(row =&gt; {
-                const nameCell = row.querySelector(&#39;.member-name&#39;);
-                const pinCell = row.querySelector(&#39;.member-pin&#39;);
-                if (nameCell &amp;&amp; pinCell) {
+            tableRows.forEach(row => {
+                const nameCell = row.querySelector('.member-name');
+                const pinCell = row.querySelector('.member-pin');
+                if (nameCell && pinCell) {
                     const name = nameCell.textContent.toLowerCase();
                     const pin = pinCell.textContent.toLowerCase();
-                    row.style.display = (name.includes(term) || pin.includes(term)) ? &quot;&quot; : &quot;none&quot;;
+                    row.style.display = (name.includes(term) || pin.includes(term)) ? "" : "none";
                 }
             });
         });
     }
 });
-
-
 </script>
 
 <style>
@@ -332,14 +307,14 @@ background-color: var(--bs-tertiary-bg);
 
 .hover-scale:hover { transform: scale(1.05); }
 
-[data-bs-theme=&quot;dark&quot;] .table th { background-color: #1a1a1a; }
-[data-bs-theme=&quot;dark&quot;] .card { border: 1px solid #2a2a2a !important; }
-[data-bs-theme=&quot;dark&quot;] .btn-white { background: #1a1a1a; color: #fff; border-color: #333; }
-[data-bs-theme=&quot;dark&quot;] .bg-body-tertiary { background-color: #121212 !important; }
+[data-bs-theme="dark"] .table th { background-color: #1a1a1a; }
+[data-bs-theme="dark"] .card { border: 1px solid #2a2a2a !important; }
+[data-bs-theme="dark"] .btn-white { background: #1a1a1a; color: #fff; border-color: #333; }
+[data-bs-theme="dark"] .bg-body-tertiary { background-color: #121212 !important; }
 
 .ranking-list { position: relative; }
 .ranking-list::before {
-    content: &#39;&#39;;
+    content: '';
     position: absolute;
     left: 20px;
     top: 20px;
@@ -350,8 +325,6 @@ background-color: var(--bs-tertiary-bg);
 }
 
 .badge.bg-primary { background-color: #0d6efd !important; }
-
-
 </style>
 
 {% endblock %}
