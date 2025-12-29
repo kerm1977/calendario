@@ -186,7 +186,7 @@
 
                                     <div class="d-grid gap-3">
                                         <button class="btn btn-warning rounded-pill fw-bold py-3 shadow-lg btn-confirm-trigger" data-bs-toggle="modal" data-bs-target="#reserveModal{{ event.id }}">
-                                            <i class="bi bi-person-plus-fill me-2"></i>¡REGISTRARME AHORA!
+                                            ¡REGISTRARME AHORA!
                                         </button>
                                         <button class="btn btn-outline-secondary rounded-pill fw-bold py-2 shadow-sm" onclick="exportToWhatsApp('{{ event.title|e }}', '{{ event.activity_type|e }}', '{{ event.currency }}{{ event.price }}', '{% if event.duration_days > 1 %}Del {{ event.event_date.day }} al {{ event.end_date.day }} de {{ meses[event.end_date.month] }}{% else %}{{ event.event_date.day }} de {{ meses[event.event_date.month] }}{% endif %}', '{{ event.departure_point|e }}', '{{ event.departure_time|e }}', '{{ event.difficulty|e }}', '{{ event.distance|e }}', '{{ event.pickup_point|e }}', '{{ event.reservation_fee|e }}', '{{ event.description|e }}')">
                                             <i class="bi bi-whatsapp me-2"></i>Compartir Info
@@ -450,34 +450,67 @@
 <!-- SCRIPTS DE LÓGICA FRONTEND -->
 <!-- ============================================================== -->
 <script>
+    /**
+     * Valida y formatea los inputs del formulario de reserva
+     */
     function checkInputs(id) {
-        const nomI = document.getElementById(`resNombre${id}`), ap1I = document.getElementById(`resApellido1${id}`), ap2I = document.getElementById(`resApellido2${id}`), telI = document.getElementById(`resTel${id}`), bdtI = document.getElementById(`resBirthDate${id}`), pinI = document.getElementById(`lookupPin${id}`);
+        const nomI = document.getElementById(`resNombre${id}`), 
+              ap1I = document.getElementById(`resApellido1${id}`), 
+              ap2I = document.getElementById(`resApellido2${id}`), 
+              telI = document.getElementById(`resTel${id}`), 
+              bdtI = document.getElementById(`resBirthDate${id}`), 
+              pinI = document.getElementById(`lookupPin${id}`);
+
         const fmt = (input) => {
             let val = input.value.replace(/[^a-zA-ZñÑáéíóúÁÉÍÓÚ ]/g, '');
             if (val.length > 0) val = val.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
             input.value = val; return val;
         };
+
         const nombre = fmt(nomI), ap1 = fmt(ap1I), birth = bdtI.value;
         telI.value = telI.value.replace(/[^0-9]/g, '').substring(0, 8);
-        const tel = telI.value, warning = document.getElementById(`phoneWarning${id}`), isTelValid = tel.length === 8 && ['6', '7', '8'].includes(tel[0]);
+        const tel = telI.value, 
+              warning = document.getElementById(`phoneWarning${id}`), 
+              isTelValid = tel.length === 8 && ['6', '7', '8'].includes(tel[0]);
+
         if (tel.length > 0) warning.classList.toggle('d-none', isTelValid); else warning.classList.add('d-none');
+        
         const pinVal = pinI.value.replace(/[^0-9]/g, ''); pinI.value = pinVal;
         document.getElementById(`btnValidatePin${id}`).classList.toggle('disabled', pinVal.length !== 6);
+        
         const btnSub = document.getElementById(`btnSubmitRes${id}`);
         btnSub.classList.toggle('disabled', !(nombre.trim().length >= 2 && ap1.trim().length >= 2 && isTelValid && birth !== ''));
     }
 
+    /**
+     * Alterna la visibilidad de la sección de PIN
+     */
     function togglePinSection(id) {
-        const sec = document.getElementById(`pinEntrySection${id}`), btn = document.getElementById(`btnTogglePin${id}`);
-        if (sec.classList.contains('d-none')) { sec.classList.remove('d-none'); btn.innerText = "Cerrar"; setTimeout(() => document.getElementById(`lookupPin${id}`).focus(), 150); }
-        else { sec.classList.add('d-none'); btn.innerText = "Usar PIN"; }
+        const sec = document.getElementById(`pinEntrySection${id}`), 
+              btn = document.getElementById(`btnTogglePin${id}`);
+        if (sec.classList.contains('d-none')) { 
+            sec.classList.remove('d-none'); 
+            btn.innerText = "Cerrar"; 
+            setTimeout(() => document.getElementById(`lookupPin${id}`).focus(), 150); 
+        } else { 
+            sec.classList.add('d-none'); 
+            btn.innerText = "Usar PIN"; 
+        }
     }
 
+    /**
+     * Busca los datos de un usuario por su PIN
+     */
     async function lookupUserByPin(id) {
-        const pin = document.getElementById(`lookupPin${id}`).value, btn = document.getElementById(`btnValidatePin${id}`), err = document.getElementById(`pinError${id}`), originalText = btn.innerHTML;
+        const pin = document.getElementById(`lookupPin${id}`).value, 
+              btn = document.getElementById(`btnValidatePin${id}`), 
+              err = document.getElementById(`pinError${id}`), 
+              originalText = btn.innerHTML;
+        
         btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
         try {
-            const response = await fetch(`/api/lookup/${pin}`), data = await response.json();
+            const response = await fetch(`/api/lookup/${pin}`), 
+                  data = await response.json();
             if (data.success) {
                 document.getElementById(`resNombre${id}`).value = data.nombre;
                 document.getElementById(`resApellido1${id}`).value = data.apellido1;
@@ -485,10 +518,19 @@
                 document.getElementById(`resTel${id}`).value = data.telefono || '';
                 if (data.birth_date) document.getElementById(`resBirthDate${id}`).value = data.birth_date;
                 togglePinSection(id); checkInputs(id); err.classList.add('d-none');
-            } else { err.classList.remove('d-none'); }
-        } catch (error) { console.error(error); } finally { btn.innerHTML = originalText; }
+            } else { 
+                err.classList.remove('d-none'); 
+            }
+        } catch (error) { 
+            console.error(error); 
+        } finally { 
+            btn.innerHTML = originalText; 
+        }
     }
 
+    /**
+     * Procesa el registro de la reserva
+     */
     async function processReservation(id, title, date, price) {
         const payload = {
             nombre: document.getElementById(`resNombre${id}`).value.trim(),
@@ -496,46 +538,90 @@
             apellido2: document.getElementById(`resApellido2${id}`).value.trim(),
             telefono: document.getElementById(`resTel${id}`).value.trim(),
             birth_date: document.getElementById(`resBirthDate${id}`).value,
-            event_id: id
+            event_id: id,
+            pin: document.getElementById(`lookupPin${id}`).value.trim() // FIX: Enviar PIN actual para evitar duplicados
         };
-        const btn = document.getElementById(`btnSubmitRes${id}`), originalText = btn.innerHTML;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>PROCESANDO...'; btn.classList.add('disabled');
+
+        const btn = document.getElementById(`btnSubmitRes${id}`), 
+              originalText = btn.innerHTML;
+        
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>PROCESANDO...'; 
+        btn.classList.add('disabled');
+
         try {
-            const res = await fetch('/api/reserve', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) }), data = await res.json();
+            const res = await fetch('/api/reserve', { 
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify(payload) 
+            });
+            const data = await res.json();
             if (data.success) {
                 document.getElementById(`reserveFormContainer${id}`).classList.add('d-none');
                 document.getElementById(`reserveSuccessContainer${id}`).classList.remove('d-none');
                 document.getElementById(`pinDisplay${id}`).innerText = data.pin;
                 document.getElementById(`btnSendWa${id}`).onclick = () => {
                     let msg = `*✅ REGISTRO CONFIRMADO - LA TRIBU*%0A%0A¡Hola ${payload.nombre}! Registrado correctamente para:*%0A*📍:* ${title}%0A*📅:* ${date}%0A*💰:* ${price}%0A*🔑 PIN:* ${data.pin}%0A%0A*✨ Somos la tribu de los libres ✨*`;
-                    window.open(`https://wa.me/506${payload.telefono}?text=${msg}`, '_blank'); window.location.reload();
+                    window.open(`https://wa.me/506${payload.telefono}?text=${msg}`, '_blank'); 
+                    window.location.reload();
                 };
-            } else { alert("Error: " + data.error); btn.innerHTML = originalText; btn.classList.remove('disabled'); }
-        } catch (e) { alert("Error de conexión."); btn.innerHTML = originalText; btn.classList.remove('disabled'); }
+            } else { 
+                alert("Error: " + data.error); 
+                btn.innerHTML = originalText; 
+                btn.classList.remove('disabled'); 
+            }
+        } catch (e) { 
+            alert("Error de conexión."); 
+            btn.innerHTML = originalText; 
+            btn.classList.remove('disabled'); 
+        }
     }
 
+    /**
+     * Comparte información de la aventura por WhatsApp
+     */
     function exportToWhatsApp(t, ty, p, d, de, ti, di, ds, pi, f, desc) {
         let msg = `*🌟 AVENTURA: ${t.toUpperCase()} 🌟*%0A*🧗 Tipo:* ${ty}%0A*📅 Fecha:* ${d}%0A*💰 Precio:* ${p}%0A%0A*📍 DETALLES:*%0A• Salida: ${de}%0A• Hora: ${ti}%0A• Nivel: ${di}%0A*✨ Somos la tribu de los libres ✨*`;
         window.open(`https://wa.me/?text=${msg}`, '_blank');
     }
 
+    /**
+     * Valida los checkboxes de eliminación crítica
+     */
     function validateDelete(id) {
-        const c1 = document.getElementById('check1' + id).checked, c2 = document.getElementById('check2' + id).checked, btn = document.getElementById('deleteBtn' + id);
-        if (c1 && c2) { btn.classList.remove('disabled'); btn.classList.add('animate__animated', 'animate__pulse', 'animate__infinite'); }
-        else { btn.classList.add('disabled'); btn.classList.remove('animate__animated', 'animate__pulse', 'animate__infinite'); }
+        const c1 = document.getElementById('check1' + id).checked, 
+              c2 = document.getElementById('check2' + id).checked, 
+              btn = document.getElementById('deleteBtn' + id);
+        if (c1 && c2) { 
+            btn.classList.remove('disabled'); 
+            btn.classList.add('animate__animated', 'animate__pulse', 'animate__infinite'); 
+        } else { 
+            btn.classList.add('disabled'); 
+            btn.classList.remove('animate__animated', 'animate__pulse', 'animate__infinite'); 
+        }
     }
 
     document.addEventListener('DOMContentLoaded', function() {
+        // Lógica para etiquetas dinámicas en edición
         document.querySelectorAll('.edit-duration-input').forEach(input => {
             input.addEventListener('input', function() {
-                const eid = this.getAttribute('data-event-id'), label = document.querySelector(`.edit-label-date[data-event-id="${eid}"]`), container = document.querySelector(`.edit-end-date-container[data-event-id="${eid}"]`);
-                if (parseInt(this.value) > 1) { label.innerText = "Fecha Inicio"; container.classList.remove('d-none'); }
-                else { label.innerText = "Fecha Actividad"; container.classList.add('d-none'); }
+                const eid = this.getAttribute('data-event-id'), 
+                      label = document.querySelector(`.edit-label-date[data-event-id="${eid}"]`), 
+                      container = document.querySelector(`.edit-end-date-container[data-event-id="${eid}"]`);
+                if (parseInt(this.value) > 1) { 
+                    label.innerText = "Fecha Inicio"; 
+                    container.classList.remove('d-none'); 
+                } else { 
+                    label.innerText = "Fecha Actividad"; 
+                    container.classList.add('d-none'); 
+                }
             });
         });
+        
+        // Mostrar campo de fecha si se traslada
         document.querySelectorAll('.edit-status-select').forEach(select => {
             select.addEventListener('change', function() {
-                const eid = this.getAttribute('data-event-id'), container = document.querySelector(`.edit-moved-date-container[data-event-id="${eid}"]`);
+                const eid = this.getAttribute('data-event-id'), 
+                      container = document.querySelector(`.edit-moved-date-container[data-event-id="${eid}"]`);
                 if (this.value === 'Se Traslado') container.classList.remove('d-none'); else container.classList.add('d-none');
             });
         });
