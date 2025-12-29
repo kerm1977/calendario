@@ -12,16 +12,16 @@ class User(db.Model, UserMixin):
     """Modelo para los administradores del sistema."""
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password = db.Column(db.String(60), nullable=False)
+    password = db.Column(db.String(200), nullable=False)
     is_superuser = db.Column(db.Boolean, default=False)
 
 class Event(db.Model):
     """Modelo para las aventuras y expediciones con toda su logística."""
     id = db.Column(db.Integer, primary_key=True)
     # Datos Principales
-    title = db.Column(db.String(100), nullable=False)
+    title = db.Column(db.String(150), nullable=False)
     flyer = db.Column(db.String(255), nullable=True)
-    currency = db.Column(db.String(5), default='¢')
+    currency = db.Column(db.String(10), default='¢')
     price = db.Column(db.Float, default=0.0)
     activity_type = db.Column(db.String(100))
     
@@ -31,14 +31,14 @@ class Event(db.Model):
     end_date = db.Column(db.Date, nullable=True)
     
     # Detalles Logísticos
-    departure_point = db.Column(db.String(150))
+    departure_point = db.Column(db.String(200))
     departure_time = db.Column(db.String(50))
     difficulty = db.Column(db.String(50))
     distance = db.Column(db.String(50))
-    capacity = db.Column(db.Integer)
+    capacity = db.Column(db.Integer, default=0)
     reservation_fee = db.Column(db.String(100))
     description = db.Column(db.Text)
-    pickup_point = db.Column(db.String(150))
+    pickup_point = db.Column(db.String(200))
     
     # Estado de la Actividad
     status = db.Column(db.String(50), default='Activa')
@@ -63,12 +63,16 @@ class Member(db.Model):
     pin = db.Column(db.String(10), unique=True, nullable=False) # Identificador único
     nombre = db.Column(db.String(100), nullable=False)
     apellido1 = db.Column(db.String(100), nullable=False)
-    apellido2 = db.Column(db.String(100))
+    apellido2 = db.Column(db.String(100), default='')
     telefono = db.Column(db.String(20), nullable=False)
     
-    # --- NUEVOS CAMPOS DE FIDELIDAD ---
+    # --- CAMPOS DE FIDELIDAD ---
     birth_date = db.Column(db.Date, nullable=True) # Para el cálculo de edad y felicitaciones
     puntos_totales = db.Column(db.Integer, default=0) # Acumulado histórico de puntos
+    
+    # Control para el bono de cumpleaños anual (bono de 500 pts)
+    # Almacena el año del último regalo para no darlo dos veces el mismo año.
+    ultimo_regalo_bday = db.Column(db.Integer, default=0) 
     
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     bookings = db.relationship('Booking', backref='member', lazy=True, cascade="all, delete-orphan")

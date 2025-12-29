@@ -17,7 +17,7 @@
         </div>
         <h1 class="display-3 fw-bold mb-0">Explora con La Tribu</h1>
         <p class="lead text-muted mt-2 mx-auto" style="max-width: 700px;">
-            Calendario de La Tribu de Los Libres
+            Calendario oficial de expediciones de La Tribu de Los Libres. ¡Suma puntos y conquista cumbres!
         </p>
     </div>
 </div>
@@ -262,7 +262,7 @@
                                     <label class="form-label small fw-bold text-secondary text-uppercase" style="font-size: 0.65rem;">Fecha de Nacimiento</label>
                                     <input type="date" id="resBirthDate{{ event.id }}" class="form-control border-warning bg-body py-2 text-center rounded-3" oninput="checkInputs({{ event.id }})">
                                     <div class="x-small text-muted mt-2 text-center">
-                                        <i class="bi bi-gift-fill text-warning me-1"></i> Para celebrar tu cumpleaños.
+                                        <i class="bi bi-gift-fill text-warning me-1"></i> ¡Gana 500 puntos extra si hoy es tu día!
                                     </div>
                                 </div>
                             </div>
@@ -275,20 +275,21 @@
                         </div>
                     </div>
 
+                    <!-- Mensaje de Éxito con el PIN -->
                     <div id="reserveSuccessContainer{{ event.id }}" class="d-none">
                         <div class="modal-body p-5 text-center bg-body">
                             <div class="bg-success bg-opacity-10 d-inline-block p-4 rounded-circle mb-4 text-success animate__animated animate__bounceIn">
                                 <i class="bi bi-check-circle-fill display-1"></i>
                             </div>
                             <h3 class="fw-bold text-body">¡Registro Exitoso!</h3>
-                            <p class="text-secondary mt-3 fs-6">Guarde su <strong>PIN único</strong> de miembro:</p>
+                            <p class="text-secondary mt-3 fs-6">Guarde su <strong>PIN único</strong> de miembro para futuras aventuras y ver sus puntos:</p>
                             <div class="bg-primary bg-opacity-5 p-4 rounded-5 border-2 border border-primary border-opacity-25 mb-4 shadow-sm">
                                 <h2 class="display-3 fw-bold text-primary mb-0" id="pinDisplay{{ event.id }}" style="letter-spacing: 12px; margin-left: 12px;">XXXX</h2>
                             </div>
                             <hr class="my-4 opacity-10">
                             <div class="d-grid gap-2 mt-3">
                                 <button type="button" class="btn btn-success py-3 fw-bold rounded-pill shadow-sm" id="btnSendWa{{ event.id }}">
-                                    <i class="bi bi-whatsapp me-2"></i>SÍ, ENVIAR AHORA
+                                    <i class="bi bi-whatsapp me-2"></i>NOTIFICAR A LA TRIBU
                                 </button>
                                 <button type="button" class="btn btn-light py-2 fw-bold text-muted rounded-pill mt-2" data-bs-dismiss="modal" onclick="window.location.reload()">Cerrar Ventana</button>
                             </div>
@@ -300,7 +301,7 @@
 
         {% if current_user.is_authenticated and current_user.is_superuser %}
         <!-- ========================================== -->
-        <!-- MODAL DE EDICIÓN (ADMIN) - PARIDAD TOTAL -->
+        <!-- MODAL DE EDICIÓN (ADMIN) -->
         <!-- ========================================== -->
         <div class="modal fade" id="editModal{{ event.id }}" tabindex="-1">
             <div class="modal-dialog modal-lg">
@@ -481,7 +482,7 @@
                 document.getElementById(`resNombre${id}`).value = data.nombre;
                 document.getElementById(`resApellido1${id}`).value = data.apellido1;
                 document.getElementById(`resApellido2${id}`).value = data.apellido2 || '';
-                document.getElementById(`resTel${id}`).value = data.telefono;
+                document.getElementById(`resTel${id}`).value = data.telefono || '';
                 if (data.birth_date) document.getElementById(`resBirthDate${id}`).value = data.birth_date;
                 togglePinSection(id); checkInputs(id); err.classList.add('d-none');
             } else { err.classList.remove('d-none'); }

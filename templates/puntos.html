@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}Historial de Fidelidad - La Tribu{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Encabezado con navegación dinámica -->
+    <div class="row mb-5 align-items-end">
+        <div class="col-md-8">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-2">
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.dashboard') }}" class="text-decoration-none text-warning">Dashboard</a></li>
+                    {% if selected_member %}
+                        <li class="breadcrumb-item"><a href="{{ url_for('puntos.historial_global') }}" class="text-decoration-none text-warning">Historial General</a></li>
+                        <li class="breadcrumb-item active">{{ selected_member.nombre }}</li>
+                    {% else %}
+                        <li class="breadcrumb-item active">Historial de Puntos</li>
+                    {% endif %}
+                </ol>
+            </nav>
+            <h1 class="display-5 fw-bold mb-0">
+                {% if selected_member %}
+                    Movimientos de <span class="text-warning">{{ selected_member.nombre }}</span>
+                {% else %}
+                    Control de Puntos Tribu
+                {% endif %}
+            </h1>
+            <p class="lead text-muted">Auditoría detallada de fidelización y recompensas</p>
+        </div>
+        {% if selected_member %}
+        <div class="col-md-4 text-md-end">
+            <div class="bg-warning bg-opacity-10 p-3 rounded-4 border border-warning border-opacity-25 d-inline-block">
+                <small class="d-block text-uppercase fw-bold text-muted" style="font-size: 0.7rem;">Saldo Total Actual</small>
+                <span class="h2 fw-bold text-warning mb-0">{{ selected_member.puntos_totales }} <small class="fs-6">pts</small></span>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if selected_member %}
+        <!-- VISTA: DETALLE DE UN MIEMBRO -->
+        <div class="card border-0 shadow-lg rounded-5 overflow-hidden animate__animated animate__fadeInUp">
+            <div class="card-body p-4 p-md-5">
+                <h5 class="fw-bold mb-4 border-bottom pb-2">Registro Cronológico</h5>
+                
+                <div class="timeline-wrapper">
+                    {% if movimientos %}
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle border-0">
+                                <thead class="bg-body-tertiary">
+                                    <tr>
+                                        <th class="border-0 px-4 py-3 text-secondary x-small fw-bold text-uppercase">Fecha</th>
+                                        <th class="border-0 py-3 text-secondary x-small fw-bold text-uppercase">Concepto</th>
+                                        <th class="border-0 py-3 text-secondary x-small fw-bold text-uppercase text-center">Tipo</th>
+                                        <th class="border-0 py-3 text-secondary x-small fw-bold text-uppercase text-end pe-4">Suma</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for m in movimientos %}
+                                    <tr>
+                                        <td class="px-4 py-3">
+                                            <span class="text-body fw-medium small">{{ m.fecha.strftime('%d %b, %Y') if m.fecha else 'N/A' }}</span>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="p-2 rounded-3 bg-light {{ m.color }} me-3">
+                                                    <i class="bi {{ m.icono }} fs-5"></i>
+                                                </div>
+                                                <span class="fw-bold text-body">{{ m.detalle }}</span>
+                                            </div>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge bg-light text-dark border px-3 py-2 rounded-pill">{{ m.tipo }}</span>
+                                        </td>
+                                        <td class="text-end pe-4">
+                                            <span class="fw-bold fs-5 {{ m.color }}">+{{ m.puntos }}</span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="bi bi-clock-history text-muted opacity-25 display-1"></i>
+                            <p class="mt-3 text-muted">Este miembro no tiene movimientos registrados todavía.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-footer bg-light border-0 p-4 text-center">
+                <a href="{{ url_for('puntos.historial_global') }}" class="btn btn-outline-secondary rounded-pill px-5 fw-bold">VOLVER AL LISTADO GLOBAL</a>
+            </div>
+        </div>
+
+    {% else %}
+        <!-- VISTA: LISTADO GLOBAL DE MIEMBROS -->
+        <div class="card border-0 shadow-sm rounded-5 bg-body overflow-hidden animate__animated animate__fadeIn">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-body-tertiary">
+                            <tr>
+                                <th class="border-0 px-4 py-4 text-secondary x-small fw-bold text-uppercase">Miembro</th>
+                                <th class="border-0 py-4 text-secondary x-small fw-bold text-uppercase text-center">PIN</th>
+                                <th class="border-0 py-4 text-secondary x-small fw-bold text-uppercase text-center">Expediciones</th>
+                                <th class="border-0 py-4 text-secondary x-small fw-bold text-uppercase text-center">Puntos Totales</th>
+                                <th class="border-0 py-4 text-secondary x-small fw-bold text-uppercase text-end pe-4">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for member in members %}
+                            <tr>
+                                <td class="px-4 py-3">
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar-sm me-3 bg-warning bg-opacity-10 text-warning rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 45px; height: 45px; font-size: 1.1rem;">
+                                            {{ member.nombre[0] }}{{ member.apellido1[0] }}
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold text-body">{{ member.nombre }} {{ member.apellido1 }}</div>
+                                            <div class="x-small text-muted">{{ member.telefono }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-warning text-dark px-3 py-2 rounded-pill fw-bold" style="letter-spacing: 1px;">{{ member.pin }}</span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="fw-bold text-secondary">{{ member.bookings|length }}</span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="fw-bold text-success fs-5">{{ member.puntos_totales }}</span>
+                                </td>
+                                <td class="text-end pe-4">
+                                    <a href="{{ url_for('puntos.detalle_miembro', member_id=member.id) }}" class="btn btn-warning btn-sm text-dark fw-bold rounded-pill px-4 shadow-sm">
+                                        <i class="bi bi-eye-fill me-1"></i> VER MOVIMIENTOS
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+    .x-small { font-size: 0.7rem; letter-spacing: 1px; }
+    .table-hover tbody tr:hover { background-color: rgba(255, 193, 7, 0.03); transition: 0.2s; }
+    [data-bs-theme="dark"] .bg-body-tertiary { background-color: #1a1a1a !important; }
+    .animate__animated { animation-duration: 0.6s; }
+</style>
+{% endblock %}

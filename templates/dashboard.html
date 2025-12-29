@@ -211,9 +211,14 @@
                                 </td>
                                 <td class="text-end pe-3">
                                     <div class="d-flex justify-content-end gap-2">
-                                        <a href="#" class="btn btn-sm btn-light border rounded-circle text-muted" title="Ver historial">
-                                            <i class="bi bi-clock-history"></i>
-                                        </a>
+                                        <!-- Botón Anular Participación (Revertir Puntos) -->
+                                        <button class="btn btn-sm btn-light border border-warning-subtle rounded-circle text-warning shadow-sm transition-all hover-scale" 
+                                                title="Anular Participación (Revertir Puntos)" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#cancelBookingModal{{ b.id }}">
+                                            <i class="bi bi-person-dash-fill"></i>
+                                        </button>
+                                        <!-- Botón Eliminar Miembro Completo -->
                                         <button class="btn btn-sm btn-white border border-danger-subtle rounded-circle text-danger shadow-sm transition-all hover-scale" 
                                                 title="Eliminar Miembro" 
                                                 data-bs-toggle="modal" 
@@ -223,6 +228,33 @@
                                     </div>
                                 </td>
                             </tr>
+
+                            <!-- MODAL DE ANULACIÓN DE PARTICIPACIÓN (REVERSIÓN DE PUNTOS) -->
+                            <div class="modal fade" id="cancelBookingModal{{ b.id }}" tabindex="-1">
+                                <div class="modal-dialog modal-sm modal-dialog-centered">
+                                    <div class="modal-content border-0 shadow-lg rounded-5 overflow-hidden">
+                                        <div class="modal-header bg-warning text-dark border-0 py-3 text-center d-block">
+                                            <h5 class="modal-title fw-bold">Anular Participación</h5>
+                                        </div>
+                                        <div class="modal-body p-4 text-center bg-body">
+                                            <div class="text-warning mb-3">
+                                                <i class="bi bi-exclamation-triangle-fill display-4 opacity-25"></i>
+                                            </div>
+                                            <p class="text-body fw-bold mb-1 fs-5">{{ b.member.nombre }}</p>
+                                            <p class="small text-muted mb-4 px-2">
+                                                Se retirará de la aventura <strong>"{{ b.event.title }}"</strong> y se le restarán los puntos correspondientes.
+                                            </p>
+                                            
+                                            <div class="d-grid gap-2">
+                                                <form action="{{ url_for('main.cancel_booking', booking_id=b.id) }}" method="POST">
+                                                    <button type="submit" class="btn btn-warning fw-bold rounded-pill shadow-sm py-2 w-100 text-dark">ANULAR Y REVERTIR PUNTOS</button>
+                                                </form>
+                                                <button type="button" class="btn btn-light fw-bold rounded-pill py-2 border" data-bs-dismiss="modal">CANCELAR</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
 
                             <!-- MODAL DE ELIMINACIÓN DE MIEMBRO -->
                             <div class="modal fade" id="deleteMemberModal{{ b.member.id }}" tabindex="-1">
