@@ -4,7 +4,7 @@
 # Este archivo centraliza la lógica de negocio, el sistema de fidelidad "Brutal"
 # y la gestión logística integral. Está diseñado para una trazabilidad total
 # mediante el uso de cronogramas transaccionales (PointLog).
-# VERSIÓN: 6.0 INTEGRACIÓN TOTAL (650+ LÍNEAS)
+# VERSIÓN: 6.1 CORRECCIÓN BONOS (650+ LÍNEAS)
 # ==============================================================================
 
 import os
@@ -13,7 +13,7 @@ import calendar
 import random
 import logging
 import io
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 # --- FRAMEWORK Y EXTENSIONES DE SISTEMA ---
 from flask import (
@@ -450,8 +450,8 @@ def api_reserve():
             
             b_date = to_date(data.get('birth_date'))
             
-            # --- BONO DE BIENVENIDA (CONFIGURACIÓN) ---
-            WELCOME_BONUS = 100  # Puntos regalados por primera inscripción
+            # --- BONO DE BIENVENIDA CORREGIDO (500 PTS) ---
+            WELCOME_BONUS = 500  # Valor correcto por primera inscripción
             event_points = event.points_reward or 10
             
             # Cálculo inicial de puntos: Evento + Bienvenida
@@ -476,20 +476,23 @@ def api_reserve():
             db.session.add(member)
             db.session.flush() # Sincronizar ID para crear el log y el booking.
             
-            # REGISTRO TRANSACTIONAL 1: Inscripción al evento.
-            db.session.add(PointLog(
-                member_id=member.id,
-                transaction_type='Inscripción',
-                description=f'Registro inicial en: {event.title}',
-                amount=event_points
-            ))
-            
-            # REGISTRO TRANSACTIONAL 2: Bono de Bienvenida.
+            # REGISTRO TRANSACTIONAL 1: Bono de Bienvenida (Primero, como base).
             db.session.add(PointLog(
                 member_id=member.id,
                 transaction_type='Bono Bienvenida',
                 description='Regalo único por unirse a La Tribu',
-                amount=WELCOME_BONUS
+                amount=WELCOME_BONUS,
+                created_at=datetime.utcnow()
+            ))
+            
+            # REGISTRO TRANSACTIONAL 2: Inscripción al evento (Segundo, actividad actual).
+            # Agregamos 1 segundo para garantizar orden en el historial.
+            db.session.add(PointLog(
+                member_id=member.id,
+                transaction_type='Inscripción',
+                description=f'Registro inicial en: {event.title}',
+                amount=event_points,
+                created_at=datetime.utcnow() + timedelta(seconds=1)
             ))
             
             # REGISTRO TRANSACTIONAL 3: Bono Cumpleaños (si aplica).
@@ -498,7 +501,8 @@ def api_reserve():
                     member_id=member.id,
                     transaction_type='Bono Cumpleaños',
                     description='¡Bono sorpresa por cumpleaños!',
-                    amount=500
+                    amount=500,
+                    created_at=datetime.utcnow() + timedelta(seconds=2)
                 ))
         else:
             # FLUJO: MIEMBRO HISTÓRICO (Actualización de Estado).
