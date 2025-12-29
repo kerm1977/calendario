@@ -8,73 +8,93 @@ from werkzeug.utils import secure_filename
 from sqlalchemy import extract, desc
 
 # --- IMPORTACIÓN DE MODELOS Y CONFIGURACIÓN ---
-# Importamos desde db.py para romper el ciclo de importación con puntos.py
+# Centralizamos los modelos en db.py para romper los ciclos de dependencia (Circular Imports)
+# Asegúrate de que db.py contenga: db, bcrypt, User, Member, Event, Booking
 from db import db, bcrypt, User, Member, Event, Booking
 
-# --- CONFIGURACIÓN DE LA APLICACIÓN ---
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'dev_key_la_tribu_2026'
+
+# --- CONFIGURACIÓN DEL SERVIDOR ---
+# Secret key para manejo de sesiones y seguridad de formularios
+app.config['SECRET_KEY'] = 'dev_key_la_tribu_2026_pro_full_integration'
+
+# Configuración de la base de datos SQLite
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Configuración de almacenamiento para los flyers de las aventuras
 app.config['UPLOAD_FOLDER'] = os.path.join('static', 'uploads', 'flyers')
 
-# Garantizar que la carpeta de flyers exista para evitar errores de E/S
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+# Garantizar la existencia de los directorios de carga para evitar errores de E/S
+if not os.path.exists(app.config['UPLOAD_FOLDER']):
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-# Listado global de meses para traducciones y visualización en la interfaz
-MESES_ES = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
-            "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+# Listado maestro de meses para traducciones y componentes visuales
+MESES_ES = [
+    "", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
+    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+]
 
-# Inicialización de extensiones vinculadas a la instancia de la app
+# --- INICIALIZACIÓN DE COMPONENTES ---
 db.init_app(app)
 bcrypt.init_app(app)
 
+# Gestión de inicios de sesión
 login_manager = LoginManager(app)
 login_manager.login_view = 'auth.login'
 login_manager.login_message_category = 'info'
-login_manager.login_message = "Por favor inicia sesión para acceder a esta página."
+login_manager.login_message = "Acceso restringido. Por favor, identifíquese para continuar."
 
 @login_manager.user_loader
 def load_user(user_id):
+    """Carga el usuario desde la base de datos para Flask-Login."""
     return User.query.get(int(user_id))
 
-# --- FUNCIONES DE APOYO LOGÍSTICO ---
+# --- FUNCIONES DE APOYO LOGÍSTICO Y FORMATEO ---
 
 def calculate_age(born):
-    """Calcula la edad actual de un miembro basada en su fecha de nacimiento."""
-    if not born: return "N/A"
+    """
+    Calcula la edad exacta de un aventurero basándose en su fecha de nacimiento.
+    Útil para la segmentación en el Dashboard y felicitaciones.
+    """
+    if not born:
+        return "N/A"
     today = date.today()
     return today.year - born.year - ((today.month, today.day) < (born.month, born.day))
 
 def to_date(date_str):
-    """Convierte strings de formularios (YYYY-MM-DD) a objetos de fecha seguros para SQLAlchemy."""
-    if not date_str: return None
+    """
+    Convierte de forma segura un string proveniente de un input HTML date 
+    a un objeto date de Python manejable por SQLAlchemy.
+    """
+    if not date_str:
+        return None
     try:
         return datetime.strptime(date_str, '%Y-%m-%d').date()
     except (ValueError, TypeError):
         return None
 
-# --- LÓGICA GLOBAL DE PUNTOS Y CELEBRACIONES ---
+# --- CONTEXT PROCESSOR (LÓGICA MAESTRA DE FIDELIDAD) ---
 
 @app.context_processor
 def inject_global_vars():
     """
-    Inyecta datos en todas las plantillas y procesa automáticamente 
-    los puntos de cumpleaños (500 pts) de forma global y en tiempo real.
+    Inyecta datos cruciales en todas las plantillas y ejecuta la lógica 
+    automática de bonos por cumpleaños (500 pts) en tiempo real.
     """
     today = date.today()
     
-    # Identificar miembros que cumplen años el día de hoy
+    # Identificar a los miembros que celebran su cumpleaños en la fecha actual
     birthdays_today = Member.query.filter(
         extract('month', Member.birth_date) == today.month,
         extract('day', Member.birth_date) == today.day
     ).all()
 
-    # PROCESO AUTOMÁTICO: Regalo de 500 Puntos por Cumpleaños
-    # Esta lógica se dispara con cada carga de página para asegurar fidelización inmediata.
+    # LOGICA DE FIDELIZACIÓN: REGALO AUTOMÁTICO DE CUMPLEAÑOS
+    # Esta sección garantiza que el miembro reciba sus 500 puntos al interactuar con la app en su día.
     commit_needed = False
     for member in birthdays_today:
-        # Verificamos que el miembro no haya recibido ya el regalo de este año
+        # Validamos que no se le haya otorgado el regalo ya en este año calendario
         if member.ultimo_regalo_bday != today.year:
             member.puntos_totales += 500
             member.ultimo_regalo_bday = today.year
@@ -83,10 +103,11 @@ def inject_global_vars():
     if commit_needed:
         try:
             db.session.commit()
-        except Exception:
+        except Exception as e:
             db.session.rollback()
+            print(f"Error procesando bonos automáticos: {e}")
 
-    # Contador de expediciones filtradas por mes para el componente de búsqueda
+    # Cálculo dinámico del contador para el buscador de meses en la Home
     search_month_idx = request.args.get('search_month', type=int)
     target_month = search_month_idx if search_month_idx is not None else today.month
     count = Event.query.filter(extract('month', Event.event_date) == target_month).count()
@@ -99,61 +120,67 @@ def inject_global_vars():
         birthdays_today=birthdays_today
     )
 
-# --- BLUEPRINTS ---
+# --- DEFINICIÓN DE BLUEPRINTS (MODULARIDAD) ---
 auth_bp = Blueprint('auth', __name__)
 main_bp = Blueprint('main', __name__)
 calendar_bp = Blueprint('calendar_view', __name__)
 
-# --- RUTAS DE AUTENTICACIÓN (GESTIÓN DE ACCESO) ---
+# --- RUTAS DE GESTIÓN DE ACCESO (AUTH) ---
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
+    """Maneja el acceso administrativo al sistema."""
     if current_user.is_authenticated:
         return redirect(url_for('main.home'))
+        
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
         user = User.query.filter_by(email=email).first()
+        
         if user and bcrypt.check_password_hash(user.password, password):
             login_user(user)
-            flash('¡Acceso concedido! Bienvenido al panel de control de La Tribu.', 'success')
+            flash('¡Acceso concedido! Bienvenido al centro de control de La Tribu.', 'success')
             return redirect(url_for('main.dashboard'))
-        flash('Credenciales incorrectas. Verifique su email y contraseña.', 'danger')
+        
+        flash('Credenciales incorrectas. Verifique su correo y contraseña.', 'danger')
+        
     return render_template('login.html')
 
 @auth_bp.route('/logout')
 def logout():
+    """Cierra la sesión administrativa."""
     logout_user()
-    flash('Has cerrado sesión correctamente. ¡Nos vemos en la montaña!', 'info')
+    flash('Sesión finalizada correctamente. ¡Nos vemos en la montaña!', 'info')
     return redirect(url_for('main.home'))
 
-# --- RUTAS DE LA VISTA PÚBLICA Y DASHBOARD ---
+# --- RUTAS DE VISTA PÚBLICA Y DASHBOARD ---
 
 @main_bp.route('/')
 def home():
-    """Muestra el catálogo principal de aventuras para los usuarios."""
+    """Renderiza el catálogo principal de expediciones con filtros."""
     search_month = request.args.get('search_month', type=int)
     query = Event.query
+    
     if search_month:
         query = query.filter(extract('month', Event.event_date) == search_month)
-    # Ordenamos por fecha más próxima
+    
+    # Ordenar por fecha de evento más cercana
     events = query.order_by(Event.event_date.asc()).all()
     return render_template('home.html', events=events)
 
 @main_bp.route('/admin/dashboard')
 @login_required
 def dashboard():
-    """Panel de control administrativo con métricas, ranking y actividad reciente."""
+    """Panel de administración principal con métricas críticas."""
     if not current_user.is_superuser:
-        flash('Acceso denegado. Se requieren permisos de superusuario.', 'danger')
+        flash('Acceso restringido a Superusuarios.', 'danger')
         return redirect(url_for('main.home'))
     
-    # Cálculo de métricas para las tarjetas informativas
+    # Recopilación de estadísticas para las tarjetas informativas
     stats = {
         'total': Event.query.count(),
         'active': Event.query.filter_by(status='Activa').count(),
-        'cancelled': Event.query.filter_by(status='Suspendido').count(),
-        'moved': Event.query.filter_by(status='Se Traslado').count(),
         'members_count': Member.query.count(),
         'birthdays_count': Member.query.filter(
             extract('month', Member.birth_date) == date.today().month,
@@ -161,63 +188,71 @@ def dashboard():
         ).count()
     }
     
-    # Listado de reservas recientes para la tabla de actividad
+    # Listado de las últimas 50 reservas para monitoreo
     bookings = Booking.query.order_by(Booking.created_at.desc()).limit(50).all()
-    # Ranking de líderes basado en acumulación de puntos
+    
+    # Top 10 de aventureros por acumulación de puntos
     ranking = Member.query.order_by(Member.puntos_totales.desc()).limit(10).all()
     
     return render_template('dashboard.html', stats=stats, bookings=bookings, ranking=ranking)
 
-# --- REVERSIÓN DE PUNTOS Y GESTIÓN DE MIEMBROS ---
-
 @main_bp.route('/admin/booking/cancel/<int:booking_id>', methods=['POST'])
 @login_required
 def cancel_booking(booking_id):
-    """Anula una reserva y revierte exactamente los puntos otorgados por ese evento."""
-    if not current_user.is_superuser: return redirect(url_for('main.home'))
-    
+    """
+    Anula una reserva específica y ejecuta la reversión de puntos.
+    Asegura que el saldo del miembro nunca sea negativo.
+    """
     booking = Booking.query.get_or_404(booking_id)
     member = booking.member
     event = booking.event
     
     try:
-        puntos_a_restar = event.points_reward or 10
-        # Revertimos los puntos asegurando que el saldo no sea negativo
-        member.puntos_totales = max(0, member.puntos_totales - puntos_a_restar)
-            
+        # Los puntos a restar son los mismos que otorgó el evento
+        puntos_a_revertir = event.points_reward or 10
+        member.puntos_totales = max(0, member.puntos_totales - puntos_a_revertir)
+        
         db.session.delete(booking)
         db.session.commit()
-        flash(f'Participación anulada. Se han restado {puntos_a_restar} puntos a {member.nombre}.', 'warning')
+        flash(f'Participación anulada. Se han restado {puntos_a_revertir} puntos a {member.nombre}.', 'warning')
     except Exception as e:
         db.session.rollback()
-        flash(f'Error al procesar la anulación: {str(e)}', 'danger')
+        flash(f'Error procesando la anulación: {str(e)}', 'danger')
         
-    return redirect(url_for('main.dashboard'))
+    return redirect(request.referrer or url_for('main.dashboard'))
 
 @main_bp.route('/admin/member/delete/<int:member_id>', methods=['POST'])
 @login_required
 def delete_member(member_id):
-    """Elimina permanentemente a un miembro, su PIN y todo su historial de puntos."""
-    if not current_user.is_superuser: return redirect(url_for('main.home'))
+    """
+    Borrado absoluto de un miembro. Elimina PIN, historial y puntos.
+    Acción IRREVERSIBLE.
+    """
     member = Member.query.get_or_404(member_id)
     try:
+        nombre_afectado = member.nombre
         db.session.delete(member)
         db.session.commit()
-        flash(f'El miembro {member.nombre} ha sido eliminado de la base de datos.', 'success')
+        flash(f'El aventurero {nombre_afectado} ha sido removido permanentemente.', 'success')
     except Exception as e:
         db.session.rollback()
-        flash(f'Error al eliminar miembro: {str(e)}', 'danger')
+        flash(f'Error crítico al eliminar miembro: {str(e)}', 'danger')
+        
     return redirect(url_for('main.dashboard'))
 
-# --- API PARA FRONTEND (PUNTOS Y REGISTROS) ---
+# --- API ENDPOINTS (LÓGICA DE NEGOCIO Y CONSULTA) ---
 
 @main_bp.route('/api/lookup/<pin>')
 def api_lookup(pin):
-    """Búsqueda AJAX de miembros por PIN para precargar datos y consultar puntos."""
+    """
+    Servicio de consulta de miembros vía PIN.
+    Crucial para el Portal de Puntos y el registro inteligente.
+    """
     member = Member.query.filter_by(pin=pin).first()
     if member:
         return jsonify({
             'success': True,
+            'id': member.id, # ID único para navegación
             'nombre': member.nombre,
             'apellido1': member.apellido1,
             'apellido2': member.apellido2,
@@ -225,37 +260,41 @@ def api_lookup(pin):
             'puntos': member.puntos_totales,
             'birth_date': member.birth_date.strftime('%Y-%m-%d') if member.birth_date else None
         })
-    return jsonify({'success': False, 'error': 'PIN no encontrado.'})
+    return jsonify({'success': False, 'error': 'El PIN ingresado no existe en La Tribu.'})
 
 @main_bp.route('/api/reserve', methods=['POST'])
 def api_reserve():
     """
-    Gestiona la creación de reservas, miembros nuevos y la suma de puntos.
-    Incluye lógica para otorgar bonos de cumpleaños de 500 puntos en tiempo real.
+    Gestión inteligente de reservas.
+    1. Identifica al miembro (nuevo o existente).
+    2. Valida duplicados de inscripción.
+    3. Suma puntos del evento.
+    4. Procesa bonos de cumpleaños en el acto.
     """
     data = request.json
     try:
-        pin_proporcionado = data.get('pin')
-        member = None
         event = Event.query.get_or_404(data['event_id'])
         today = date.today()
+        member = None
         
-        if pin_proporcionado:
-            member = Member.query.filter_by(pin=pin_proporcionado).first()
+        # Intentar localizar al miembro mediante el PIN si lo proporcionó
+        if data.get('pin'):
+            member = Member.query.filter_by(pin=data.get('pin')).first()
 
         if not member:
-            # Miembro Nuevo: Generar un PIN aleatorio único de 6 dígitos
+            # FLUJO PARA MIEMBRO NUEVO: Generación de Identidad
             while True:
                 new_pin = str(random.randint(100000, 999999))
-                if not Member.query.filter_by(pin=new_pin).first(): break
+                if not Member.query.filter_by(pin=new_pin).first():
+                    break
             
             birth_date_obj = to_date(data.get('birth_date'))
-            inicial_puntos = event.points_reward or 10
+            pts_recompensa = event.points_reward or 10
             regalo_año = 0
             
-            # Bono inmediato si hoy es su cumpleaños al registrarse por primera vez
+            # Bono inmediato si su primer registro coincide con su cumpleaños
             if birth_date_obj and birth_date_obj.month == today.month and birth_date_obj.day == today.day:
-                inicial_puntos += 500
+                pts_recompensa += 500
                 regalo_año = today.year
 
             member = Member(
@@ -265,51 +304,49 @@ def api_reserve():
                 apellido2=data.get('apellido2', ''),
                 telefono=data['telefono'], 
                 birth_date=birth_date_obj, 
-                puntos_totales=inicial_puntos,
+                puntos_totales=pts_recompensa,
                 ultimo_regalo_bday=regalo_año
             )
             db.session.add(member)
-            db.session.flush() # Sincronizamos para obtener el ID antes de la reserva
+            db.session.flush() # Sincronizar para obtener ID antes de crear Booking
         else:
-            # Miembro Existente: Validar que no esté ya inscrito en este evento
-            existing = Booking.query.filter_by(member_id=member.id, event_id=event.id).first()
-            if existing:
-                return jsonify({'success': False, 'error': 'Ya estás inscrito en esta aventura.'})
+            # FLUJO PARA MIEMBRO EXISTENTE: Actualización de Cuenta
+            # Evitar que se registre dos veces en la misma actividad
+            existing_booking = Booking.query.filter_by(member_id=member.id, event_id=event.id).first()
+            if existing_booking:
+                return jsonify({'success': False, 'error': 'Ya te encuentras registrado para esta aventura.'})
             
-            # Sumar puntos normales del evento
+            # Sumar puntos estándar del evento
             member.puntos_totales += (event.points_reward or 10)
             
-            # Verificar si hoy es su cumpleaños para aplicar el bono de 500 si no lo tiene
+            # Verificación de bono de cumpleaños durante el registro
             if member.birth_date and member.birth_date.month == today.month and member.birth_date.day == today.day:
                 if member.ultimo_regalo_bday != today.year:
                     member.puntos_totales += 500
                     member.ultimo_regalo_bday = today.year
 
-        # Creación del ticket de reserva
-        new_booking = Booking(
-            member_id=member.id,
-            event_id=event.id,
-            nombre=member.nombre,
-            apellido1=member.apellido1,
-            telefono=member.telefono,
-            pin=member.pin
-        )
-        db.session.add(new_booking)
+        # Creación del ticket oficial de reserva
+        db.session.add(Booking(
+            member_id=member.id, 
+            event_id=event.id, 
+            pin=member.pin,
+            nombre=member.nombre, 
+            apellido1=member.apellido1, 
+            telefono=member.telefono
+        ))
         db.session.commit()
         
         return jsonify({'success': True, 'pin': member.pin, 'puntos': member.puntos_totales})
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': f"Fallo en reserva: {str(e)}"})
 
-# --- GESTIÓN DE CALENDARIO Y OPERACIONES CRUD ---
+# --- GESTIÓN ADMINISTRATIVA DE CALENDARIO Y EVENTOS (CRUD) ---
 
 @calendar_bp.route('/admin/calendar')
 @login_required
 def view():
-    """Genera la vista de calendario administrativo con eventos y cumpleaños."""
-    if not current_user.is_superuser: return redirect(url_for('main.home'))
-    
+    """Genera la vista de cuadrícula mensual para administración."""
     year = request.args.get('year', datetime.now().year, type=int)
     month = request.args.get('month', datetime.now().month, type=int)
     
@@ -318,8 +355,8 @@ def view():
 
     cal = calendar.Calendar(firstweekday=0)
     weeks = cal.monthdayscalendar(year, month)
+    
     events = Event.query.all()
-    # Filtrar cumpleaños para mostrar en el calendario
     monthly_birthdays = Member.query.filter(extract('month', Member.birth_date) == month).all()
     
     return render_template('calendar.html', 
@@ -331,16 +368,15 @@ def view():
 @calendar_bp.route('/admin/event/add', methods=['POST'])
 @login_required
 def add_event():
-    """Crea una nueva aventura procesando toda la logística del formulario."""
-    if not current_user.is_superuser: return redirect(url_for('main.home'))
-    
+    """Publica una nueva aventura procesando toda la logística del formulario."""
     file = request.files.get('flyer')
     filename = secure_filename(file.filename) if file and file.filename != '' else None
+    
     if filename:
         file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
 
     try:
-        event = Event(
+        new_event = Event(
             title=request.form.get('title'),
             flyer=filename,
             currency=request.form.get('currency', '¢'),
@@ -361,91 +397,90 @@ def add_event():
             status=request.form.get('status') or 'Activa',
             moved_date=to_date(request.form.get('moved_date'))
         )
-        db.session.add(event)
+        db.session.add(new_event)
         db.session.commit()
-        flash('Nueva expedición publicada con éxito.', 'success')
+        flash('¡Nueva aventura publicada correctamente!', 'success')
     except Exception as e:
         db.session.rollback()
-        flash(f'Error al crear el evento: {str(e)}', 'danger')
+        flash(f'Error logístico al crear: {str(e)}', 'danger')
             
     return redirect(url_for('calendar_view.view'))
 
 @calendar_bp.route('/admin/event/edit/<int:event_id>', methods=['POST'])
 @login_required
 def edit_event(event_id):
-    """Actualiza datos de un evento y maneja la sustitución física del flyer."""
-    if not current_user.is_superuser: return redirect(url_for('main.home'))
-    
-    event = Event.query.get_or_404(event_id)
+    """Actualiza datos de un evento y gestiona la sustitución de archivos físicos."""
+    ev = Event.query.get_or_404(event_id)
     file = request.files.get('flyer')
     
     if file and file.filename != '':
         filename = secure_filename(file.filename)
         file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-        # Eliminar el archivo antiguo si existe para no saturar el servidor
-        if event.flyer:
-            old_path = os.path.join(app.config['UPLOAD_FOLDER'], event.flyer)
-            if os.path.exists(old_path):
-                try: os.remove(old_path)
-                except Exception: pass
-        event.flyer = filename
+        # Limpiar archivo físico anterior para optimizar almacenamiento
+        if ev.flyer:
+            try:
+                old_path = os.path.join(app.config['UPLOAD_FOLDER'], ev.flyer)
+                if os.path.exists(old_path):
+                    os.remove(old_path)
+            except Exception as e:
+                print(f"Error borrando flyer antiguo: {e}")
+        ev.flyer = filename
 
     try:
-        # Actualización masiva de campos logísticos
-        event.title = request.form.get('title')
-        event.currency = request.form.get('currency')
-        event.price = float(request.form.get('price') or 0)
-        event.points_reward = int(request.form.get('points_reward') or 10)
-        event.activity_type = request.form.get('activity_type')
-        event.duration_days = int(request.form.get('duration_days') or 1)
-        event.event_date = to_date(request.form.get('event_date'))
-        event.end_date = to_date(request.form.get('end_date'))
-        event.departure_point = request.form.get('departure_point')
-        event.departure_time = request.form.get('departure_time')
-        event.difficulty = request.form.get('difficulty')
-        event.distance = request.form.get('distance')
-        event.capacity = int(request.form.get('capacity') or 0)
-        event.reservation_fee = request.form.get('reservation_fee')
-        event.description = request.form.get('description')
-        event.pickup_point = request.form.get('pickup_point')
-        event.status = request.form.get('status')
-        event.moved_date = to_date(request.form.get('moved_date'))
+        # Actualización masiva de parámetros
+        ev.title = request.form.get('title')
+        ev.currency = request.form.get('currency')
+        ev.price = float(request.form.get('price') or 0)
+        ev.points_reward = int(request.form.get('points_reward') or 10)
+        ev.activity_type = request.form.get('activity_type')
+        ev.duration_days = int(request.form.get('duration_days') or 1)
+        ev.event_date = to_date(request.form.get('event_date'))
+        ev.end_date = to_date(request.form.get('end_date'))
+        ev.departure_point = request.form.get('departure_point')
+        ev.departure_time = request.form.get('departure_time')
+        ev.difficulty = request.form.get('difficulty')
+        ev.distance = request.form.get('distance')
+        ev.capacity = int(request.form.get('capacity') or 0)
+        ev.reservation_fee = request.form.get('reservation_fee')
+        ev.description = request.form.get('description')
+        ev.pickup_point = request.form.get('pickup_point')
+        ev.status = request.form.get('status')
+        ev.moved_date = to_date(request.form.get('moved_date'))
         
         db.session.commit()
-        flash('La aventura ha sido actualizada correctamente.', 'success')
+        flash('Expedición actualizada con éxito.', 'success')
     except Exception as e:
         db.session.rollback()
-        flash(f'Error al actualizar los datos: {str(e)}', 'danger')
+        flash(f'Fallo al actualizar la base de datos: {str(e)}', 'danger')
         
-    return redirect(url_for('main.home'))
+    return redirect(request.referrer or url_for('main.home'))
 
 @calendar_bp.route('/admin/event/delete/<int:event_id>')
 @login_required
 def delete_event(event_id):
-    """Borra un evento, sus reservas asociadas y su imagen física."""
-    if not current_user.is_superuser: return redirect(url_for('main.home'))
-    
-    event = Event.query.get_or_404(event_id)
+    """Borra un evento, sus inscripciones y su archivo de imagen físico."""
+    ev = Event.query.get_or_404(event_id)
     try:
-        # Borrar flyer físico
-        if event.flyer:
-            path = os.path.join(app.config['UPLOAD_FOLDER'], event.flyer)
-            if os.path.exists(path):
-                try: os.remove(path)
-                except Exception: pass
+        # Borrado del archivo de imagen
+        if ev.flyer:
+            try:
+                path = os.path.join(app.config['UPLOAD_FOLDER'], ev.flyer)
+                if os.path.exists(path):
+                    os.remove(path)
+            except:
+                pass
         
-        db.session.delete(event)
+        db.session.delete(ev)
         db.session.commit()
-        flash('Expedición eliminada permanentemente del sistema.', 'success')
+        flash('Evento eliminado permanentemente del calendario.', 'success')
     except Exception as e:
         db.session.rollback()
-        flash(f'Error al eliminar la aventura: {str(e)}', 'danger')
+        flash(f'Error crítico al borrar evento: {str(e)}', 'danger')
         
     return redirect(url_for('main.home'))
 
-# --- REGISTRO FINAL DE BLUEPRINTS E INTEGRACIÓN ---
+# --- REGISTRO DE BLUEPRINTS E INTEGRACIÓN DE SERVICIOS ---
 
-# Importamos el Blueprint de historial detallado
 from puntos import puntos_bp
 
 app.register_blueprint(auth_bp)
@@ -453,11 +488,13 @@ app.register_blueprint(main_bp)
 app.register_blueprint(calendar_bp)
 app.register_blueprint(puntos_bp)
 
-# --- INICIALIZACIÓN DE BASE DE DATOS Y SUPERUSUARIOS ---
+# --- INICIALIZACIÓN DE LA BASE DE DATOS Y SUPERUSUARIOS ---
 
 with app.app_context():
+    # Crea tablas si no existen
     db.create_all()
-    # Listado de administradores autorizados (Sincronizado con db.py)
+    
+    # Configuración de administradores maestros
     super_users = [
         {"email": "kenth1977@gmail.com", "pass": "CR129x7848n"},
         {"email": "lthikingcr@gmail.com", "pass": "CR129x7848n"}
@@ -466,11 +503,16 @@ with app.app_context():
     for su in super_users:
         if not User.query.filter_by(email=su['email']).first():
             hashed_pw = bcrypt.generate_password_hash(su['pass']).decode('utf-8')
-            new_su = User(email=su['email'], password=hashed_pw, is_superuser=True)
-            db.session.add(new_su)
-    
+            db.session.add(User(
+                email=su['email'], 
+                password=hashed_pw, 
+                is_superuser=True
+            ))
+            
     db.session.commit()
 
+# --- LANZAMIENTO DEL SERVIDOR ---
+
 if __name__ == '__main__':
-    # Lanzar la aplicación en modo desarrollo
+    # El modo debug permite ver errores detallados en el navegador (Desarrollo)
     app.run(debug=True)
