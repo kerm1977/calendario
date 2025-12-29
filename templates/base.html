@@ -234,34 +234,45 @@
     
     <script>
         /**
-         * Lógica para consultar los puntos del usuario mediante su PIN.
+         * LÓGICA DE VISTA DE PUNTOS
+         * Conecta el frontend con la lógica del servidor de forma real.
          */
-        function handleConsultPoints() {
+        async function handleConsultPoints() {
             const pin = document.getElementById('consultPin').value;
-            const btn = event.target;
+            const btn = event.currentTarget || event.target;
             
             if (pin.length !== 6) {
                 alert("Por favor ingresa un PIN válido de 6 dígitos.");
                 return;
             }
 
-            // Simulación de carga (Placeholder para la lógica de API posterior)
             const originalText = btn.innerHTML;
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>BUSCANDO...';
             btn.disabled = true;
 
-            setTimeout(() => {
-                // Aquí iría el fetch real a la base de datos
-                document.getElementById('pointsInputSection').classList.add('d-none');
-                document.getElementById('pointsResultSection').classList.remove('d-none');
-                
-                // Datos de prueba ( Placeholder )
-                document.getElementById('userNamePoints').innerText = "Juan";
-                document.getElementById('userPointsValue').innerText = "125";
-                
+            try {
+                // LLAMADA REAL A LA LÓGICA DEL BACKEND
+                const response = await fetch(`/api/lookup/${pin}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('pointsInputSection').classList.add('d-none');
+                    document.getElementById('pointsResultSection').classList.remove('d-none');
+                    
+                    document.getElementById('userNamePoints').innerText = data.nombre;
+                    document.getElementById('userPointsValue').innerText = data.puntos;
+                } else {
+                    // Reemplazamos alert por un mensaje más amigable si fuera necesario, 
+                    // pero mantenemos la funcionalidad base solicitada.
+                    alert(data.error || "No se encontró el PIN ingresado.");
+                }
+            } catch (error) {
+                console.error("Error al consultar puntos:", error);
+                alert("Hubo un problema de conexión. Intenta de nuevo.");
+            } finally {
                 btn.innerHTML = originalText;
                 btn.disabled = false;
-            }, 1000);
+            }
         }
 
         function resetPointsModal() {
