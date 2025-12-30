@@ -4,7 +4,7 @@
 # Este archivo centraliza la lógica de negocio, el sistema de fidelidad "Brutal"
 # y la gestión logística integral. Está diseñado para una trazabilidad total
 # mediante el uso de cronogramas transaccionales (PointLog).
-# VERSIÓN: 6.1 CORRECCIÓN BONOS (650+ LÍNEAS)
+# VERSIÓN: 6.2 SOPORTE PWA
 # ==============================================================================
 
 import os
@@ -18,7 +18,7 @@ from datetime import datetime, date, timedelta
 # --- FRAMEWORK Y EXTENSIONES DE SISTEMA ---
 from flask import (
     Flask, render_template, redirect, url_for, request, 
-    flash, Blueprint, jsonify, Response, make_response, abort
+    flash, Blueprint, jsonify, Response, make_response, abort, send_from_directory
 )
 from flask_login import (
     LoginManager, login_user, login_required, logout_user, current_user
@@ -212,6 +212,11 @@ def logout():
 # ==============================================================================
 # SECCIÓN 2: VISTAS PRINCIPALES Y PANEL DE CONTROL (BLUEPRINT: MAIN)
 # ==============================================================================
+
+@main_bp.route('/service-worker.js')
+def service_worker():
+    """Ruta especial para servir el Service Worker desde la raíz del dominio."""
+    return send_from_directory(os.path.join(app.root_path, 'static', 'js'), 'service-worker.js', mimetype='application/javascript')
 
 @main_bp.route('/')
 def home():

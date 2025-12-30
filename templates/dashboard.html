@@ -65,48 +65,60 @@
         <div class="col-md-6 col-xl-3">
             <div class="card border-0 shadow-sm rounded-4 h-100 bg-body stat-card">
                 <div class="card-body p-4 border-start border-warning border-5 rounded-4">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <small class="text-secondary fw-bold text-uppercase" style="letter-spacing: 1px;">Expediciones</small>
-                        <div class="p-2 bg-warning bg-opacity-10 rounded-3 text-warning"><i class="bi bi-calendar-event fs-4"></i></div>
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <small class="text-secondary fw-bold text-uppercase d-block mb-1" style="letter-spacing: 1px;">Expediciones</small>
+                            <h2 class="fw-bold mb-0 display-5">{{ stats.total|default(0) }}</h2>
+                        </div>
+                        <!-- CAMBIO: Icono grande sin círculo -->
+                        <i class="bi bi-map-fill text-warning" style="font-size: 3rem;"></i>
                     </div>
-                    <h2 class="fw-bold mb-0">{{ stats.total|default(0) }}</h2>
-                    <div class="x-small text-muted mt-2">Rutas históricas registradas</div>
+                    <div class="x-small text-muted border-top pt-2 mt-2">Rutas históricas registradas</div>
                 </div>
             </div>
         </div>
         <div class="col-md-6 col-xl-3">
             <div class="card border-0 shadow-sm rounded-4 h-100 bg-body stat-card">
                 <div class="card-body p-4 border-start border-success border-5 rounded-4">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <small class="text-secondary fw-bold text-uppercase" style="letter-spacing: 1px;">Miembros</small>
-                        <div class="p-2 bg-success bg-opacity-10 rounded-3 text-success"><i class="bi bi-people-fill fs-4"></i></div>
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <small class="text-secondary fw-bold text-uppercase d-block mb-1" style="letter-spacing: 1px;">Miembros</small>
+                            <h2 class="fw-bold mb-0 display-5">{{ stats.members_count|default(0) }}</h2>
+                        </div>
+                        <!-- CAMBIO: Icono grande sin círculo -->
+                        <i class="bi bi-people-fill text-success" style="font-size: 3rem;"></i>
                     </div>
-                    <h2 class="fw-bold mb-0">{{ stats.members_count|default(0) }}</h2>
-                    <div class="x-small text-muted mt-2">Usuarios únicos con PIN</div>
+                    <div class="x-small text-muted border-top pt-2 mt-2">Usuarios únicos con PIN</div>
                 </div>
             </div>
         </div>
         <div class="col-md-6 col-xl-3">
             <div class="card border-0 shadow-sm rounded-4 h-100 bg-body stat-card">
                 <div class="card-body p-4 border-start border-info border-5 rounded-4">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <small class="text-secondary fw-bold text-uppercase" style="letter-spacing: 1px;">Activas</small>
-                        <div class="p-2 bg-info bg-opacity-10 rounded-3 text-info"><i class="bi bi-play-circle-fill fs-4"></i></div>
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <small class="text-secondary fw-bold text-uppercase d-block mb-1" style="letter-spacing: 1px;">Activas</small>
+                            <h2 class="fw-bold mb-0 display-5">{{ stats.active|default(0) }}</h2>
+                        </div>
+                        <!-- CAMBIO: Icono grande sin círculo -->
+                        <i class="bi bi-compass-fill text-info" style="font-size: 3rem;"></i>
                     </div>
-                    <h2 class="fw-bold mb-0">{{ stats.active|default(0) }}</h2>
-                    <div class="x-small text-muted mt-2">Publicadas actualmente</div>
+                    <div class="x-small text-muted border-top pt-2 mt-2">Publicadas actualmente</div>
                 </div>
             </div>
         </div>
         <div class="col-md-6 col-xl-3">
             <div class="card border-0 shadow-sm rounded-4 h-100 bg-body stat-card">
                 <div class="card-body p-4 border-start border-primary border-5 rounded-4">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <small class="text-secondary fw-bold text-uppercase" style="letter-spacing: 1px;">Cumpleaños</small>
-                        <div class="p-2 bg-primary bg-opacity-10 rounded-3 text-primary"><i class="bi bi-balloon-fill fs-4"></i></div>
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <small class="text-secondary fw-bold text-uppercase d-block mb-1" style="letter-spacing: 1px;">Cumpleaños</small>
+                            <h2 class="fw-bold mb-0 display-5">{{ stats.birthdays_count|default(0) }}</h2>
+                        </div>
+                        <!-- CAMBIO: Icono grande sin círculo -->
+                        <i class="bi bi-gift-fill text-primary" style="font-size: 3rem;"></i>
                     </div>
-                    <h2 class="fw-bold mb-0">{{ stats.birthdays_count|default(0) }}</h2>
-                    <div class="x-small text-muted mt-2">Miembros celebrando hoy</div>
+                    <div class="x-small text-muted border-top pt-2 mt-2">Miembros celebrando hoy</div>
                 </div>
             </div>
         </div>
@@ -117,8 +129,8 @@
     <!-- ========================================== -->
     <div class="row g-4">
         
-        <!-- SIDEBAR: RANKING DE LÍDERES (Ahora ocupa 100% si es menor a 1400px) -->
-        <div class="col-xxl-4">
+        <!-- SIDEBAR: RANKING DE LÍDERES -->
+        <div class="col-lg-4">
             <div class="card border-0 shadow-sm rounded-5 bg-body mb-4 h-100 border border-warning border-opacity-10">
                 <div class="card-body p-4">
                     <div class="d-flex align-items-center justify-content-between mb-4 border-bottom pb-3">
@@ -167,8 +179,8 @@
             </div>
         </div>
 
-        <!-- TABLA PRINCIPAL: ACTIVIDAD RECIENTE (Ahora ocupa 100% si es menor a 1400px) -->
-        <div class="col-xxl-8">
+        <!-- TABLA PRINCIPAL: ACTIVIDAD RECIENTE -->
+        <div class="col-lg-8">
             <div class="card border-0 shadow-sm rounded-5 bg-body h-100">
                 <div class="card-body p-4 p-md-5">
                     <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-5 gap-3">
@@ -422,6 +434,109 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
 .badge.bg-primary { background-color: #0d6efd !important; }
+
+/* OPTIMIZACIÓN RESPONSIVA PARA ACTIVIDAD RECIENTE (TABLA A TARJETAS) */
+/* Se activa desde 992px hacia abajo para móviles y tablets */
+@media (max-width: 991.98px) {
+    /* 1. Ocultar el encabezado de la tabla clásica */
+    #membersTable thead {
+        display: none;
+    }
+
+    /* 2. Transformar cada fila (tr) en una tarjeta grid */
+    #membersTable tbody tr {
+        display: grid;
+        grid-template-columns: 1fr 1fr; /* 2 columnas equilibradas */
+        gap: 12px;
+        background-color: var(--bs-body-bg);
+        border: 1px solid var(--bs-border-color);
+        border-radius: 1rem;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.05);
+        position: relative;
+    }
+
+    /* 3. Columna Miembro (Avatar + Nombre + Ruta): Ancho completo arriba */
+    #membersTable td:nth-child(1) {
+        grid-column: 1 / -1; /* Ocupa las 2 columnas */
+        border-bottom: 1px solid var(--bs-border-color);
+        padding-bottom: 1rem !important;
+        margin-bottom: 0.5rem;
+    }
+
+    /* 4. Columna Estado (Badge) */
+    #membersTable td:nth-child(2) {
+        grid-column: 1 / 2;
+        justify-content: flex-start;
+    }
+
+    /* 5. Columna Edad: Alineada derecha con etiqueta */
+    #membersTable td:nth-child(3) {
+        grid-column: 2 / 3;
+        justify-content: flex-end;
+    }
+    #membersTable td:nth-child(3)::before {
+        content: "Edad: ";
+        font-size: 0.75rem;
+        color: var(--bs-secondary);
+        font-weight: bold;
+        margin-right: 5px;
+    }
+
+    /* 6. Columna PIN: Alineada izquierda con etiqueta */
+    #membersTable td:nth-child(4) {
+        grid-column: 1 / 2;
+        justify-content: flex-start;
+    }
+    #membersTable td:nth-child(4)::before {
+        content: "PIN: ";
+        font-size: 0.75rem;
+        color: var(--bs-secondary);
+        font-weight: bold;
+        margin-right: 5px;
+    }
+
+    /* 7. Columna Puntos: Alineada derecha con etiqueta */
+    #membersTable td:nth-child(5) {
+        grid-column: 2 / 3;
+        justify-content: flex-end;
+    }
+    #membersTable td:nth-child(5)::before {
+        content: "Pts: ";
+        font-size: 0.75rem;
+        color: var(--bs-secondary);
+        font-weight: bold;
+        margin-right: 5px;
+    }
+
+    /* 8. Columna Acciones (Botones): Ancho completo abajo */
+    #membersTable td:nth-child(6) {
+        grid-column: 1 / -1; /* Ocupa las 2 columnas */
+        border-top: 1px solid var(--bs-border-color);
+        padding-top: 1rem !important;
+        margin-top: 0.5rem;
+        justify-content: center;
+    }
+    
+    /* Ajuste de botones para que se expandan y no se oculten */
+    #membersTable td:nth-child(6) .d-flex {
+        width: 100%;
+        justify-content: space-between;
+        gap: 10px;
+    }
+    #membersTable td:nth-child(6) .btn {
+        flex: 1; /* Todos los botones toman el mismo ancho disponible */
+    }
+
+    /* Reset general de celdas para el modo flex/grid */
+    #membersTable td {
+        display: flex;
+        align-items: center;
+        border: none !important;
+        padding: 0 !important;
+    }
+}
 </style>
 
 {% endblock %}
