@@ -1,4 +1,3 @@
-<!-- templates/home.html -->
 {% extends "base.html" %}
 
 {% block title %}Próximas Aventuras - La Tribu{% endblock %}
@@ -26,7 +25,7 @@
 <!-- NUEVA SECCIÓN: ACCESO RÁPIDO A PERFIL -->
 <!-- ========================================== -->
 <div class="row justify-content-center mb-5 animate__animated animate__fadeInUp" style="animation-delay: 0.2s;">
-    <div class="col-md-8 col-lg-6">
+    <div class="col-md-8 col-lg-5">
         <div class="card border-0 shadow-lg rounded-5 overflow-hidden position-relative">
             <!-- Fondo Decorativo -->
             <div class="position-absolute top-0 start-0 w-100 h-100 bg-warning bg-opacity-10" style="z-index: 0;"></div>
@@ -43,12 +42,20 @@
                     Ingresa tu <strong>PIN único de 6 dígitos</strong> para consultar tu nivel, saldo de puntos y próximas expediciones.
                 </p>
                 
-                <div class="input-group input-group-lg shadow-sm rounded-pill overflow-hidden border border-warning bg-white">
-                    <input type="text" id="quickPinInput" class="form-control border-0 text-center fw-bold text-primary fs-4" placeholder="000000" maxlength="6" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
-                    <button class="btn btn-warning fw-bold text-dark px-4 transition-hover" type="button" onclick="goToProfileQuick()">
-                        VER MI PERFIL <i class="bi bi-arrow-right-short ms-1"></i>
+                <!-- CAMBIO SOLICITADO: DISEÑO VERTICAL (BOTÓN ARRIBA, INPUT ABAJO) -->
+                <div class="d-flex flex-column gap-3">
+                    <!-- 1. Botón de Acción (Arriba) -->
+                    <button class="btn btn-warning btn-lg fw-bold text-dark px-4 rounded-pill transition-hover shadow-sm w-100" type="button" onclick="goToProfileQuick()">
+                        <i class="bi bi-search me-2"></i>VER MI PERFIL
                     </button>
+
+                    <!-- 2. Input de Digitación (Abajo) -->
+                    <div class="position-relative">
+                        <input type="text" id="quickPinInput" class="form-control form-control-lg border border-warning text-center fw-bold text-primary fs-2 rounded-pill shadow-sm" placeholder="000000" maxlength="6" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                        <div class="form-text text-muted small mt-2">Digita tu PIN aquí</div>
+                    </div>
                 </div>
+
             </div>
         </div>
     </div>
