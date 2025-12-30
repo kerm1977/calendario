@@ -365,6 +365,11 @@ def delete_member(member_id):
     try:
         nombre_m = member.nombre
         
+        # --- CORRECCIÓN DE INTEGRIDAD: ELIMINACIÓN EN CASCADA MANUAL ---
+        # Primero borramos las reservas y el historial asociado para evitar errores de Foreign Key.
+        Booking.query.filter_by(member_id=member.id).delete()
+        PointLog.query.filter_by(member_id=member.id).delete()
+        
         # NOTIFICACIÓN ADMIN (Antes de borrar, aunque irónico, sirve para logs si se guardara en otro lado)
         # En este caso, como borramos el miembro, el link daría 404, así que ponemos solo texto.
         db.session.add(AdminNotification(
