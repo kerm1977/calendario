@@ -7,7 +7,7 @@
 
 from flask import Blueprint, render_template, abort, redirect, url_for, request, flash
 from flask_login import login_required, current_user
-from db import db, Member, PointLog, Booking
+from db import db, Member, PointLog, Booking, AdminNotification
 from datetime import datetime, timedelta, date
 import re
 
@@ -41,6 +41,7 @@ def ver_perfil(pin):
             proximas_aventuras.append(b)
 
     # 4. Cálculo de Nivel de Fidelidad (Gamificación simple)
+    # Ejemplo: < 1000: Caminante, 1000-3000: Explorador, > 3000: Leyenda
     nivel = "Caminante"
     icono_nivel = "bi-backpack2"
     clase_nivel = "text-secondary"
@@ -56,6 +57,7 @@ def ver_perfil(pin):
         clase_nivel = "text-warning"
 
     # Ajuste de Zona Horaria para Costa Rica (UTC-6)
+    # Esto asegura que el "hoy" del sistema coincida con el "hoy" real del usuario
     cr_time = datetime.utcnow() - timedelta(hours=6)
 
     # --------------------------------------------------------------------------
@@ -63,15 +65,16 @@ def ver_perfil(pin):
     # --------------------------------------------------------------------------
     # Buscamos la fecha de origen (el primer movimiento de puntos o creación)
     fecha_origen = None
+    # Buscamos el log más antiguo para saber cuándo empezó a acumular
     primer_log = PointLog.query.filter_by(member_id=member.id).order_by(PointLog.created_at.asc()).first()
     
     if primer_log:
         fecha_origen = primer_log.created_at.date()
     else:
-        # Si no hay logs (raro), usamos hoy como referencia temporal
+        # Si no hay logs (usuario nuevo sin actividad), usamos hoy
         fecha_origen = cr_time.date()
 
-    # La fecha de vencimiento es 1 año después del origen
+    # La fecha de vencimiento es 1 año (365 días) después del origen
     fecha_vencimiento = fecha_origen + timedelta(days=365)
     dias_restantes = (fecha_vencimiento - cr_time.date()).days
     
@@ -80,13 +83,17 @@ def ver_perfil(pin):
         'fecha_limite': fecha_vencimiento,
         'dias_restantes': dias_restantes,
         'vencido': dias_restantes < 0,
-        'penalizacion_pendiente': False
+        'penalizacion_pendiente': False,
+        'monto_penalizacion': 0
     }
 
     # Si ya venció, calculamos cuánto sería el 25% (informativo)
     if info_vencimiento['vencido'] and member.puntos_totales > 0:
         info_vencimiento['penalizacion_pendiente'] = True
         info_vencimiento['monto_penalizacion'] = int(member.puntos_totales * 0.25)
+        
+        # NOTA: Aquí podríamos registrar la notificación de vencimiento si fuera un proceso automático,
+        # pero como es visualización, lo dejamos para cuando se ejecute el job.
 
     # 5. Renderizar
     return render_template(
@@ -98,7 +105,7 @@ def ver_perfil(pin):
         icono_nivel=icono_nivel,
         clase_nivel=clase_nivel,
         now=cr_time,
-        vencimiento=info_vencimiento # Pasamos el objeto recuperado
+        vencimiento=info_vencimiento # Pasamos el objeto de vencimiento
     )
 
 @perfil_bp.route('/accion/cambiar-pin', methods=['POST'])
@@ -127,7 +134,17 @@ def cambiar_pin():
         return redirect(url_for('perfil.ver_perfil', pin=pin_actual))
 
     try:
+        old_pin = member.pin
         member.pin = nuevo_pin
+        
+        # NOTIFICACIÓN ADMIN: Cambio de PIN
+        db.session.add(AdminNotification(
+            category='info',
+            title='Cambio de PIN',
+            message=f'{member.nombre} cambió su PIN de {old_pin} a {nuevo_pin}.',
+            action_link=url_for('puntos.detalle_miembro', member_id=member.id)
+        ))
+        
         db.session.commit()
         flash(f'¡Éxito! Tu nuevo PIN es: {nuevo_pin}.', 'success')
         return redirect(url_for('perfil.ver_perfil', pin=nuevo_pin))
@@ -173,6 +190,14 @@ def transferir_regalo():
             amount=amount
         ))
         
+        # NOTIFICACIÓN ADMIN: Transferencia entre usuarios
+        db.session.add(AdminNotification(
+            category='success',
+            title='Regalo de Puntos',
+            message=f'{sender.nombre} regaló {amount} pts a {recipient.nombre}.',
+            action_link=url_for('puntos.detalle_miembro', member_id=recipient.id)
+        ))
+        
         db.session.commit()
         flash(f'¡Qué gran detalle! Has enviado {amount} puntos a {recipient.nombre}.', 'success')
         
@@ -213,6 +238,14 @@ def admin_ajuste_saldo():
                 amount=monto
             )
             flash(f'Se han restituido {monto} puntos.', 'success')
+            
+            # NOTIFICACIÓN ADMIN
+            db.session.add(AdminNotification(
+                category='info',
+                title='Restitución de Saldo',
+                message=f'Admin restituyó {monto} pts a {member.nombre}. Razón: {motivo}',
+                action_link=url_for('puntos.detalle_miembro', member_id=member.id)
+            ))
 
         elif tipo_accion == 'donar':
             member.puntos_totales += monto
@@ -223,6 +256,14 @@ def admin_ajuste_saldo():
                 amount=monto
             )
             flash(f'Se han donado {monto} puntos.', 'success')
+            
+            # NOTIFICACIÓN ADMIN
+            db.session.add(AdminNotification(
+                category='success',
+                title='Donación Admin',
+                message=f'Se donaron {monto} pts a {member.nombre}. Razón: {motivo}',
+                action_link=url_for('puntos.detalle_miembro', member_id=member.id)
+            ))
 
         elif tipo_accion == 'eliminar':
             member.puntos_totales = max(0, member.puntos_totales - monto)
@@ -235,6 +276,14 @@ def admin_ajuste_saldo():
                 penalty_reason=motivo
             )
             flash(f'Se han eliminado {monto} puntos.', 'warning')
+            
+            # NOTIFICACIÓN ADMIN
+            db.session.add(AdminNotification(
+                category='danger',
+                title='Eliminación de Saldo',
+                message=f'¡Alerta! Se eliminaron {monto} pts a {member.nombre}. Razón: {motivo}',
+                action_link=url_for('puntos.detalle_miembro', member_id=member.id)
+            ))
         
         else:
             flash('Acción no reconocida.', 'danger')

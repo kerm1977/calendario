@@ -4,7 +4,7 @@
 # Este archivo centraliza la lógica de negocio, el sistema de fidelidad "Brutal"
 # y la gestión logística integral. Está diseñado para una trazabilidad total
 # mediante el uso de cronogramas transaccionales (PointLog).
-# VERSIÓN: 6.2 SOPORTE PWA
+# VERSIÓN: 6.3 NOTIFICACIONES ACTIVAS EN NAVBAR
 # ==============================================================================
 
 import os
@@ -28,8 +28,8 @@ from sqlalchemy import extract, desc, func
 
 # --- IMPORTACIÓN DE MODELOS E INFRAESTRUCTURA DE DATOS ---
 # Importamos la arquitectura desde db.py para evitar ciclos de importación.
-# Los modelos requeridos son: User, Member, Event, Booking y PointLog.
-from db import db, bcrypt, User, Member, Event, Booking, PointLog
+# Los modelos requeridos son: User, Member, Event, Booking, PointLog y AdminNotification.
+from db import db, bcrypt, User, Member, Event, Booking, PointLog, AdminNotification
 
 app = Flask(__name__)
 
@@ -149,6 +149,15 @@ def inject_global_vars():
                 description=f'Regalo de La Tribu: Cumpleaños {today.year}',
                 amount=monto_bono
             ))
+            
+            # NOTIFICACIÓN AUTOMÁTICA AL ADMIN
+            db.session.add(AdminNotification(
+                category='info',
+                title='Cumpleaños Automático',
+                message=f'El sistema regaló {monto_bono} pts a {member.nombre} por su cumpleaños.',
+                action_link=f'/admin/puntos/miembro/{member.id}'
+            ))
+
             commit_needed = True
             logger.info(f"Bono de 500 pts acreditado a {member.nombre} ({member.pin})")
     
@@ -164,12 +173,25 @@ def inject_global_vars():
     target_month = search_month_idx if search_month_idx is not None else today.month
     count = Event.query.filter(extract('month', Event.event_date) == target_month).count()
     
+    # --- LÓGICA DE NOTIFICACIONES GLOBAL (PARA NAVBAR) ---
+    admin_unread_count = 0
+    admin_recent_notifications = []
+    
+    # Solo ejecutamos esto si hay un usuario logueado y es superuser para no cargar la DB innecesariamente
+    if current_user.is_authenticated and current_user.is_superuser:
+        admin_unread_count = AdminNotification.query.filter_by(is_read=False).count()
+        # Traemos las 5 más recientes para el dropdown rápido
+        admin_recent_notifications = AdminNotification.query.order_by(AdminNotification.created_at.desc()).limit(5).all()
+
     return dict(
         month_activity_count=count, 
         meses_lista=MESES_ES, 
         calculate_age=calculate_age, 
         now=datetime.now(),
-        birthdays_today=birthdays_today
+        birthdays_today=birthdays_today,
+        # Variables nuevas para notificaciones
+        admin_unread_count=admin_unread_count,
+        admin_recent_notifications=admin_recent_notifications
     )
 
 # --- ARQUITECTURA MODULAR DE BLUEPRINTS ---
@@ -255,7 +277,30 @@ def dashboard():
     # TOP 10 Aventureros según su fidelidad acumulada.
     ranking = Member.query.order_by(Member.puntos_totales.desc()).limit(10).all()
     
-    return render_template('dashboard.html', stats=stats, bookings=bookings, ranking=ranking)
+    # --- NUEVO: OBTENER TODAS LAS NOTIFICACIONES PARA EL CENTRO DE MENSAJES ---
+    # Traemos las 50 más recientes para el dashboard completo
+    notifications = AdminNotification.query.order_by(
+        AdminNotification.is_read.asc(), # Primero las no leídas
+        AdminNotification.created_at.desc()
+    ).limit(50).all()
+    
+    return render_template('dashboard.html', stats=stats, bookings=bookings, ranking=ranking, notifications=notifications)
+
+# --- NUEVA RUTA API PARA MARCAR NOTIFICACIONES COMO LEÍDAS ---
+@main_bp.route('/admin/notifications/mark-read', methods=['POST'])
+@login_required
+def mark_notifications_read():
+    if not current_user.is_superuser:
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    try:
+        # Marcar todas las notificaciones no leídas como leídas
+        AdminNotification.query.filter_by(is_read=False).update({AdminNotification.is_read: True})
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @main_bp.route('/admin/booking/cancel/<int:booking_id>', methods=['POST'])
 @login_required
@@ -294,6 +339,14 @@ def cancel_booking(booking_id):
         booking.status = 'Retirado'
         # Actualizamos la fecha para reflejar el momento del retiro.
         booking.created_at = datetime.utcnow()
+
+        # NOTIFICACIÓN ADMIN: Retiro de Aventura
+        db.session.add(AdminNotification(
+            category='warning',
+            title='Retiro de Aventura',
+            message=f'El admin retiró a {member.nombre} de "{event.title}". Se descontaron {pts_a_quitar} pts.',
+            action_link=url_for('puntos.detalle_miembro', member_id=member.id)
+        ))
         
         db.session.commit()
         flash(f'Participación anulada correctamente para {member.nombre}. Se debitaron {pts_a_quitar} puntos.', 'warning')
@@ -311,6 +364,16 @@ def delete_member(member_id):
     member = Member.query.get_or_404(member_id)
     try:
         nombre_m = member.nombre
+        
+        # NOTIFICACIÓN ADMIN (Antes de borrar, aunque irónico, sirve para logs si se guardara en otro lado)
+        # En este caso, como borramos el miembro, el link daría 404, así que ponemos solo texto.
+        db.session.add(AdminNotification(
+            category='danger',
+            title='Eliminación de Usuario',
+            message=f'Se eliminó permanentemente al usuario {nombre_m} y todo su historial.',
+            action_link='#'
+        ))
+
         db.session.delete(member)
         db.session.commit()
         flash(f'El miembro {nombre_m} ha sido removido definitivamente del sistema.', 'success')
@@ -349,6 +412,15 @@ def adjust_points():
             description=reason,
             amount=amount
         ))
+
+        # NOTIFICACIÓN ADMIN: Ajuste manual simple
+        db.session.add(AdminNotification(
+            category='info',
+            title='Ajuste Manual Rápido',
+            message=f'Se ajustaron {amount} pts a {member.nombre}. Motivo: {reason}',
+            action_link=url_for('puntos.detalle_miembro', member_id=member.id)
+        ))
+
         db.session.commit()
         flash(f'Estado de cuenta de {member.nombre} ajustado en {amount} puntos.', 'success')
     except Exception as e:
@@ -372,6 +444,15 @@ def integrity_check(member_id):
     if member.puntos_totales != real_sum:
         desfase = real_sum - member.puntos_totales
         member.puntos_totales = real_sum
+        
+        # NOTIFICACIÓN ADMIN: Error de integridad
+        db.session.add(AdminNotification(
+            category='warning',
+            title='Corrección de Integridad',
+            message=f'Se detectó y corrigió un desfase de {desfase} pts en la cuenta de {member.nombre}.',
+            action_link=url_for('puntos.detalle_miembro', member_id=member.id)
+        ))
+
         db.session.commit()
         flash(f'Integridad corregida. Se encontró un desfase de {desfase} pts.', 'info')
     else:
@@ -499,6 +580,14 @@ def api_reserve():
                 amount=event_points,
                 created_at=datetime.utcnow() + timedelta(seconds=1)
             ))
+
+            # NOTIFICACIÓN ADMIN: Nuevo Miembro
+            db.session.add(AdminNotification(
+                category='success',
+                title='Nuevo Aventurero',
+                message=f'¡Bienvenida! {member.nombre} se unió en "{event.title}".',
+                action_link=f'/admin/puntos/miembro/{member.id}'
+            ))
             
             # REGISTRO TRANSACTIONAL 3: Bono Cumpleaños (si aplica).
             if reg_year_bono > 0:
@@ -542,6 +631,14 @@ def api_reserve():
                 amount=val_pts
             ))
 
+            # NOTIFICACIÓN ADMIN: Inscripción existente
+            db.session.add(AdminNotification(
+                category='info',
+                title='Nueva Inscripción',
+                message=f'{member.nombre} se anotó a la aventura "{event.title}".',
+                action_link=f'/admin/puntos/miembro/{member.id}'
+            ))
+
         # --- CRÍTICO: CREACIÓN DEL OBJETO BOOKING PARA EL DASHBOARD ---
         # Esto asegura que el usuario aparezca en la tabla de "Actividad Reciente".
         new_booking = Booking(
@@ -566,6 +663,13 @@ def api_reserve():
                     transaction_type='Bono Cumpleaños',
                     description=f'Bono anual por natalicio ({today.year})',
                     amount=500
+                ))
+                # NOTIFICACIÓN ADMIN
+                db.session.add(AdminNotification(
+                    category='info',
+                    title='Cumpleaños Automático',
+                    message=f'El sistema regaló 500 pts a {member.nombre} al inscribirse en su día.',
+                    action_link=f'/admin/puntos/miembro/{member.id}'
                 ))
 
         db.session.commit()
@@ -634,6 +738,15 @@ def add_event():
             moved_date=to_date(request.form.get('moved_date'))
         )
         db.session.add(new_ev)
+        
+        # NOTIFICACIÓN ADMIN: Nueva Aventura
+        db.session.add(AdminNotification(
+            category='info',
+            title='Nueva Aventura Creada',
+            message=f'Se publicó la aventura "{new_ev.title}" para el {new_ev.event_date}.',
+            action_link='#'
+        ))
+        
         db.session.commit()
         flash('¡Aventura publicada con éxito!', 'success')
     except Exception as e:
@@ -683,6 +796,14 @@ def edit_event(event_id):
         ev.status = request.form.get('status')
         ev.moved_date = to_date(request.form.get('moved_date'))
         
+        # NOTIFICACIÓN ADMIN: Aventura Editada
+        db.session.add(AdminNotification(
+            category='info',
+            title='Aventura Modificada',
+            message=f'Se actualizaron los detalles de la ruta "{ev.title}".',
+            action_link='#'
+        ))
+        
         db.session.commit()
         flash('Datos de expedición actualizados correctamente.', 'success')
     except Exception as e:
@@ -698,6 +819,7 @@ def delete_event(event_id):
     """Borrado íntegro de expedición, inscripciones y archivo físico flyer."""
     ev = Event.query.get_or_404(event_id)
     try:
+        titulo = ev.title
         if ev.flyer:
             try:
                 path = os.path.join(app.config['UPLOAD_FOLDER'], ev.flyer)
@@ -706,6 +828,15 @@ def delete_event(event_id):
                 pass
         
         db.session.delete(ev)
+        
+        # NOTIFICACIÓN ADMIN: Aventura Eliminada
+        db.session.add(AdminNotification(
+            category='danger',
+            title='Aventura Eliminada',
+            message=f'La ruta "{titulo}" ha sido borrada del calendario.',
+            action_link='#'
+        ))
+        
         db.session.commit()
         flash('Ruta eliminada permanentemente del sistema.', 'success')
     except Exception as e:
@@ -718,7 +849,6 @@ def delete_event(event_id):
 # --- REGISTRO FINAL E INTEGRACIÓN DE SERVICIOS ---
 
 from puntos import puntos_bp
-# AGREGAR ESTA IMPORTACIÓN
 from perfil import perfil_bp
 
 # Registro de Blueprints.
@@ -726,7 +856,6 @@ app.register_blueprint(auth_bp)
 app.register_blueprint(main_bp)
 app.register_blueprint(calendar_bp)
 app.register_blueprint(puntos_bp)
-# AGREGAR ESTA LÍNEA DE REGISTRO
 app.register_blueprint(perfil_bp)
 
 # --- INICIALIZACIÓN DE LA INFRAESTRUCTURA DE DATOS ---

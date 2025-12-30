@@ -83,6 +83,13 @@
         .alert {
             border-radius: 1rem;
         }
+        
+        /* Estilos Notificaciones Dropdown */
+        .dropdown-menu-notifications {
+            width: 320px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
     </style>
 </head>
 <body>
@@ -125,6 +132,59 @@
                 </ul>
 
                 <div class="d-flex align-items-center gap-3 mt-3 mt-lg-0">
+                    
+                    <!-- CENTRO DE NOTIFICACIONES NAVBAR (NUEVO) -->
+                    {% if current_user.is_authenticated and current_user.is_superuser %}
+                    <div class="dropdown">
+                        <button class="btn btn-link position-relative text-dark p-0 me-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-bell-fill fs-5 text-warning"></i>
+                            {% if admin_unread_count > 0 %}
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-light animate__animated animate__pulse animate__infinite">
+                                {{ admin_unread_count }}
+                                <span class="visually-hidden">alertas</span>
+                            </span>
+                            {% endif %}
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 mt-3 animate__animated animate__fadeIn p-0 dropdown-menu-notifications">
+                            <li class="p-3 bg-warning bg-opacity-10 border-bottom d-flex justify-content-between align-items-center">
+                                <span class="fw-bold small text-uppercase text-dark">Actividad Reciente</span>
+                                {% if admin_unread_count > 0 %}
+                                <button onclick="markAllRead()" class="btn btn-xs btn-link text-decoration-none text-muted p-0 border-0 bg-transparent" style="font-size: 0.7rem;">
+                                    <i class="bi bi-check-all me-1"></i>Marcar leídas
+                                </button>
+                                {% endif %}
+                            </li>
+                            {% if admin_recent_notifications %}
+                                {% for n in admin_recent_notifications %}
+                                <li>
+                                    <a class="dropdown-item p-3 border-bottom {{ 'bg-light' if not n.is_read else '' }}" href="{{ n.action_link or '#' }}">
+                                        <div class="d-flex align-items-start">
+                                            <div class="text-{{ n.category }} me-2 mt-1">
+                                                {% if n.category == 'danger' %}<i class="bi bi-exclamation-circle-fill"></i>
+                                                {% elif n.category == 'success' %}<i class="bi bi-check-circle-fill"></i>
+                                                {% elif n.category == 'warning' %}<i class="bi bi-star-fill"></i>
+                                                {% else %}<i class="bi bi-info-circle-fill"></i>{% endif %}
+                                            </div>
+                                            <div>
+                                                <div class="fw-bold small text-wrap lh-sm mb-1">{{ n.title }}</div>
+                                                <div class="text-muted x-small text-wrap lh-sm">{{ n.message }}</div>
+                                                <small class="text-secondary opacity-50 d-block mt-1" style="font-size: 0.6rem;">{{ n.created_at.strftime('%d/%m %H:%M') }}</small>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </li>
+                                {% endfor %}
+                                <li><a class="dropdown-item text-center small fw-bold py-2 text-warning bg-body" href="{{ url_for('main.dashboard') }}">Ver Centro de Mensajes</a></li>
+                            {% else %}
+                                <li class="p-4 text-center text-muted small">
+                                    <i class="bi bi-bell-slash fs-4 d-block opacity-50 mb-2"></i>
+                                    No hay notificaciones recientes.
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                    {% endif %}
+
                     <button class="btn btn-sm btn-outline-secondary rounded-circle" id="themeToggler" title="Cambiar tema" style="width: 38px; height: 38px; padding: 0;">
                         <i class="bi bi-sun-fill" id="themeIcon"></i>
                     </button>
@@ -428,6 +488,24 @@
                 resultSec.classList.remove('animate__fadeOut');
                 document.getElementById('consultPin').value = "";
             }, 300);
+        }
+        
+        /**
+         * FUNCIÓN NUEVA: Marcar todas las notificaciones como leídas
+         */
+        async function markAllRead() {
+            try {
+                const response = await fetch('/admin/notifications/mark-read', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    location.reload(); // Recargar para limpiar el contador
+                }
+            } catch (error) {
+                console.error("Error marcando notificaciones:", error);
+            }
         }
     </script>
 </body>

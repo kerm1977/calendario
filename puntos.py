@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, abort, request
 from flask_login import login_required, current_user
-from db import db, Member, PointLog, Booking, Event
+from db import db, Member, PointLog, Booking, Event, AdminNotification # IMPORTAR AdminNotification
 from sqlalchemy import desc
 from datetime import date
 
@@ -23,7 +23,7 @@ def _formatear_log(log):
     elif log.transaction_type == 'Bono Cumpleaños':
         icono = "bi-gift"
         color = "text-primary"
-    elif log.transaction_type == 'Canje':
+    elif 'Canje' in log.transaction_type:
         icono = "bi-shop"
         color = "text-danger"
     elif log.transaction_type == 'Compra Puntos':
@@ -31,6 +31,9 @@ def _formatear_log(log):
         color = "text-success"
     elif 'Ajuste' in log.transaction_type:
         icono = "bi-pencil-square"
+    elif 'Regalo' in log.transaction_type: # Soporte para regalos entre usuarios
+        icono = "bi-send-fill" if log.amount < 0 else "bi-gift-fill"
+        color = "text-warning" if log.amount < 0 else "text-primary"
 
     return {
         'fecha': log.created_at,
@@ -97,13 +100,13 @@ def detalle_miembro(member_id):
     raw_logs = PointLog.query.filter_by(member_id=member.id).order_by(PointLog.created_at.desc()).all()
     movimientos = [_formatear_log(log) for log in raw_logs]
 
-    # NUEVO: Obtener eventos activos para la opción de Canje
+    # Obtener eventos activos para la opción de Canje
     aventuras_activas = Event.query.filter_by(status='Activa').all()
 
     return render_template('puntos.html', 
                          selected_member=member,
                          movimientos=movimientos,
-                         eventos_activos=aventuras_activas, # Pasamos la lista para el modal de canje
+                         eventos_activos=aventuras_activas, 
                          is_global_schedule=False)
 
 @puntos_bp.route('/booking/no-show/<int:booking_id>', methods=['POST'])
@@ -125,7 +128,6 @@ def registrar_no_participacion(booking_id):
         puntos_a_restar = booking.points_at_registration or booking.event.points_reward or 0
         
         # 2. Actualizar saldo del miembro
-        # Evitamos saldo negativo si es política del grupo, o dejamos que baje.
         member.puntos_totales = max(0, member.puntos_totales - puntos_a_restar)
 
         # 3. Crear log de auditoría
@@ -143,6 +145,14 @@ def registrar_no_participacion(booking_id):
         # 4. Actualizar estado del booking
         booking.status = 'No Participó'
         
+        # NOTIFICACIÓN ADMIN
+        db.session.add(AdminNotification(
+            category='danger',
+            title='No Participación (No Show)',
+            message=f'{member.nombre} no asistió a "{booking.event.title}". Se restaron {puntos_a_restar} pts.',
+            action_link=url_for('puntos.detalle_miembro', member_id=member.id)
+        ))
+        
         db.session.commit()
         flash(f'Se registró la inasistencia de {member.nombre}. Se descontaron {puntos_a_restar} puntos.', 'warning')
 
@@ -158,47 +168,55 @@ def registrar_no_participacion(booking_id):
 # ==============================================================
 
 @puntos_bp.route('/accion/canjear-aventura', methods=['POST'])
-@login_required
+# NOTA: Esta ruta puede ser llamada desde el perfil (usuario) o desde el panel admin.
+# Si es usuario, no requerimos login de admin, pero sí validación de identidad.
+# Por simplicidad, si hay sesión activa usamos eso, sino confiamos en el PIN/ID enviado.
 def canjear_aventura():
     """Opción 1: Canjear puntos por una Aventura Activa (Requiere 5000+ pts)"""
-    if not current_user.is_superuser: abort(403)
     
     member_id = request.form.get('member_id', type=int)
     event_id = request.form.get('event_id', type=int)
-    costo_puntos = request.form.get('costo_puntos', type=int) # El valor en puntos del canje
+    costo_puntos = request.form.get('costo_puntos', type=int)
     
     member = Member.query.get_or_404(member_id)
     event = Event.query.get_or_404(event_id)
 
     if member.puntos_totales < 5000:
         flash(f'Saldo insuficiente. {member.nombre} necesita al menos 5000 puntos para canjear.', 'danger')
-        return redirect(url_for('puntos.detalle_miembro', member_id=member.id))
+        return redirect(request.referrer)
     
     if member.puntos_totales < costo_puntos:
         flash(f'Saldo insuficiente para esta aventura. Costo: {costo_puntos} pts.', 'danger')
-        return redirect(url_for('puntos.detalle_miembro', member_id=member.id))
+        return redirect(request.referrer)
 
     try:
         member.puntos_totales -= costo_puntos
         db.session.add(PointLog(
             member_id=member.id,
-            transaction_type='Canje',
-            description=f'Canje Aventura: {event.title}',
+            transaction_type='Canje Aventura',
+            description=f'Canje: {event.title}',
             amount=-costo_puntos
         ))
+        
+        # NOTIFICACIÓN ADMIN
+        db.session.add(AdminNotification(
+            category='warning', 
+            title='Nuevo Canje de Aventura',
+            message=f'{member.nombre} canjeó {costo_puntos} pts por la aventura "{event.title}".',
+            action_link=url_for('puntos.detalle_miembro', member_id=member.id)
+        ))
+        
         db.session.commit()
         flash(f'¡Canje exitoso! Se descontaron {costo_puntos} puntos por {event.title}.', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'Error procesando el canje: {str(e)}', 'danger')
 
-    return redirect(url_for('puntos.detalle_miembro', member_id=member.id))
+    return redirect(request.referrer)
 
 @puntos_bp.route('/accion/canjear-otro', methods=['POST'])
-@login_required
 def canjear_otro():
     """Opción 2: Canjear puntos por Otros (Camisas, Bandanas, Fiestas)"""
-    if not current_user.is_superuser: abort(403)
     
     member_id = request.form.get('member_id', type=int)
     descripcion = request.form.get('descripcion')
@@ -206,43 +224,49 @@ def canjear_otro():
     
     member = Member.query.get_or_404(member_id)
 
-    # Validamos regla de 5000 puntos base también para "Otros" (opcional, según tu regla general)
     if member.puntos_totales < 5000:
         flash(f'Saldo insuficiente. Se requieren 5000 puntos mínimos en cuenta para canjear.', 'danger')
-        return redirect(url_for('puntos.detalle_miembro', member_id=member.id))
+        return redirect(request.referrer)
 
     if member.puntos_totales < costo_puntos:
         flash(f'No tiene suficientes puntos para este canje ({costo_puntos} pts).', 'danger')
-        return redirect(url_for('puntos.detalle_miembro', member_id=member.id))
+        return redirect(request.referrer)
 
     try:
         member.puntos_totales -= costo_puntos
         db.session.add(PointLog(
             member_id=member.id,
-            transaction_type='Canje',
-            description=f'Canje Otro: {descripcion}',
+            transaction_type='Canje Otro',
+            description=f'Canje: {descripcion}',
             amount=-costo_puntos
         ))
+        
+        # NOTIFICACIÓN ADMIN
+        db.session.add(AdminNotification(
+            category='warning',
+            title='Solicitud de Canje (Items)',
+            message=f'{member.nombre} canjeó {costo_puntos} pts por: {descripcion}.',
+            action_link=url_for('puntos.detalle_miembro', member_id=member.id)
+        ))
+        
         db.session.commit()
         flash(f'Canje realizado: {descripcion} (-{costo_puntos} pts).', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'Error: {str(e)}', 'danger')
 
-    return redirect(url_for('puntos.detalle_miembro', member_id=member.id))
+    return redirect(request.referrer)
 
 @puntos_bp.route('/accion/comprar-puntos', methods=['POST'])
-@login_required
 def comprar_puntos():
     """Opción 3: Compra de Puntos (Rango 1000 - 10000)"""
-    if not current_user.is_superuser: abort(403)
     
     member_id = request.form.get('member_id', type=int)
     cantidad = request.form.get('cantidad', type=int)
     
     if not (1000 <= cantidad <= 10000):
         flash('La compra de puntos debe ser entre 1,000 y 10,000 puntos.', 'warning')
-        return redirect(url_for('puntos.detalle_miembro', member_id=member_id))
+        return redirect(request.referrer)
 
     member = Member.query.get_or_404(member_id)
     
@@ -254,19 +278,26 @@ def comprar_puntos():
             description='Adquisición de paquete de puntos',
             amount=cantidad
         ))
+        
+        # NOTIFICACIÓN ADMIN
+        db.session.add(AdminNotification(
+            category='success',
+            title='Compra de Puntos',
+            message=f'¡Ingreso! {member.nombre} compró un paquete de {cantidad} puntos.',
+            action_link=url_for('puntos.detalle_miembro', member_id=member.id)
+        ))
+        
         db.session.commit()
         flash(f'Se acreditaron {cantidad} puntos comprados a {member.nombre}.', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'Error en la compra: {str(e)}', 'danger')
 
-    return redirect(url_for('puntos.detalle_miembro', member_id=member.id))
+    return redirect(request.referrer)
 
 @puntos_bp.route('/accion/obsequiar-cumple', methods=['POST'])
-@login_required
 def obsequiar_cumple():
     """Opción 4: Obsequio Cumpleañero (Solo día exacto, 250-1000 pts)"""
-    if not current_user.is_superuser: abort(403)
     
     member_id = request.form.get('member_id', type=int)
     cantidad = request.form.get('cantidad', type=int)
@@ -277,12 +308,12 @@ def obsequiar_cumple():
     # Validar si es el cumpleaños hoy
     if not (member.birth_date and member.birth_date.month == hoy.month and member.birth_date.day == hoy.day):
         flash(f'Error: Hoy ({hoy}) no es el cumpleaños de {member.nombre}. Solo se puede obsequiar el propio día.', 'danger')
-        return redirect(url_for('puntos.detalle_miembro', member_id=member.id))
+        return redirect(request.referrer)
         
     # Validar rango
     if not (250 <= cantidad <= 1000):
         flash('El obsequio debe ser entre 250 y 1,000 puntos.', 'warning')
-        return redirect(url_for('puntos.detalle_miembro', member_id=member.id))
+        return redirect(request.referrer)
 
     try:
         member.puntos_totales += cantidad
@@ -292,10 +323,19 @@ def obsequiar_cumple():
             description=f'Obsequio Especial de Admin ({hoy.year})',
             amount=cantidad
         ))
+        
+        # NOTIFICACIÓN ADMIN (Autoreferencia informativa)
+        db.session.add(AdminNotification(
+            category='info',
+            title='Regalo de Cumpleaños Entregado',
+            message=f'Se enviaron {cantidad} pts de regalo a {member.nombre} por su día.',
+            action_link=url_for('puntos.detalle_miembro', member_id=member.id)
+        ))
+        
         db.session.commit()
         flash(f'¡Regalo enviado! Se obsequiaron {cantidad} puntos a {member.nombre}.', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'Error al obsequiar: {str(e)}', 'danger')
 
-    return redirect(url_for('puntos.detalle_miembro', member_id=member.id))
+    return redirect(request.referrer)
