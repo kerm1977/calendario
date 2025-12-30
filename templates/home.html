@@ -35,18 +35,16 @@
                     <div class="bg-white p-2 rounded-circle shadow-sm me-2 text-warning">
                         <i class="bi bi-person-badge-fill fs-4"></i>
                     </div>
-                    <!-- TÍTULO ACTUALIZADO -->
                     <h5 class="fw-bold mb-0 text-dark">Área del Caminante</h5>
                 </div>
                 
                 <p class="text-muted small mb-4">
-                    Ingresa tu <strong>PIN único</strong> para consultar tu nivel, saldo de puntos y próximas expediciones.
+                    Ingresa tu PIN para consultar tu nivel, saldo de puntos y próximas expediciones. Tu Pin Puede ser modificado en tu perfil.
                 </p>
                 
                 <div class="input-group input-group-lg shadow-sm rounded-pill overflow-hidden border border-warning bg-white">
                     <input type="text" id="quickPinInput" class="form-control border-0 text-center fw-bold text-primary fs-4" placeholder="000000" maxlength="6" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
                     <button class="btn btn-warning fw-bold text-dark px-4 transition-hover" type="button" onclick="goToProfileQuick()">
-                        <!-- TEXTO RESPONSIVO: 'VER' SE OCULTA EN <500PX -->
                         <span class="ver-text">VER </span>MI PERFIL <i class="bi bi-arrow-right-short ms-1"></i>
                     </button>
                 </div>
@@ -62,7 +60,6 @@
     {% if events %}
         {% for event in events %}
         <div class="col-md-6 col-lg-4">
-            <!-- Borde sólido visible en lugar de border-0 -->
             <div class="card h-100 shadow-sm border border-secondary border-opacity-25 overflow-hidden position-relative adventure-card animate__animated animate__fadeInUp" style="animation-delay: {{ loop.index0 * 0.1 }}s">
                 
                 <!-- ACCIONES DE ADMIN -->
@@ -128,7 +125,6 @@
                     </div>
 
                     <div class="row g-2 mb-1 small text-secondary fw-medium">
-                        <!-- Muestra DISTANCIA en lugar de Lugar de Salida -->
                         <div class="col-7">
                             <i class="bi bi-signpost-split-fill me-1 text-warning"></i>{{ event.distance or 'Por definir' }}
                         </div>
@@ -300,8 +296,9 @@
                                 <div class="col-12">
                                     <label class="form-label small fw-bold text-secondary text-uppercase" style="font-size: 0.65rem;">Fecha de Nacimiento</label>
                                     <input type="date" id="resBirthDate{{ event.id }}" class="form-control border-warning bg-body py-2 text-center rounded-3" oninput="checkInputs({{ event.id }})">
+                                    <!-- TEXTO ACTUALIZADO AQUÍ -->
                                     <div class="x-small text-muted mt-2 text-center">
-                                        <i class="bi bi-gift-fill text-warning me-1"></i> ¡Gana 500 puntos extra si hoy es tu día!
+                                        <i class="bi bi-gift-fill text-warning me-1"></i> ¡Registra por primer Vez y Gana 500 puntos!
                                     </div>
                                 </div>
                             </div>
@@ -322,8 +319,8 @@
                             </div>
                             <h3 class="fw-bold text-body">¡Registro Exitoso!</h3>
                             <p class="text-secondary mt-3 fs-6">Guarde su <strong>PIN único</strong> de miembro para futuras aventuras y ver sus puntos:</p>
-                            <div class="bg-primary bg-opacity-5 p-4 rounded-5 border-2 border border-primary border-opacity-25 mb-4 shadow-sm">
-                                <h2 class="display-3 fw-bold text-primary mb-0" id="pinDisplay{{ event.id }}" style="letter-spacing: 12px; margin-left: 12px;">XXXX</h2>
+                            <div class="bg-primary p-4 rounded-5 border-2 border border-white border-opacity-25 mb-4 shadow-sm">
+                                <h2 class="display-3 fw-bold text-white mb-0" id="pinDisplay{{ event.id }}" style="letter-spacing: 12px; margin-left: 12px;">XXXX</h2>
                             </div>
                             <hr class="my-4 opacity-10">
                             <div class="d-grid gap-2 mt-3">
@@ -507,32 +504,100 @@
      * Valida y formatea los inputs del formulario de reserva
      */
     function checkInputs(id) {
-        const nomI = document.getElementById(`resNombre${id}`), 
-              ap1I = document.getElementById(`resApellido1${id}`), 
-              ap2I = document.getElementById(`resApellido2${id}`), 
-              telI = document.getElementById(`resTel${id}`), 
-              bdtI = document.getElementById(`resBirthDate${id}`), 
-              pinI = document.getElementById(`lookupPin${id}`);
+        // Obtenemos los elementos de forma segura
+        const nomI = document.getElementById('resNombre' + id);
+        const ap1I = document.getElementById('resApellido1' + id);
+        const ap2I = document.getElementById('resApellido2' + id);
+        const telI = document.getElementById('resTel' + id);
+        const bdtI = document.getElementById('resBirthDate' + id);
+        const pinI = document.getElementById('lookupPin' + id);
 
-        const fmt = (input) => {
-            let val = input.value.replace(/[^a-zA-ZñÑáéíóúÁÉÍÓÚ ]/g, '');
-            if (val.length > 0) val = val.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
-            input.value = val; return val;
+        // FUNCIONES AUXILIARES DE FORMATEO ROBUSTO
+
+        // 1. Formateador Estricto (Nombre y Apellido 1)
+        // Elimina cualquier caracter que no sea una letra válida (incluyendo espacios y números)
+        // Fuerza la primera letra mayúscula y el resto minúsculas.
+        const formatStrict = (inputElement) => {
+            if (!inputElement) return "";
+            
+            let value = inputElement.value;
+            // Reemplaza todo lo que NO sea a-z, A-Z, o letras con tilde/ñ por nada.
+            // Esto elimina espacios, números y símbolos.
+            value = value.replace(/[^a-zA-ZñÑáéíóúÁÉÍÓÚüÜ]/g, '');
+            
+            // Capitalización forzada
+            if (value.length > 0) {
+                value = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+            }
+            
+            // Solo actualizamos si cambió para evitar saltos de cursor innecesarios
+            if (inputElement.value !== value) {
+                inputElement.value = value;
+            }
+            return value;
         };
 
-        const nombre = fmt(nomI), ap1 = fmt(ap1I), birth = bdtI.value;
-        telI.value = telI.value.replace(/[^0-9]/g, '').substring(0, 8);
-        const tel = telI.value, 
-              warning = document.getElementById(`phoneWarning${id}`), 
-              isTelValid = tel.length === 8 && ['6', '7', '8'].includes(tel[0]);
+        // 2. Formateador Título (Segundo Apellido)
+        // Permite espacios (por si es compuesto) pero fuerza Title Case.
+        const formatTitle = (inputElement) => {
+            if (!inputElement) return "";
+            
+            let value = inputElement.value;
+            // Permite letras y espacios
+            value = value.replace(/[^a-zA-ZñÑáéíóúÁÉÍÓÚüÜ ]/g, '');
+            
+            // Title Case lógica
+            if (value.length > 0) {
+                const words = value.split(' ');
+                for (let i = 0; i < words.length; i++) {
+                    if (words[i].length > 0) {
+                        words[i] = words[i].charAt(0).toUpperCase() + words[i].slice(1).toLowerCase();
+                    }
+                }
+                value = words.join(' ');
+            }
+            
+            if (inputElement.value !== value) {
+                inputElement.value = value;
+            }
+            return value;
+        };
 
-        if (tel.length > 0) warning.classList.toggle('d-none', isTelValid); else warning.classList.add('d-none');
+        // Ejecutar formateo en tiempo real
+        const nombre = formatStrict(nomI);
+        const ap1 = formatStrict(ap1I);
+        const ap2 = formatTitle(ap2I);
+
+        // Validación de Teléfono (Solo números, max 8)
+        if (telI) {
+            let telVal = telI.value.replace(/[^0-9]/g, '').substring(0, 8);
+            if (telI.value !== telVal) telI.value = telVal;
+            
+            const warning = document.getElementById('phoneWarning' + id);
+            const isTelValid = telVal.length === 8 && ['6', '7', '8'].includes(telVal[0]);
+
+            if (telVal.length > 0) {
+                warning.classList.toggle('d-none', isTelValid);
+            } else {
+                warning.classList.add('d-none');
+            }
+        }
+
+        // Validación de PIN (Solo números, max 6)
+        if (pinI) {
+            let pinVal = pinI.value.replace(/[^0-9]/g, '');
+            if (pinI.value !== pinVal) pinI.value = pinVal;
+            document.getElementById('btnValidatePin' + id).classList.toggle('disabled', pinVal.length !== 6);
+        }
         
-        const pinVal = pinI.value.replace(/[^0-9]/g, ''); pinI.value = pinVal;
-        document.getElementById(`btnValidatePin${id}`).classList.toggle('disabled', pinVal.length !== 6);
+        // Habilitar botón de envío si todo es válido
+        const btnSub = document.getElementById('btnSubmitRes' + id);
+        const telVal = telI ? telI.value : "";
+        const isTelValid = telVal.length === 8 && ['6', '7', '8'].includes(telVal[0]);
         
-        const btnSub = document.getElementById(`btnSubmitRes${id}`);
-        btnSub.classList.toggle('disabled', !(nombre.trim().length >= 2 && ap1.trim().length >= 2 && isTelValid && birth !== ''));
+        // Regla: Nombre y Ap1 >= 2 chars, Tel válido, Fecha no vacía.
+        const isValid = nombre.length >= 2 && ap1.length >= 2 && isTelValid && bdtI.value !== '';
+        btnSub.classList.toggle('disabled', !isValid);
     }
 
     /**
@@ -712,4 +777,4 @@
 
 <!-- Importar Animate.css -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
-{% endblock %}|
+{% endblock %}

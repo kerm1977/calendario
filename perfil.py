@@ -19,12 +19,13 @@ def ver_perfil(pin):
     """
     Renderiza la vista completa del perfil del aventurero.
     Muestra datos personales, saldo, nivel (calculado) e historial.
+    Incluye lógica de vencimiento de puntos (Regla de 365 días).
     """
     # 1. Búsqueda del miembro (Si no existe, 404 seguro)
     member = Member.query.filter_by(pin=pin).first()
     
     if not member:
-        return render_template('errors/404.html'), 404  # O redirigir a home si prefieres
+        return render_template('errors/404.html'), 404
 
     # 2. Obtener historial cronológico (Reutilizando la lógica de PointLog)
     # Ordenamos por más reciente primero
@@ -40,7 +41,6 @@ def ver_perfil(pin):
             proximas_aventuras.append(b)
 
     # 4. Cálculo de Nivel de Fidelidad (Gamificación simple)
-    # Ejemplo: < 1000: Caminante, 1000-3000: Explorador, > 3000: Leyenda
     nivel = "Caminante"
     icono_nivel = "bi-backpack2"
     clase_nivel = "text-secondary"
@@ -56,8 +56,37 @@ def ver_perfil(pin):
         clase_nivel = "text-warning"
 
     # Ajuste de Zona Horaria para Costa Rica (UTC-6)
-    # Esto asegura que el "hoy" del sistema coincida con el "hoy" real del usuario
     cr_time = datetime.utcnow() - timedelta(hours=6)
+
+    # --------------------------------------------------------------------------
+    # LÓGICA DE VENCIMIENTO DE PUNTOS (ANUALIDAD) - RESTAURADA
+    # --------------------------------------------------------------------------
+    # Buscamos la fecha de origen (el primer movimiento de puntos o creación)
+    fecha_origen = None
+    primer_log = PointLog.query.filter_by(member_id=member.id).order_by(PointLog.created_at.asc()).first()
+    
+    if primer_log:
+        fecha_origen = primer_log.created_at.date()
+    else:
+        # Si no hay logs (raro), usamos hoy como referencia temporal
+        fecha_origen = cr_time.date()
+
+    # La fecha de vencimiento es 1 año después del origen
+    fecha_vencimiento = fecha_origen + timedelta(days=365)
+    dias_restantes = (fecha_vencimiento - cr_time.date()).days
+    
+    # Datos para el frontend sobre el vencimiento
+    info_vencimiento = {
+        'fecha_limite': fecha_vencimiento,
+        'dias_restantes': dias_restantes,
+        'vencido': dias_restantes < 0,
+        'penalizacion_pendiente': False
+    }
+
+    # Si ya venció, calculamos cuánto sería el 25% (informativo)
+    if info_vencimiento['vencido'] and member.puntos_totales > 0:
+        info_vencimiento['penalizacion_pendiente'] = True
+        info_vencimiento['monto_penalizacion'] = int(member.puntos_totales * 0.25)
 
     # 5. Renderizar
     return render_template(
@@ -68,7 +97,8 @@ def ver_perfil(pin):
         nivel=nivel,
         icono_nivel=icono_nivel,
         clase_nivel=clase_nivel,
-        now=cr_time 
+        now=cr_time,
+        vencimiento=info_vencimiento # Pasamos el objeto recuperado
     )
 
 @perfil_bp.route('/accion/cambiar-pin', methods=['POST'])
@@ -78,34 +108,29 @@ def cambiar_pin():
     Reglas: Único globalmente, Alfanumérico, 6-8 caracteres.
     """
     member_id = request.form.get('member_id', type=int)
-    nuevo_pin = request.form.get('nuevo_pin', '').strip().upper() # Guardar en mayúsculas para consistencia
+    nuevo_pin = request.form.get('nuevo_pin', '').strip().upper()
     
     member = Member.query.get_or_404(member_id)
-    pin_actual = member.pin # Guardamos el PIN viejo para redirigir si falla
+    pin_actual = member.pin
 
-    # 1. Validación de Longitud (6 a 8)
     if not (6 <= len(nuevo_pin) <= 8):
         flash('El PIN debe tener entre 6 y 8 caracteres.', 'danger')
         return redirect(url_for('perfil.ver_perfil', pin=pin_actual))
 
-    # 2. Validación Alfanumérica (Solo letras y números)
     if not re.match("^[A-Z0-9]+$", nuevo_pin):
-        flash('El PIN solo puede contener letras y números (sin espacios ni símbolos).', 'danger')
+        flash('El PIN solo puede contener letras y números.', 'danger')
         return redirect(url_for('perfil.ver_perfil', pin=pin_actual))
 
-    # 3. Validación de Unicidad (Que no lo tenga nadie más)
     existe = Member.query.filter_by(pin=nuevo_pin).first()
     if existe:
-        flash('Ese PIN ya está en uso por otro aventurero. Intenta con otro.', 'warning')
+        flash('Ese PIN ya está en uso por otro aventurero.', 'warning')
         return redirect(url_for('perfil.ver_perfil', pin=pin_actual))
 
     try:
         member.pin = nuevo_pin
         db.session.commit()
-        flash(f'¡Éxito! Tu nuevo PIN es: {nuevo_pin}. Úsalo para entrar la próxima vez.', 'success')
-        # Redirigimos al perfil PERO con el NUEVO PIN en la URL
+        flash(f'¡Éxito! Tu nuevo PIN es: {nuevo_pin}.', 'success')
         return redirect(url_for('perfil.ver_perfil', pin=nuevo_pin))
-        
     except Exception as e:
         db.session.rollback()
         flash(f'Error al guardar el PIN: {str(e)}', 'danger')
@@ -123,17 +148,15 @@ def transferir_regalo():
     sender = Member.query.get_or_404(sender_id)
     recipient = Member.query.get_or_404(recipient_id)
     
-    # Validaciones básicas
     if sender.id == recipient.id:
-        flash('No puedes enviarte un regalo a ti mismo desde esta opción.', 'warning')
+        flash('No puedes enviarte un regalo a ti mismo.', 'warning')
         return redirect(url_for('perfil.ver_perfil', pin=sender.pin))
 
     if sender.puntos_totales < amount:
-        flash(f'Saldo insuficiente. Tienes {sender.puntos_totales} puntos disponibles.', 'danger')
+        flash(f'Saldo insuficiente. Tienes {sender.puntos_totales} puntos.', 'danger')
         return redirect(url_for('perfil.ver_perfil', pin=sender.pin))
     
     try:
-        # 1. Descontar al remitente
         sender.puntos_totales -= amount
         db.session.add(PointLog(
             member_id=sender.id,
@@ -142,7 +165,6 @@ def transferir_regalo():
             amount=-amount
         ))
         
-        # 2. Acreditar al destinatario
         recipient.puntos_totales += amount
         db.session.add(PointLog(
             member_id=recipient.id,
@@ -168,7 +190,7 @@ def admin_ajuste_saldo():
     Permite: Restituir, Donar, Eliminar (con validación).
     """
     if not current_user.is_superuser:
-        abort(403) # Prohibido si no es superuser
+        abort(403)
 
     member_id = request.form.get('member_id', type=int)
     tipo_accion = request.form.get('action_type') # 'restituir', 'donar', 'eliminar'
@@ -190,7 +212,7 @@ def admin_ajuste_saldo():
                 description=f'Restitución: {motivo}',
                 amount=monto
             )
-            flash(f'Se han restituido {monto} puntos a {member.nombre}.', 'success')
+            flash(f'Se han restituido {monto} puntos.', 'success')
 
         elif tipo_accion == 'donar':
             member.puntos_totales += monto
@@ -200,20 +222,19 @@ def admin_ajuste_saldo():
                 description=f'Bono/Regalo: {motivo}',
                 amount=monto
             )
-            flash(f'Se han donado {monto} puntos a {member.nombre}.', 'success')
+            flash(f'Se han donado {monto} puntos.', 'success')
 
         elif tipo_accion == 'eliminar':
-            # Verificación de saldo (opcional, si se permite negativo quitar el if)
             member.puntos_totales = max(0, member.puntos_totales - monto)
             log = PointLog(
                 member_id=member.id,
                 transaction_type='Penalización Admin',
                 description=f'Deducción: {motivo}',
-                amount=-monto, # Negativo
+                amount=-monto,
                 is_penalized=True,
                 penalty_reason=motivo
             )
-            flash(f'Se han eliminado {monto} puntos de {member.nombre}.', 'warning')
+            flash(f'Se han eliminado {monto} puntos.', 'warning')
         
         else:
             flash('Acción no reconocida.', 'danger')
@@ -224,6 +245,6 @@ def admin_ajuste_saldo():
 
     except Exception as e:
         db.session.rollback()
-        flash(f'Error procesando la solicitud administrativa: {str(e)}', 'danger')
+        flash(f'Error administrativo: {str(e)}', 'danger')
 
     return redirect(url_for('perfil.ver_perfil', pin=member.pin))
