@@ -65,10 +65,36 @@
                                 <i class="bi bi-three-dots-vertical"></i>
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 mt-2 animate__animated animate__fadeIn">
-                                <li><a class="dropdown-item fw-bold text-primary" href="#" data-bs-toggle="modal" data-bs-target="#adjustPointsModal"><i class="bi bi-pencil-square me-2"></i>Ajuste Manual</a></li>
-                                <li><a class="dropdown-item fw-bold text-info" href="{{ url_for('main.integrity_check', member_id=selected_member.id) }}"><i class="bi bi-shield-check me-2"></i>Verificar Integridad</a></li>
+                                <li><h6 class="dropdown-header text-uppercase x-small fw-bold">Gestión de Puntos</h6></li>
+                                <!-- OPCIÓN 1: CANJEAR AVENTURA -->
+                                <li>
+                                    <a class="dropdown-item fw-bold text-dark" href="#" data-bs-toggle="modal" data-bs-target="#redeemAdventureModal">
+                                        <i class="bi bi-ticket-detailed me-2 text-warning"></i>Canjear Aventura
+                                    </a>
+                                </li>
+                                <!-- OPCIÓN 2: CANJEAR OTRO -->
+                                <li>
+                                    <a class="dropdown-item fw-bold text-dark" href="#" data-bs-toggle="modal" data-bs-target="#redeemOtherModal">
+                                        <i class="bi bi-bag-heart me-2 text-secondary"></i>Canjear Otro (Items)
+                                    </a>
+                                </li>
+                                <!-- OPCIÓN 3: COMPRAR PUNTOS -->
+                                <li>
+                                    <a class="dropdown-item fw-bold text-dark" href="#" data-bs-toggle="modal" data-bs-target="#buyPointsModal">
+                                        <i class="bi bi-cash-coin me-2 text-success"></i>Comprar Puntos
+                                    </a>
+                                </li>
+                                <!-- OPCIÓN 4: OBSEQUIAR CUMPLEAÑOS -->
+                                <li>
+                                    <a class="dropdown-item fw-bold text-dark" href="#" data-bs-toggle="modal" data-bs-target="#giftBirthdayModal">
+                                        <i class="bi bi-gift-fill me-2 text-primary"></i>Regalo Cumpleaños
+                                    </a>
+                                </li>
                                 <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item fw-bold text-danger" href="#" data-bs-toggle="modal" data-bs-target="#deleteUserModal{{ selected_member.id }}"><i class="bi bi-person-x-fill me-2"></i>Eliminar Miembro</a></li>
+                                <li><a class="dropdown-item fw-bold text-muted small" href="#" data-bs-toggle="modal" data-bs-target="#adjustPointsModal"><i class="bi bi-pencil-square me-2"></i>Ajuste Manual</a></li>
+                                <li><a class="dropdown-item fw-bold text-info small" href="{{ url_for('main.integrity_check', member_id=selected_member.id) }}"><i class="bi bi-shield-check me-2"></i>Verificar Integridad</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item fw-bold text-danger small" href="#" data-bs-toggle="modal" data-bs-target="#deleteUserModal{{ selected_member.id }}"><i class="bi bi-person-x-fill me-2"></i>Eliminar Miembro</a></li>
                             </ul>
                         </div>
                         {% endif %}
@@ -166,7 +192,6 @@
                 {% if selected_member.bookings %}
                     {% for b in selected_member.bookings %}
                         <!-- LÓGICA NUCLEAR: Si NO está cancelado/retirado, MOSTRARLO. -->
-                        <!-- Esto ignora si dice 'Activo' o 'Activa' o cualquier variación -->
                         {% if b.status not in ['Retirado', 'No Participó', 'Cancelado'] %}
                             {% set has_active_bookings.found = true %}
                             <div class="col-md-6 col-lg-4">
@@ -412,15 +437,15 @@
             <div class="modal-dialog modal-dialog-centered modal-sm">
                 <form class="modal-content border-0 shadow-lg rounded-5 overflow-hidden" action="{{ url_for('main.adjust_points') }}" method="POST">
                     <input type="hidden" name="member_id" value="{{ selected_member.id }}">
-                    <div class="modal-header bg-primary text-white border-0 py-3">
+                    <div class="modal-header bg-secondary text-white border-0 py-3">
                         <h6 class="modal-title fw-bold w-100 text-center">Ajuste de Saldo</h6>
                         <button type="button" class="btn-close btn-close-white shadow-none" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body p-4 text-center">
-                        <i class="bi bi-pencil-square text-primary display-5 opacity-25 mb-3 d-block"></i>
+                        <i class="bi bi-pencil-square text-secondary display-5 opacity-25 mb-3 d-block"></i>
                         <div class="mb-3">
                             <label class="form-label x-small fw-bold text-uppercase">Cantidad (+/-)</label>
-                            <input type="number" name="amount" class="form-control form-control-lg text-center fw-bold border-primary shadow-none" placeholder="0" required>
+                            <input type="number" name="amount" class="form-control form-control-lg text-center fw-bold border-secondary shadow-none" placeholder="0" required>
                             <small class="text-muted d-block mt-1" style="font-size: 0.6rem;">Use números negativos para penalizaciones.</small>
                         </div>
                         <div class="mb-3">
@@ -428,8 +453,165 @@
                             <input type="text" name="reason" class="form-control shadow-none" placeholder="Ej: Bono por líder de ruta" required>
                         </div>
                         <div class="d-grid mt-4">
-                            <button type="submit" class="btn btn-primary py-2 fw-bold rounded-pill shadow-sm">APLICAR AJUSTE</button>
+                            <button type="submit" class="btn btn-secondary py-2 fw-bold rounded-pill shadow-sm">APLICAR AJUSTE</button>
                         </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- ================================================= -->
+        <!-- NUEVOS MODALES DE GESTIÓN (CANJES Y COMPRAS) -->
+        <!-- ================================================= -->
+
+        <!-- 1. CANJEAR AVENTURA -->
+        <div class="modal fade" id="redeemAdventureModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <form class="modal-content border-0 shadow-lg rounded-5 overflow-hidden" action="{{ url_for('puntos.canjear_aventura') }}" method="POST">
+                    <input type="hidden" name="member_id" value="{{ selected_member.id }}">
+                    <div class="modal-header bg-warning text-dark border-0 py-3">
+                        <h6 class="modal-title fw-bold w-100 text-center"><i class="bi bi-ticket-detailed me-2"></i>Canjear Aventura</h6>
+                        <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        {% if selected_member.puntos_totales >= 5000 %}
+                            <div class="alert alert-success border-0 small py-2 mb-3">
+                                <i class="bi bi-check-circle-fill me-1"></i> Saldo disponible para canje (>5,000 pts).
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label x-small fw-bold text-uppercase">Selecciona Aventura Activa</label>
+                                <select name="event_id" class="form-select border-warning shadow-none mb-2" required>
+                                    <option value="" disabled selected>Seleccione una ruta...</option>
+                                    {% if eventos_activos %}
+                                        {% for ev in eventos_activos %}
+                                        <option value="{{ ev.id }}">{{ ev.title }} ({{ ev.event_date }})</option>
+                                        {% endfor %}
+                                    {% else %}
+                                        <option disabled>No hay aventuras activas disponibles</option>
+                                    {% endif %}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label x-small fw-bold text-uppercase">Puntos a Descontar</label>
+                                <input type="number" name="costo_puntos" class="form-control form-control-lg text-center fw-bold border-warning text-danger" placeholder="Ej: 5000" min="1" max="{{ selected_member.puntos_totales }}" required>
+                                <small class="text-muted d-block mt-1 x-small">Este monto se restará del saldo del miembro.</small>
+                            </div>
+                            <div class="d-grid mt-4">
+                                <button type="submit" class="btn btn-warning fw-bold rounded-pill shadow-sm text-dark">CONFIRMAR CANJE</button>
+                            </div>
+                        {% else %}
+                            <div class="text-center py-4">
+                                <i class="bi bi-lock-fill text-muted display-4 opacity-25 mb-3 d-block"></i>
+                                <h5 class="fw-bold text-danger">Saldo Insuficiente</h5>
+                                <p class="text-muted small">El miembro necesita un mínimo de <strong>5,000 puntos</strong> para habilitar los canjes de aventuras.</p>
+                                <button type="button" class="btn btn-light rounded-pill border fw-bold px-4 mt-2" data-bs-dismiss="modal">Entendido</button>
+                            </div>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 2. CANJEAR OTRO -->
+        <div class="modal fade" id="redeemOtherModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered modal-sm">
+                <form class="modal-content border-0 shadow-lg rounded-5 overflow-hidden" action="{{ url_for('puntos.canjear_otro') }}" method="POST">
+                    <input type="hidden" name="member_id" value="{{ selected_member.id }}">
+                    <div class="modal-header bg-dark text-white border-0 py-3">
+                        <h6 class="modal-title fw-bold w-100 text-center"><i class="bi bi-bag-heart me-2"></i>Canjear Artículo/Otro</h6>
+                        <button type="button" class="btn-close btn-close-white shadow-none" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4 text-center">
+                        <div class="mb-3 text-start">
+                            <label class="form-label x-small fw-bold text-uppercase">Descripción del Canje</label>
+                            <input type="text" name="descripcion" class="form-control shadow-none" placeholder="Ej: Camiseta Oficial, Fiesta Fin de Año..." required>
+                        </div>
+                        <div class="mb-3 text-start">
+                            <label class="form-label x-small fw-bold text-uppercase">Costo en Puntos</label>
+                            <input type="number" name="costo_puntos" class="form-control form-control-lg text-center fw-bold border-dark text-danger" placeholder="0" min="1" max="{{ selected_member.puntos_totales }}" required>
+                        </div>
+                        {% if selected_member.puntos_totales < 5000 %}
+                        <div class="alert alert-warning border-0 x-small py-2 mb-0">
+                            <i class="bi bi-exclamation-triangle me-1"></i> Advertencia: Saldo menor a 5,000 pts.
+                        </div>
+                        {% endif %}
+                        <div class="d-grid mt-4">
+                            <button type="submit" class="btn btn-dark fw-bold rounded-pill shadow-sm">APLICAR CANJE</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 3. COMPRAR PUNTOS -->
+        <div class="modal fade" id="buyPointsModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered modal-sm">
+                <form class="modal-content border-0 shadow-lg rounded-5 overflow-hidden" action="{{ url_for('puntos.comprar_puntos') }}" method="POST">
+                    <input type="hidden" name="member_id" value="{{ selected_member.id }}">
+                    <div class="modal-header bg-success text-white border-0 py-3">
+                        <h6 class="modal-title fw-bold w-100 text-center"><i class="bi bi-cash-coin me-2"></i>Comprar Puntos</h6>
+                        <button type="button" class="btn-close btn-close-white shadow-none" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4 text-center">
+                        <div class="text-success mb-3 opacity-25">
+                            <i class="bi bi-coin display-3"></i>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label x-small fw-bold text-uppercase text-success">Cantidad a Comprar</label>
+                            <input type="number" name="cantidad" class="form-control form-control-lg text-center fw-bold border-success text-success" placeholder="1000" min="1000" max="10000" step="100" required>
+                            <small class="text-muted d-block mt-1 x-small">Rango permitido: 1,000 - 10,000 pts</small>
+                        </div>
+                        <div class="d-grid mt-4">
+                            <button type="submit" class="btn btn-success fw-bold rounded-pill shadow-sm">ACREDITAR PUNTOS</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 4. REGALO CUMPLEAÑOS -->
+        <div class="modal fade" id="giftBirthdayModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered modal-sm">
+                <form class="modal-content border-0 shadow-lg rounded-5 overflow-hidden" action="{{ url_for('puntos.obsequiar_cumple') }}" method="POST">
+                    <input type="hidden" name="member_id" value="{{ selected_member.id }}">
+                    <div class="modal-header bg-primary text-white border-0 py-3">
+                        <h6 class="modal-title fw-bold w-100 text-center"><i class="bi bi-gift-fill me-2"></i>Regalo Cumpleaños</h6>
+                        <button type="button" class="btn-close btn-close-white shadow-none" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4 text-center">
+                        {% if selected_member.birth_date and selected_member.birth_date.month == now.month and selected_member.birth_date.day == now.day %}
+                            <div class="text-primary mb-3 animate__animated animate__heartBeat animate__infinite">
+                                <i class="bi bi-cake2-fill display-3"></i>
+                            </div>
+                            <h6 class="fw-bold text-primary mb-3">¡Hoy es su cumpleaños! 🎉</h6>
+                            <div class="mb-3">
+                                <label class="form-label x-small fw-bold text-uppercase text-primary">Monto del Obsequio</label>
+                                <input type="number" name="cantidad" class="form-control form-control-lg text-center fw-bold border-primary text-primary" placeholder="500" min="250" max="1000" required>
+                                <small class="text-muted d-block mt-1 x-small">Permitido: 250 - 1,000 pts</small>
+                            </div>
+                            <div class="d-grid mt-4">
+                                <button type="submit" class="btn btn-primary fw-bold rounded-pill shadow-sm">ENVIAR REGALO</button>
+                            </div>
+                        {% else %}
+                            <div class="text-muted mb-3 opacity-25">
+                                <i class="bi bi-calendar-x display-3"></i>
+                            </div>
+                            <h6 class="fw-bold text-secondary mb-2">No es su cumpleaños hoy.</h6>
+                            <p class="small text-muted mb-3">
+                                Fecha registrada: 
+                                <strong>
+                                    {% if selected_member.birth_date %}
+                                        {{ selected_member.birth_date.strftime('%d de %B') }}
+                                    {% else %}
+                                        No registrada
+                                    {% endif %}
+                                </strong>
+                            </p>
+                            <div class="alert alert-warning x-small border-0 py-2">
+                                <i class="bi bi-info-circle me-1"></i> Solo se puede obsequiar el propio día del evento.
+                            </div>
+                            <button type="button" class="btn btn-light rounded-pill border w-100 fw-bold" data-bs-dismiss="modal">Cerrar</button>
+                        {% endif %}
                     </div>
                 </form>
             </div>

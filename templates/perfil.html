@@ -10,7 +10,7 @@
         <div class="col-lg-10">
             
             <!-- TARJETA DE IDENTIDAD DIGITAL -->
-            <div class="card border-0 shadow-2xl rounded-5 overflow-hidden mb-5 bg-white text-dark position-relative">
+            <div class="card border-0 shadow-2xl rounded-5 overflow-hidden mb-4 bg-white text-dark position-relative">
                 <!-- Fondo decorativo -->
                 <div class="position-absolute top-0 start-0 w-100 h-100" style="background: linear-gradient(135deg, rgba(255,193,7,0.05) 0%, rgba(255,255,255,0) 100%); z-index: 0;"></div>
                 
@@ -59,11 +59,61 @@
                         </div>
                         
                         <div class="col-md-4 text-center text-md-end">
-                            <div class="p-4 rounded-5 bg-success bg-opacity-10 border border-success border-opacity-25 d-inline-block w-100">
+                            <div class="p-4 rounded-5 bg-success bg-opacity-10 border border-success border-opacity-25 d-inline-block w-100 position-relative">
                                 <small class="text-uppercase fw-bold text-success opacity-75 d-block mb-1">Saldo Disponible</small>
                                 <div class="display-3 fw-bold text-success mb-0">{{ member.puntos_totales }}</div>
                                 <small class="text-success fw-medium">Puntos Canjeables</small>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================================== -->
+            <!-- NUEVA BARRA DE ACCIONES RÁPIDAS (DISTRIBUIDA) -->
+            <!-- ========================================================== -->
+            <div class="row g-3 mb-5">
+                <!-- 1. Canjear Aventura -->
+                <div class="col-6 col-lg-3">
+                    <div class="card border-0 shadow-sm rounded-4 h-100 bg-warning text-dark text-center cursor-pointer transition-hover" data-bs-toggle="modal" data-bs-target="#redeemAdventureModal" role="button">
+                        <div class="card-body p-3 d-flex flex-column align-items-center justify-content-center">
+                            <div class="bg-white bg-opacity-25 p-3 rounded-circle mb-2 shadow-sm">
+                                <i class="bi bi-ticket-detailed-fill fs-3"></i>
+                            </div>
+                            <div class="fw-bold small text-uppercase">Canjear Aventura</div>
+                        </div>
+                    </div>
+                </div>
+                <!-- 2. Canjear Items -->
+                <div class="col-6 col-lg-3">
+                    <div class="card border-0 shadow-sm rounded-4 h-100 bg-white text-dark text-center cursor-pointer transition-hover" data-bs-toggle="modal" data-bs-target="#redeemOtherModal" role="button">
+                        <div class="card-body p-3 d-flex flex-column align-items-center justify-content-center">
+                            <div class="bg-dark bg-opacity-10 p-3 rounded-circle mb-2 text-dark">
+                                <i class="bi bi-bag-heart-fill fs-3"></i>
+                            </div>
+                            <div class="fw-bold small text-uppercase">Canjear Items</div>
+                        </div>
+                    </div>
+                </div>
+                <!-- 3. Comprar Puntos -->
+                <div class="col-6 col-lg-3">
+                    <div class="card border-0 shadow-sm rounded-4 h-100 bg-white text-dark text-center cursor-pointer transition-hover" data-bs-toggle="modal" data-bs-target="#buyPointsModal" role="button">
+                        <div class="card-body p-3 d-flex flex-column align-items-center justify-content-center">
+                            <div class="bg-success bg-opacity-10 p-3 rounded-circle mb-2 text-success">
+                                <i class="bi bi-cash-coin fs-3"></i>
+                            </div>
+                            <div class="fw-bold small text-uppercase">Comprar Puntos</div>
+                        </div>
+                    </div>
+                </div>
+                <!-- 4. Regalo Cumple -->
+                <div class="col-6 col-lg-3">
+                    <div class="card border-0 shadow-sm rounded-4 h-100 bg-white text-dark text-center cursor-pointer transition-hover" data-bs-toggle="modal" data-bs-target="#giftBirthdayModal" role="button">
+                        <div class="card-body p-3 d-flex flex-column align-items-center justify-content-center">
+                            <div class="bg-primary bg-opacity-10 p-3 rounded-circle mb-2 text-primary">
+                                <i class="bi bi-gift-fill fs-3"></i>
+                            </div>
+                            <div class="fw-bold small text-uppercase">Regalo Cumple</div>
                         </div>
                     </div>
                 </div>
@@ -115,22 +165,35 @@
                                     <div class="d-flex justify-content-between align-items-center">
                                         <div class="d-flex align-items-center">
                                             <div class="me-3">
-                                                {% if log.amount > 0 %}
-                                                    <i class="bi bi-arrow-up-circle-fill text-success fs-4"></i>
+                                                <!-- LÓGICA DE ICONOS ACTUALIZADA -->
+                                                {% if 'Canje' in log.transaction_type %}
+                                                    <i class="bi bi-shop text-danger fs-4" title="Canje Realizado"></i>
+                                                {% elif log.transaction_type == 'Bono Cumpleaños' %}
+                                                    <i class="bi bi-gift-fill text-primary fs-4" title="Regalo de Cumpleaños"></i>
+                                                {% elif log.transaction_type == 'Compra Puntos' %}
+                                                    <i class="bi bi-cash-coin text-success fs-4" title="Compra de Puntos"></i>
+                                                {% elif 'Inscripción' in log.transaction_type or 'Bienvenida' in log.transaction_type %}
+                                                    <i class="bi bi-arrow-up-circle-fill text-success fs-4" title="Puntos Ganados"></i>
+                                                {% elif 'Retiro' in log.transaction_type or 'Penalización' in log.transaction_type %}
+                                                    <i class="bi bi-x-circle-fill text-danger fs-4" title="Deducción"></i>
+                                                {% elif log.amount > 0 %}
+                                                    <i class="bi bi-plus-circle-fill text-success fs-4"></i>
                                                 {% else %}
-                                                    <i class="bi bi-arrow-down-circle-fill text-danger fs-4"></i>
+                                                    <i class="bi bi-dash-circle-fill text-danger fs-4"></i>
                                                 {% endif %}
                                             </div>
                                             <div>
                                                 <div class="fw-bold text-dark small">{{ log.description }}</div>
-                                                <small class="text-muted x-small">{{ log.created_at.strftime('%d/%m/%Y %I:%M %p') }}</small>
+                                                <small class="text-muted x-small">
+                                                    {{ log.created_at.strftime('%d/%m/%Y') }} 
+                                                    <span class="text-uppercase ms-1 opacity-75" style="font-size: 0.65rem;">{{ log.transaction_type }}</span>
+                                                </small>
                                             </div>
                                         </div>
                                         <div class="text-end">
                                             <span class="fw-bold fs-6 {{ 'text-success' if log.amount > 0 else 'text-danger' }}">
                                                 {{ '+' if log.amount > 0 }}{{ log.amount }} pts
                                             </span>
-                                            <div class="badge bg-light text-secondary border x-small">{{ log.transaction_type }}</div>
                                         </div>
                                     </div>
                                 </div>
@@ -154,11 +217,174 @@
     </div>
 </div>
 
+<!-- ============================================================== -->
+<!-- SECCIÓN DE MODALES (GESTIÓN DIRECTA DESDE PERFIL) -->
+<!-- ============================================================== -->
+
+<!-- 1. CANJEAR AVENTURA -->
+<div class="modal fade" id="redeemAdventureModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <form class="modal-content border-0 shadow-lg rounded-5 overflow-hidden" action="{{ url_for('puntos.canjear_aventura') }}" method="POST">
+            <input type="hidden" name="member_id" value="{{ member.id }}">
+            <div class="modal-header bg-warning text-dark border-0 py-3">
+                <h6 class="modal-title fw-bold w-100 text-center"><i class="bi bi-ticket-detailed me-2"></i>Canjear Aventura</h6>
+                <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                {% if member.puntos_totales >= 5000 %}
+                    <div class="alert alert-success border-0 small py-2 mb-3">
+                        <i class="bi bi-check-circle-fill me-1"></i> Saldo disponible para canje (>5,000 pts).
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label x-small fw-bold text-uppercase">Selecciona Aventura Activa</label>
+                        <select name="event_id" class="form-select border-warning shadow-none mb-2" required>
+                            <option value="" disabled selected>Seleccione una ruta...</option>
+                            <!-- Nota: Backend debe pasar 'eventos_activos' -->
+                            {% if eventos_activos %}
+                                {% for ev in eventos_activos %}
+                                <option value="{{ ev.id }}">{{ ev.title }} ({{ ev.event_date }})</option>
+                                {% endfor %}
+                            {% else %}
+                                <option disabled>Cargando lista o no disponible...</option>
+                            {% endif %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label x-small fw-bold text-uppercase">Puntos a Descontar</label>
+                        <input type="number" name="costo_puntos" class="form-control form-control-lg text-center fw-bold border-warning text-danger" placeholder="Ej: 5000" min="1" max="{{ member.puntos_totales }}" required>
+                        <small class="text-muted d-block mt-1 x-small">Este monto se restará del saldo del miembro.</small>
+                    </div>
+                    <div class="d-grid mt-4">
+                        <button type="submit" class="btn btn-warning fw-bold rounded-pill shadow-sm text-dark">CONFIRMAR CANJE</button>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-lock-fill text-muted display-4 opacity-25 mb-3 d-block"></i>
+                        <h5 class="fw-bold text-danger">Saldo Insuficiente</h5>
+                        <p class="text-muted small">Necesitas un mínimo de <strong>5,000 puntos</strong> para habilitar los canjes de aventuras.</p>
+                        <button type="button" class="btn btn-light rounded-pill border fw-bold px-4 mt-2" data-bs-dismiss="modal">Entendido</button>
+                    </div>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 2. CANJEAR OTRO -->
+<div class="modal fade" id="redeemOtherModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <form class="modal-content border-0 shadow-lg rounded-5 overflow-hidden" action="{{ url_for('puntos.canjear_otro') }}" method="POST">
+            <input type="hidden" name="member_id" value="{{ member.id }}">
+            <div class="modal-header bg-dark text-white border-0 py-3">
+                <h6 class="modal-title fw-bold w-100 text-center"><i class="bi bi-bag-heart me-2"></i>Canjear Artículo/Otro</h6>
+                <button type="button" class="btn-close btn-close-white shadow-none" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <div class="mb-3 text-start">
+                    <label class="form-label x-small fw-bold text-uppercase">Descripción del Canje</label>
+                    <input type="text" name="descripcion" class="form-control shadow-none" placeholder="Ej: Camiseta Oficial, Fiesta Fin de Año..." required>
+                </div>
+                <div class="mb-3 text-start">
+                    <label class="form-label x-small fw-bold text-uppercase">Costo en Puntos</label>
+                    <input type="number" name="costo_puntos" class="form-control form-control-lg text-center fw-bold border-dark text-danger" placeholder="0" min="1" max="{{ member.puntos_totales }}" required>
+                </div>
+                {% if member.puntos_totales < 5000 %}
+                <div class="alert alert-warning border-0 x-small py-2 mb-0">
+                    <i class="bi bi-exclamation-triangle me-1"></i> Advertencia: Saldo menor a 5,000 pts.
+                </div>
+                {% endif %}
+                <div class="d-grid mt-4">
+                    <button type="submit" class="btn btn-dark fw-bold rounded-pill shadow-sm">APLICAR CANJE</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 3. COMPRAR PUNTOS -->
+<div class="modal fade" id="buyPointsModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <form class="modal-content border-0 shadow-lg rounded-5 overflow-hidden" action="{{ url_for('puntos.comprar_puntos') }}" method="POST">
+            <input type="hidden" name="member_id" value="{{ member.id }}">
+            <div class="modal-header bg-success text-white border-0 py-3">
+                <h6 class="modal-title fw-bold w-100 text-center"><i class="bi bi-cash-coin me-2"></i>Comprar Puntos</h6>
+                <button type="button" class="btn-close btn-close-white shadow-none" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <div class="text-success mb-3 opacity-25">
+                    <i class="bi bi-coin display-3"></i>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label x-small fw-bold text-uppercase text-success">Cantidad a Comprar</label>
+                    <input type="number" name="cantidad" class="form-control form-control-lg text-center fw-bold border-success text-success" placeholder="1000" min="1000" max="10000" step="100" required>
+                    <small class="text-muted d-block mt-1 x-small">Rango permitido: 1,000 - 10,000 pts</small>
+                </div>
+                <div class="d-grid mt-4">
+                    <button type="submit" class="btn btn-success fw-bold rounded-pill shadow-sm">ACREDITAR PUNTOS</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 4. REGALO CUMPLEAÑOS -->
+<div class="modal fade" id="giftBirthdayModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <form class="modal-content border-0 shadow-lg rounded-5 overflow-hidden" action="{{ url_for('puntos.obsequiar_cumple') }}" method="POST">
+            <input type="hidden" name="member_id" value="{{ member.id }}">
+            <div class="modal-header bg-primary text-white border-0 py-3">
+                <h6 class="modal-title fw-bold w-100 text-center"><i class="bi bi-gift-fill me-2"></i>Regalo Cumpleaños</h6>
+                <button type="button" class="btn-close btn-close-white shadow-none" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                {% if member.birth_date and member.birth_date.month == now.month and member.birth_date.day == now.day %}
+                    <div class="text-primary mb-3 animate__animated animate__heartBeat animate__infinite">
+                        <i class="bi bi-cake2-fill display-3"></i>
+                    </div>
+                    <h6 class="fw-bold text-primary mb-3">¡Hoy es su cumpleaños! 🎉</h6>
+                    <div class="mb-3">
+                        <label class="form-label x-small fw-bold text-uppercase text-primary">Monto del Obsequio</label>
+                        <input type="number" name="cantidad" class="form-control form-control-lg text-center fw-bold border-primary text-primary" placeholder="500" min="250" max="1000" required>
+                        <small class="text-muted d-block mt-1 x-small">Permitido: 250 - 1,000 pts</small>
+                    </div>
+                    <div class="d-grid mt-4">
+                        <button type="submit" class="btn btn-primary fw-bold rounded-pill shadow-sm">ENVIAR REGALO</button>
+                    </div>
+                {% else %}
+                    <div class="text-muted mb-3 opacity-25">
+                        <i class="bi bi-calendar-x display-3"></i>
+                    </div>
+                    <h6 class="fw-bold text-secondary mb-2">No es su cumpleaños hoy.</h6>
+                    <p class="small text-muted mb-3">
+                        Fecha registrada: 
+                        <strong>
+                            {% if member.birth_date %}
+                                {{ member.birth_date.strftime('%d de %B') }}
+                            {% else %}
+                                No registrada
+                            {% endif %}
+                        </strong>
+                    </p>
+                    <div class="alert alert-warning x-small border-0 py-2">
+                        <i class="bi bi-info-circle me-1"></i> Solo se puede obsequiar el propio día del evento.
+                    </div>
+                    <button type="button" class="btn btn-light rounded-pill border w-100 fw-bold" data-bs-dismiss="modal">Cerrar</button>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
 <style>
     .shadow-2xl { box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15); }
     .x-small { font-size: 0.7rem; }
+    .transition-hover { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+    .transition-hover:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important; }
+    .cursor-pointer { cursor: pointer; }
+    
     /* Ajuste de degradado para modo oscuro si lo usas */
     [data-bs-theme="dark"] .bg-white { background-color: #212529 !important; }
     [data-bs-theme="dark"] .text-dark { color: #f8f9fa !important; }
+    [data-bs-theme="dark"] .list-group-item { background-color: #212529; border-color: #333; }
 </style>
 {% endblock %}
