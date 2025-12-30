@@ -5,28 +5,9 @@
 {% block content %}
 
 <div class="container py-4">
-    <!-- ========================================== -->
-    <!-- ALERTA DE CUMPLEAÑOS DEL DÍA -->
-    <!-- ========================================== -->
-    {% if birthdays_today %}
-    <div class="alert alert-primary border-0 shadow-lg rounded-5 mb-5 animate__animated animate__bounceIn">
-        <div class="d-flex align-items-center p-2">
-            <div class="display-5 me-4 text-primary animate__animated animate__pulse animate__infinite">
-                <i class="bi bi-cake2-fill"></i>
-            </div>
-            <div>
-                <h4 class="fw-bold mb-1">¡Celebración en La Tribu!</h4>
-                <p class="mb-0 fs-5">
-                    Hoy es el cumpleaños de:
-                    {% for m in birthdays_today %}
-                    <span class="badge bg-primary text-white px-3 py-2 rounded-pill shadow-sm">{{ m.nombre }} {{ m.apellido1 }}</span>{{ ", " if not loop.last }}
-                    {% endfor %}.
-                    <span class="fw-bold">¡Dales una felicitación especial!</span>
-                </p>
-            </div>
-        </div>
-    </div>
-    {% endif %}
+    
+    <!-- NOTA: Se eliminó la sección de "Alerta de Cumpleaños" de aquí porque ya se muestra 
+         automáticamente desde base.html con el botón de cerrar. -->
 
     <!-- Encabezado -->
     <div class="row mb-5 align-items-end">
