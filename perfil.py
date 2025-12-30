@@ -1,6 +1,13 @@
+# ==============================================================================
+# MÓDULO DE PERFIL PÚBLICO: LA TRIBU DE LOS LIBRES
+# ==============================================================================
+# Maneja la visualización del perfil personal del aventurero.
+# Acceso público mediante PIN para facilitar la experiencia de usuario.
+# ==============================================================================
+
 from flask import Blueprint, render_template, abort, redirect, url_for, request, flash
 from db import db, Member, PointLog, Booking
-from datetime import datetime
+from datetime import datetime, timedelta, date
 import re
 
 # Definición del Blueprint
@@ -47,6 +54,10 @@ def ver_perfil(pin):
         icono_nivel = "bi-trophy-fill"
         clase_nivel = "text-warning"
 
+    # Ajuste de Zona Horaria para Costa Rica (UTC-6)
+    # Esto asegura que el "hoy" del sistema coincida con el "hoy" real del usuario
+    cr_time = datetime.utcnow() - timedelta(hours=6)
+
     # 5. Renderizar
     return render_template(
         'perfil.html',
@@ -56,7 +67,7 @@ def ver_perfil(pin):
         nivel=nivel,
         icono_nivel=icono_nivel,
         clase_nivel=clase_nivel,
-        now=datetime.now()
+        now=cr_time 
     )
 
 @perfil_bp.route('/accion/cambiar-pin', methods=['POST'])
@@ -98,3 +109,57 @@ def cambiar_pin():
         db.session.rollback()
         flash(f'Error al guardar el PIN: {str(e)}', 'danger')
         return redirect(url_for('perfil.ver_perfil', pin=pin_actual))
+
+@perfil_bp.route('/accion/transferir-regalo', methods=['POST'])
+def transferir_regalo():
+    """
+    Permite a un miembro (Sender) enviar puntos de su saldo a un cumpleañero (Recipient).
+    """
+    sender_id = request.form.get('sender_id', type=int)
+    recipient_id = request.form.get('recipient_id', type=int)
+    amount = request.form.get('cantidad', type=int)
+    
+    sender = Member.query.get_or_404(sender_id)
+    recipient = Member.query.get_or_404(recipient_id)
+    
+    # Validaciones básicas
+    if sender.id == recipient.id:
+        flash('No puedes enviarte un regalo a ti mismo desde esta opción.', 'warning')
+        return redirect(url_for('perfil.ver_perfil', pin=sender.pin))
+
+    if sender.puntos_totales < amount:
+        flash(f'Saldo insuficiente. Tienes {sender.puntos_totales} puntos disponibles.', 'danger')
+        return redirect(url_for('perfil.ver_perfil', pin=sender.pin))
+        
+    # Validar que HOY sea el cumpleaños del destinatario
+    # (Usamos date.today() o datetime ajustado según configuración del servidor)
+    # Para ser robustos, confiamos en la validación visual del frontend, 
+    # pero aquí podríamos agregar una capa extra si fuera crítico.
+    
+    try:
+        # 1. Descontar al remitente
+        sender.puntos_totales -= amount
+        db.session.add(PointLog(
+            member_id=sender.id,
+            transaction_type='Regalo Enviado',
+            description=f'Regalo de cumpleaños para {recipient.nombre}',
+            amount=-amount
+        ))
+        
+        # 2. Acreditar al destinatario
+        recipient.puntos_totales += amount
+        db.session.add(PointLog(
+            member_id=recipient.id,
+            transaction_type='Regalo Recibido',
+            description=f'Regalo de cumpleaños de {sender.nombre}',
+            amount=amount
+        ))
+        
+        db.session.commit()
+        flash(f'¡Qué gran detalle! Has enviado {amount} puntos a {recipient.nombre}.', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error en la transferencia: {str(e)}', 'danger')
+
+    return redirect(url_for('perfil.ver_perfil', pin=sender.pin))

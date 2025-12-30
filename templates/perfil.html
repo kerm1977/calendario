@@ -112,14 +112,14 @@
                         </div>
                     </div>
                 </div>
-                <!-- 4. Regalo Cumple -->
+                <!-- 4. Regalo Cumple (MODIFICADO PARA ENVIAR A OTROS) -->
                 <div class="col-6 col-lg-3">
                     <div class="card border-0 shadow-sm rounded-4 h-100 bg-white text-dark text-center cursor-pointer transition-hover" data-bs-toggle="modal" data-bs-target="#giftBirthdayModal" role="button">
                         <div class="card-body p-3 d-flex flex-column align-items-center justify-content-center">
                             <div class="bg-primary bg-opacity-10 p-3 rounded-circle mb-2 text-primary">
                                 <i class="bi bi-gift-fill fs-3"></i>
                             </div>
-                            <div class="fw-bold small text-uppercase">Regalo Cumple</div>
+                            <div class="fw-bold small text-uppercase">Enviar Regalo</div>
                         </div>
                     </div>
                 </div>
@@ -176,6 +176,10 @@
                                                     <i class="bi bi-shop text-danger fs-4" title="Canje Realizado"></i>
                                                 {% elif log.transaction_type == 'Bono Cumpleaños' %}
                                                     <i class="bi bi-gift-fill text-primary fs-4" title="Regalo de Cumpleaños"></i>
+                                                {% elif log.transaction_type == 'Regalo Recibido' %}
+                                                    <i class="bi bi-gift-fill text-primary fs-4" title="Regalo de un Amigo"></i>
+                                                {% elif log.transaction_type == 'Regalo Enviado' %}
+                                                    <i class="bi bi-send-fill text-warning fs-4" title="Regalo Enviado"></i>
                                                 {% elif log.transaction_type == 'Compra Puntos' %}
                                                     <i class="bi bi-cash-coin text-success fs-4" title="Compra de Puntos"></i>
                                                 {% elif 'Inscripción' in log.transaction_type or 'Bienvenida' in log.transaction_type %}
@@ -360,46 +364,63 @@
     </div>
 </div>
 
-<!-- 4. REGALO CUMPLEAÑOS -->
+<!-- 4. ENVIAR REGALO (ACTUALIZADO) -->
 <div class="modal fade" id="giftBirthdayModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-sm">
-        <form class="modal-content border-0 shadow-lg rounded-5 overflow-hidden" action="{{ url_for('puntos.obsequiar_cumple') }}" method="POST">
-            <input type="hidden" name="member_id" value="{{ member.id }}">
+        <form class="modal-content border-0 shadow-lg rounded-5 overflow-hidden" action="{{ url_for('perfil.transferir_regalo') }}" method="POST">
+            <input type="hidden" name="sender_id" value="{{ member.id }}">
             <div class="modal-header bg-primary text-white border-0 py-3">
-                <h6 class="modal-title fw-bold w-100 text-center"><i class="bi bi-gift-fill me-2"></i>Regalo Cumpleaños</h6>
+                <h6 class="modal-title fw-bold w-100 text-center"><i class="bi bi-gift-fill me-2"></i>Enviar Regalo Cumple</h6>
                 <button type="button" class="btn-close btn-close-white shadow-none" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4 text-center">
-                {% if member.birth_date and member.birth_date.month == now.month and member.birth_date.day == now.day %}
-                    <div class="text-primary mb-3 animate__animated animate__heartBeat animate__infinite">
-                        <i class="bi bi-cake2-fill display-3"></i>
+                
+                <!-- VERIFICAMOS SI HAY CUMPLEAÑEROS (EXCLUYENDO AL USUARIO ACTUAL) -->
+                {% set friends_bday = [] %}
+                {% if birthdays_today %}
+                    {% for b in birthdays_today %}
+                        {% if b.id != member.id %}
+                            {% set _ = friends_bday.append(b) %}
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+
+                {% if friends_bday %}
+                    <div class="text-primary mb-3">
+                        <i class="bi bi-balloon-heart-fill display-3"></i>
                     </div>
-                    <h6 class="fw-bold text-primary mb-3">¡Hoy es su cumpleaños! 🎉</h6>
-                    <div class="mb-3">
-                        <label class="form-label x-small fw-bold text-uppercase text-primary">Monto del Obsequio</label>
-                        <input type="number" name="cantidad" class="form-control form-control-lg text-center fw-bold border-primary text-primary" placeholder="500" min="250" max="1000" required>
-                        <small class="text-muted d-block mt-1 x-small">Permitido: 250 - 1,000 pts</small>
+                    <p class="small text-muted mb-3">
+                        ¡Hoy hay fiesta en la Tribu! Selecciona al amigo que quieres sorprender con tus puntos.
+                    </p>
+                    
+                    <div class="mb-3 text-start">
+                        <label class="form-label x-small fw-bold text-uppercase text-primary">Para:</label>
+                        <select name="recipient_id" class="form-select border-primary shadow-none" required>
+                            {% for friend in friends_bday %}
+                                <option value="{{ friend.id }}">{{ friend.nombre }} {{ friend.apellido1 }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
+
+                    <div class="mb-3 text-start">
+                        <label class="form-label x-small fw-bold text-uppercase text-primary">Puntos a Regalar</label>
+                        <input type="number" name="cantidad" class="form-control form-control-lg text-center fw-bold border-primary text-primary" placeholder="500" min="100" max="{{ member.puntos_totales }}" required>
+                        <small class="text-muted d-block mt-1 x-small">Se descontarán de tu saldo.</small>
+                    </div>
+
                     <div class="d-grid mt-4">
-                        <button type="submit" class="btn btn-primary fw-bold rounded-pill shadow-sm">ENVIAR REGALO</button>
+                        <button type="submit" class="btn btn-primary fw-bold rounded-pill shadow-sm">ENVIAR PUNTOS</button>
                     </div>
                 {% else %}
                     <div class="text-muted mb-3 opacity-25">
                         <i class="bi bi-calendar-x display-3"></i>
                     </div>
-                    <h6 class="fw-bold text-secondary mb-2">No es su cumpleaños hoy.</h6>
+                    <h6 class="fw-bold text-secondary mb-2">No hay cumpleañeros hoy.</h6>
                     <p class="small text-muted mb-3">
-                        Fecha registrada: 
-                        <strong>
-                            {% if member.birth_date %}
-                                {{ member.birth_date.strftime('%d de %B') }}
-                            {% else %}
-                                No registrada
-                            {% endif %}
-                        </strong>
+                        Nadie en la Tribu (excepto tú, si fuera el caso) cumple años hoy para recibir regalos.
                     </p>
-                    <div class="alert alert-warning x-small border-0 py-2">
-                        <i class="bi bi-info-circle me-1"></i> Solo se puede obsequiar el propio día del evento.
+                    <div class="alert alert-info border-0 x-small py-2 mt-2">
+                        <i class="bi bi-clock me-1"></i> Fecha Sistema: <strong>{{ now.strftime('%d/%m') }}</strong>
                     </div>
                     <button type="button" class="btn btn-light rounded-pill border w-100 fw-bold" data-bs-dismiss="modal">Cerrar</button>
                 {% endif %}
