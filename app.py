@@ -713,12 +713,16 @@ def delete_event(event_id):
 # --- REGISTRO FINAL E INTEGRACIÓN DE SERVICIOS ---
 
 from puntos import puntos_bp
+# AGREGAR ESTA IMPORTACIÓN
+from perfil import perfil_bp
 
 # Registro de Blueprints.
 app.register_blueprint(auth_bp)
 app.register_blueprint(main_bp)
 app.register_blueprint(calendar_bp)
 app.register_blueprint(puntos_bp)
+# AGREGAR ESTA LÍNEA DE REGISTRO
+app.register_blueprint(perfil_bp)
 
 # --- INICIALIZACIÓN DE LA INFRAESTRUCTURA DE DATOS ---
 
