@@ -1,13 +1,7 @@
-# ==============================================================================
-# MÓDULO DE PERFIL PÚBLICO: LA TRIBU DE LOS LIBRES
-# ==============================================================================
-# Maneja la visualización del perfil personal del aventurero.
-# Acceso público mediante PIN para facilitar la experiencia de usuario.
-# ==============================================================================
-
-from flask import Blueprint, render_template, abort, redirect, url_for
-from db import Member, PointLog, Booking
+from flask import Blueprint, render_template, abort, redirect, url_for, request, flash
+from db import db, Member, PointLog, Booking
 from datetime import datetime
+import re
 
 # Definición del Blueprint
 perfil_bp = Blueprint('perfil', __name__)
@@ -64,3 +58,43 @@ def ver_perfil(pin):
         clase_nivel=clase_nivel,
         now=datetime.now()
     )
+
+@perfil_bp.route('/accion/cambiar-pin', methods=['POST'])
+def cambiar_pin():
+    """
+    Permite al usuario personalizar su PIN único.
+    Reglas: Único globalmente, Alfanumérico, 6-8 caracteres.
+    """
+    member_id = request.form.get('member_id', type=int)
+    nuevo_pin = request.form.get('nuevo_pin', '').strip().upper() # Guardar en mayúsculas para consistencia
+    
+    member = Member.query.get_or_404(member_id)
+    pin_actual = member.pin # Guardamos el PIN viejo para redirigir si falla
+
+    # 1. Validación de Longitud (6 a 8)
+    if not (6 <= len(nuevo_pin) <= 8):
+        flash('El PIN debe tener entre 6 y 8 caracteres.', 'danger')
+        return redirect(url_for('perfil.ver_perfil', pin=pin_actual))
+
+    # 2. Validación Alfanumérica (Solo letras y números)
+    if not re.match("^[A-Z0-9]+$", nuevo_pin):
+        flash('El PIN solo puede contener letras y números (sin espacios ni símbolos).', 'danger')
+        return redirect(url_for('perfil.ver_perfil', pin=pin_actual))
+
+    # 3. Validación de Unicidad (Que no lo tenga nadie más)
+    existe = Member.query.filter_by(pin=nuevo_pin).first()
+    if existe:
+        flash('Ese PIN ya está en uso por otro aventurero. Intenta con otro.', 'warning')
+        return redirect(url_for('perfil.ver_perfil', pin=pin_actual))
+
+    try:
+        member.pin = nuevo_pin
+        db.session.commit()
+        flash(f'¡Éxito! Tu nuevo PIN es: {nuevo_pin}. Úsalo para entrar la próxima vez.', 'success')
+        # Redirigimos al perfil PERO con el NUEVO PIN en la URL
+        return redirect(url_for('perfil.ver_perfil', pin=nuevo_pin))
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al guardar el PIN: {str(e)}', 'danger')
+        return redirect(url_for('perfil.ver_perfil', pin=pin_actual))

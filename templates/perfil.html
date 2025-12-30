@@ -32,9 +32,15 @@
                             
                             <div class="row g-3 mt-2">
                                 <div class="col-auto">
-                                    <div class="p-2 border rounded-3 bg-light">
+                                    <!-- SECCIÓN PIN CON BOTÓN DE EDICIÓN -->
+                                    <div class="p-2 border rounded-3 bg-light position-relative pe-5 shadow-sm">
                                         <small class="d-block text-muted x-small text-uppercase">PIN Único</small>
-                                        <span class="fw-bold font-monospace fs-5">{{ member.pin }}</span>
+                                        <span class="fw-bold font-monospace fs-5 text-primary">{{ member.pin }}</span>
+                                        
+                                        <!-- BOTÓN CAMBIAR PIN -->
+                                        <button class="btn btn-sm btn-white border position-absolute top-50 end-0 translate-middle-y me-2 rounded-circle shadow-sm hover-scale" style="width: 32px; height: 32px;" data-bs-toggle="modal" data-bs-target="#changePinModal" title="Personalizar PIN">
+                                            <i class="bi bi-pencil-fill small text-muted"></i>
+                                        </button>
                                     </div>
                                 </div>
                                 <div class="col-auto">
@@ -70,7 +76,7 @@
             </div>
 
             <!-- ========================================================== -->
-            <!-- NUEVA BARRA DE ACCIONES RÁPIDAS (DISTRIBUIDA) -->
+            <!-- BARRA DE ACCIONES RÁPIDAS (DISTRIBUIDA) -->
             <!-- ========================================================== -->
             <div class="row g-3 mb-5">
                 <!-- 1. Canjear Aventura -->
@@ -218,8 +224,36 @@
 </div>
 
 <!-- ============================================================== -->
-<!-- SECCIÓN DE MODALES (GESTIÓN DIRECTA DESDE PERFIL) -->
+<!-- MODALES DE GESTIÓN -->
 <!-- ============================================================== -->
+
+<!-- NUEVO: MODAL PARA CAMBIAR PIN -->
+<div class="modal fade" id="changePinModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <form class="modal-content border-0 shadow-lg rounded-5 overflow-hidden" action="{{ url_for('perfil.cambiar_pin') }}" method="POST">
+            <input type="hidden" name="member_id" value="{{ member.id }}">
+            <div class="modal-header bg-primary text-white border-0 py-3">
+                <h6 class="modal-title fw-bold w-100 text-center"><i class="bi bi-key-fill me-2"></i>Personalizar PIN</h6>
+                <button type="button" class="btn-close btn-close-white shadow-none" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <div class="mb-3">
+                    <label class="form-label x-small fw-bold text-uppercase text-secondary">Nuevo PIN (6-8 caracteres)</label>
+                    <input type="text" name="nuevo_pin" class="form-control form-control-lg text-center fw-bold border-primary text-primary text-uppercase" placeholder="ALFA123" minlength="6" maxlength="8" required oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '')">
+                    <small class="text-muted d-block mt-2 x-small lh-sm">
+                        Solo letras y números. Debe ser único en La Tribu.
+                    </small>
+                </div>
+                <div class="alert alert-warning x-small border-0 py-2 mb-0">
+                    <i class="bi bi-exclamation-triangle-fill me-1"></i> ¡No lo olvides! Lo necesitarás para entrar.
+                </div>
+                <div class="d-grid mt-4">
+                    <button type="submit" class="btn btn-primary fw-bold rounded-pill shadow-sm">GUARDAR PIN</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
 
 <!-- 1. CANJEAR AVENTURA -->
 <div class="modal fade" id="redeemAdventureModal" tabindex="-1">
@@ -239,7 +273,6 @@
                         <label class="form-label x-small fw-bold text-uppercase">Selecciona Aventura Activa</label>
                         <select name="event_id" class="form-select border-warning shadow-none mb-2" required>
                             <option value="" disabled selected>Seleccione una ruta...</option>
-                            <!-- Nota: Backend debe pasar 'eventos_activos' -->
                             {% if eventos_activos %}
                                 {% for ev in eventos_activos %}
                                 <option value="{{ ev.id }}">{{ ev.title }} ({{ ev.event_date }})</option>
@@ -380,6 +413,7 @@
     .x-small { font-size: 0.7rem; }
     .transition-hover { transition: transform 0.2s ease, box-shadow 0.2s ease; }
     .transition-hover:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important; }
+    .hover-scale:hover { transform: scale(1.1); transition: transform 0.2s; }
     .cursor-pointer { cursor: pointer; }
     
     /* Ajuste de degradado para modo oscuro si lo usas */
