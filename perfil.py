@@ -6,6 +6,7 @@
 # ==============================================================================
 
 from flask import Blueprint, render_template, abort, redirect, url_for, request, flash
+from flask_login import login_required, current_user
 from db import db, Member, PointLog, Booking
 from datetime import datetime, timedelta, date
 import re
@@ -130,11 +131,6 @@ def transferir_regalo():
     if sender.puntos_totales < amount:
         flash(f'Saldo insuficiente. Tienes {sender.puntos_totales} puntos disponibles.', 'danger')
         return redirect(url_for('perfil.ver_perfil', pin=sender.pin))
-        
-    # Validar que HOY sea el cumpleaños del destinatario
-    # (Usamos date.today() o datetime ajustado según configuración del servidor)
-    # Para ser robustos, confiamos en la validación visual del frontend, 
-    # pero aquí podríamos agregar una capa extra si fuera crítico.
     
     try:
         # 1. Descontar al remitente
@@ -163,3 +159,71 @@ def transferir_regalo():
         flash(f'Error en la transferencia: {str(e)}', 'danger')
 
     return redirect(url_for('perfil.ver_perfil', pin=sender.pin))
+
+@perfil_bp.route('/accion/admin-ajuste', methods=['POST'])
+@login_required
+def admin_ajuste_saldo():
+    """
+    Gestión avanzada de saldo para Superusuarios.
+    Permite: Restituir, Donar, Eliminar (con validación).
+    """
+    if not current_user.is_superuser:
+        abort(403) # Prohibido si no es superuser
+
+    member_id = request.form.get('member_id', type=int)
+    tipo_accion = request.form.get('action_type') # 'restituir', 'donar', 'eliminar'
+    monto = request.form.get('amount', type=int)
+    motivo = request.form.get('reason')
+
+    member = Member.query.get_or_404(member_id)
+
+    if not monto or monto <= 0:
+        flash('El monto debe ser mayor a 0.', 'warning')
+        return redirect(url_for('perfil.ver_perfil', pin=member.pin))
+
+    try:
+        if tipo_accion == 'restituir':
+            member.puntos_totales += monto
+            log = PointLog(
+                member_id=member.id,
+                transaction_type='Restitución Admin',
+                description=f'Restitución: {motivo}',
+                amount=monto
+            )
+            flash(f'Se han restituido {monto} puntos a {member.nombre}.', 'success')
+
+        elif tipo_accion == 'donar':
+            member.puntos_totales += monto
+            log = PointLog(
+                member_id=member.id,
+                transaction_type='Donación Admin',
+                description=f'Bono/Regalo: {motivo}',
+                amount=monto
+            )
+            flash(f'Se han donado {monto} puntos a {member.nombre}.', 'success')
+
+        elif tipo_accion == 'eliminar':
+            # Verificación de saldo (opcional, si se permite negativo quitar el if)
+            member.puntos_totales = max(0, member.puntos_totales - monto)
+            log = PointLog(
+                member_id=member.id,
+                transaction_type='Penalización Admin',
+                description=f'Deducción: {motivo}',
+                amount=-monto, # Negativo
+                is_penalized=True,
+                penalty_reason=motivo
+            )
+            flash(f'Se han eliminado {monto} puntos de {member.nombre}.', 'warning')
+        
+        else:
+            flash('Acción no reconocida.', 'danger')
+            return redirect(url_for('perfil.ver_perfil', pin=member.pin))
+
+        db.session.add(log)
+        db.session.commit()
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error procesando la solicitud administrativa: {str(e)}', 'danger')
+
+    return redirect(url_for('perfil.ver_perfil', pin=member.pin))
