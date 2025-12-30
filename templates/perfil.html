@@ -85,10 +85,9 @@
             </div>
 
             <!-- ========================================================== -->
-            <!-- ALERTA DE VENCIMIENTO Y POLÍTICA DE PUNTOS (INTEGRADO) -->
+            <!-- RESUMEN DE VENCIMIENTO (VISUALIZACIÓN RÁPIDA) -->
             <!-- ========================================================== -->
-            <div class="card border-0 shadow-sm rounded-4 mb-5 overflow-hidden animate__animated animate__fadeInUp" style="animation-delay: 0.1s;">
-                <!-- Cambia de color según la urgencia -->
+            <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden animate__animated animate__fadeInUp" style="animation-delay: 0.1s;">
                 <div class="card-body p-4 
                     {% if vencimiento.vencido %}bg-danger bg-opacity-10
                     {% elif vencimiento.dias_restantes < 60 %}bg-warning bg-opacity-10
@@ -102,23 +101,22 @@
                             <div>
                                 <h6 class="fw-bold mb-1 
                                     {% if vencimiento.vencido %}text-danger{% elif vencimiento.dias_restantes < 60 %}text-warning-emphasis{% else %}text-info-emphasis{% endif %}">
-                                    Política de Vencimiento de Puntos
+                                    Ciclo de Vigencia de Puntos
                                 </h6>
                                 <p class="small mb-0 text-muted" style="line-height: 1.4;">
-                                    Tus puntos tienen una validez de <strong>1 año (365 días)</strong> desde tu registro o último reinicio.<br>
-                                    <span class="fst-italic">Si no se usan, se descontará un 25% a favor de la comunidad de La Tribu.</span>
+                                    Tus puntos tienen una validez de <strong>1 año (365 días)</strong>.<br>
+                                    Consulta abajo las políticas detalladas de uso y penalización.
                                 </p>
                             </div>
                         </div>
                         
-                        <!-- CONTADOR REGRESIVO -->
                         <div class="text-center bg-white p-3 rounded-4 shadow-sm border border-opacity-10 w-100 w-md-auto
                             {% if vencimiento.vencido %}border-danger{% elif vencimiento.dias_restantes < 60 %}border-warning{% else %}border-info{% endif %}">
-                            <small class="text-uppercase fw-bold x-small text-muted d-block mb-1">Tiempo para canjear</small>
+                            <small class="text-uppercase fw-bold x-small text-muted d-block mb-1">Días para renovar/usar</small>
                             
                             {% if vencimiento.vencido %}
                                 <div class="text-danger fw-bold fs-4">¡PUNTOS VENCIDOS!</div>
-                                <small class="text-danger fw-bold d-block">Penalización de -{{ vencimiento.monto_penalizacion }} pts aplicable</small>
+                                <small class="text-danger fw-bold d-block">Penalización del 25% aplicable</small>
                             {% else %}
                                 <div class="fw-bold fs-2 
                                     {% if vencimiento.dias_restantes < 60 %}text-warning{% else %}text-info{% endif %}">
@@ -126,6 +124,113 @@
                                 </div>
                                 <small class="text-muted d-block">Vence: {{ vencimiento.fecha_limite.strftime('%d/%m/%Y') }}</small>
                             {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================================== -->
+            <!-- NUEVA SECCIÓN: POLÍTICAS Y NORMATIVAS DETALLADAS -->
+            <!-- ========================================================== -->
+            <div class="accordion shadow-sm rounded-4 mb-5 border-0" id="policiesAccordion">
+                <div class="accordion-item border-0 rounded-4 overflow-hidden">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed bg-white fw-bold text-dark py-3" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePolicies">
+                            <i class="bi bi-file-earmark-text-fill text-warning me-2"></i>
+                            Normativa Institucional y Políticas de Uso
+                        </button>
+                    </h2>
+                    <div id="collapsePolicies" class="accordion-collapse collapse" data-bs-parent="#policiesAccordion">
+                        <div class="accordion-body bg-light p-4">
+                            <div class="row g-4">
+                                <!-- Columna 1: Intercambio y Gestión -->
+                                <div class="col-md-6 border-end-md">
+                                    <h6 class="fw-bold text-uppercase x-small text-secondary mb-3 pb-2 border-bottom">
+                                        <i class="bi bi-arrow-left-right me-2"></i>Intercambio y Adquisición
+                                    </h6>
+                                    
+                                    <ul class="list-unstyled small text-secondary mb-0">
+                                        <li class="mb-3">
+                                            <strong class="text-dark d-block">Actividades de Senderismo y Expediciones</strong>
+                                            Los puntos acumulados poseen una aplicabilidad del <span class="text-success fw-bold">100%</span> para cubrir el costo total de las caminatas y eventos oficiales.
+                                        </li>
+                                        <li class="mb-3">
+                                            <strong class="text-dark d-block">Artículos Institucionales (Merch)</strong>
+                                            El canje por mercadería oficial (camisetas, pines, bandanas, etc.) se realiza por el <span class="text-success fw-bold">100%</span> del valor en puntos.
+                                        </li>
+                                        <li class="mb-3">
+                                            <strong class="text-dark d-block">Adquisición (Compra) de Puntos</strong>
+                                            En la compra de paquetes de puntos, se destina un <span class="text-dark fw-bold">5%</span> del valor transaccional al fondo de mantenimiento tecnológico, renovación de dominio y hosting de La Tribu.
+                                        </li>
+                                        <li>
+                                            <strong class="text-dark d-block">Donaciones y Solidaridad Externa</strong>
+                                            Las transferencias destinadas a obras benéficas (ej. Teletón) se aplican íntegramente (<span class="text-success fw-bold">100%</span>) a favor de la institución beneficiaria. <em class="d-block mt-1 x-small text-muted">*Toda donación es irrevocable; no se admiten solicitudes de reintegro.</em>
+                                        </li>
+                                    </ul>
+                                </div>
+
+                                <!-- Columna 2: Penalizaciones y Normativa -->
+                                <div class="col-md-6">
+                                    <h6 class="fw-bold text-uppercase x-small text-secondary mb-3 pb-2 border-bottom">
+                                        <i class="bi bi-exclamation-triangle me-2"></i>Régimen de Penalizaciones
+                                    </h6>
+                                    
+                                    <ul class="list-unstyled small text-secondary mb-0">
+                                        <li class="mb-3">
+                                            <strong class="text-dark d-block text-danger">Política de Cancelación Tardía (< 10 días)</strong>
+                                            El retiro de un evento con menos de 10 días de antelación conlleva una doble penalización:
+                                            <ul class="mt-1 ps-3">
+                                                <li>No se devengan los puntos potenciales del evento.</li>
+                                                <li>Se deduce del saldo actual una cantidad equivalente a los puntos que se habrían obtenido.</li>
+                                            </ul>
+                                        </li>
+                                        <li class="mb-3">
+                                            <strong class="text-dark d-block">Inactividad y Vencimiento Anual</strong>
+                                            Los puntos tienen una vigencia de 365 días desde el registro. La falta de uso tras este periodo implica una penalización del <span class="text-danger fw-bold">25%</span> sobre el saldo, destinada al mantenimiento de la plataforma.
+                                        </li>
+                                        <li class="mb-3">
+                                            <strong class="text-dark d-block">Retiro Voluntario del Programa</strong>
+                                            En caso de solicitar la liquidación en efectivo por retiro definitivo del plan, se aplicará una retención del <span class="text-danger fw-bold">25%</span> por gastos administrativos.
+                                        </li>
+                                        <li>
+                                            <strong class="text-dark d-block">Obsequios entre Miembros</strong>
+                                            Los puntos regalados por cumpleaños se acreditan al <span class="text-success fw-bold">100%</span> al beneficiario, libres de costos para La Tribu.
+                                        </li>
+                                    </ul>
+                                </div>
+                                
+                                <!-- Sección Completa: Excepciones (Fondo Gris) -->
+                                <div class="col-12 mt-2">
+                                    <div class="bg-white p-3 rounded-3 border border-secondary border-opacity-25">
+                                        <h6 class="fw-bold text-uppercase x-small text-dark mb-2">
+                                            <i class="bi bi-shield-check me-2 text-success"></i>Excepciones de Fuerza Mayor (Liquidación en Efectivo)
+                                        </h6>
+                                        <p class="small text-muted mb-2">
+                                            En situaciones especiales comprobadas, se autoriza el reintegro en efectivo bajo las siguientes condiciones:
+                                        </p>
+                                        <div class="row g-3 small">
+                                            <div class="col-md-6">
+                                                <div class="d-flex align-items-start">
+                                                    <i class="bi bi-heart-pulse-fill text-danger me-2 mt-1"></i>
+                                                    <div>
+                                                        <span class="fw-bold d-block">Fallecimiento de Familiar (1° Grado)</span>
+                                                        <span>Se reintegra el 90% del valor. El 10% restante se destina al fondo de mantenimiento.</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="d-flex align-items-start">
+                                                    <i class="bi bi-bandaid-fill text-danger me-2 mt-1"></i>
+                                                    <div>
+                                                        <span class="fw-bold d-block">Lesión con Epicrisis Médica</span>
+                                                        <span>Se reintegra el 90% del valor. El 10% restante cubre costos operativos de La Tribu.</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -640,6 +745,11 @@
     .transition-hover:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important; }
     .hover-scale:hover { transform: scale(1.1); transition: transform 0.2s; }
     .cursor-pointer { cursor: pointer; }
+    .border-end-md { border-right: none; }
+    
+    @media (min-width: 768px) {
+        .border-end-md { border-right: 1px solid rgba(0,0,0,0.1); }
+    }
     
     /* Ajuste de degradado para modo oscuro si lo usas */
     [data-bs-theme="dark"] .bg-white { background-color: #212529 !important; }
