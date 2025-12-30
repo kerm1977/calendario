@@ -16,7 +16,7 @@
         </div>
         <h1 class="display-3 fw-bold mb-0">Explora con La Tribu</h1>
         <p class="lead text-muted mt-2 mx-auto" style="max-width: 700px;">
-            Calendario oficial de expediciones de La Tribu de Los Libres. ¡Suma puntos y conquista cumbres!
+            Calendario oficial de expediciones de La Tribu de Los Libres. ¡Suma puntos y conquista Aventuras!
         </p>
     </div>
 </div>
@@ -25,7 +25,7 @@
 <!-- NUEVA SECCIÓN: ACCESO RÁPIDO A PERFIL -->
 <!-- ========================================== -->
 <div class="row justify-content-center mb-5 animate__animated animate__fadeInUp" style="animation-delay: 0.2s;">
-    <div class="col-md-8 col-lg-5">
+    <div class="col-md-8 col-lg-6">
         <div class="card border-0 shadow-lg rounded-5 overflow-hidden position-relative">
             <!-- Fondo Decorativo -->
             <div class="position-absolute top-0 start-0 w-100 h-100 bg-warning bg-opacity-10" style="z-index: 0;"></div>
@@ -35,27 +35,20 @@
                     <div class="bg-white p-2 rounded-circle shadow-sm me-2 text-warning">
                         <i class="bi bi-person-badge-fill fs-4"></i>
                     </div>
-                    <h5 class="fw-bold mb-0 text-dark">Área de Socios</h5>
+                    <!-- CAMBIO REALIZADO AQUÍ: TÍTULO ACTUALIZADO -->
+                    <h5 class="fw-bold mb-0 text-dark">Área del Caminante</h5>
                 </div>
                 
                 <p class="text-muted small mb-4">
                     Ingresa tu <strong>PIN único de 6 dígitos</strong> para consultar tu nivel, saldo de puntos y próximas expediciones.
                 </p>
                 
-                <!-- CAMBIO SOLICITADO: DISEÑO VERTICAL (BOTÓN ARRIBA, INPUT ABAJO) -->
-                <div class="d-flex flex-column gap-3">
-                    <!-- 1. Botón de Acción (Arriba) -->
-                    <button class="btn btn-warning btn-lg fw-bold text-dark px-4 rounded-pill transition-hover shadow-sm w-100" type="button" onclick="goToProfileQuick()">
-                        <i class="bi bi-search me-2"></i>VER MI PERFIL
+                <div class="input-group input-group-lg shadow-sm rounded-pill overflow-hidden border border-warning bg-white">
+                    <input type="text" id="quickPinInput" class="form-control border-0 text-center fw-bold text-primary fs-4" placeholder="000000" maxlength="6" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                    <button class="btn btn-warning fw-bold text-dark px-4 transition-hover" type="button" onclick="goToProfileQuick()">
+                        VER MI PERFIL <i class="bi bi-arrow-right-short ms-1"></i>
                     </button>
-
-                    <!-- 2. Input de Digitación (Abajo) -->
-                    <div class="position-relative">
-                        <input type="text" id="quickPinInput" class="form-control form-control-lg border border-warning text-center fw-bold text-primary fs-2 rounded-pill shadow-sm" placeholder="000000" maxlength="6" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
-                        <div class="form-text text-muted small mt-2">Digita tu PIN aquí</div>
-                    </div>
                 </div>
-
             </div>
         </div>
     </div>
@@ -68,7 +61,8 @@
     {% if events %}
         {% for event in events %}
         <div class="col-md-6 col-lg-4">
-            <div class="card h-100 shadow-sm border-0 overflow-hidden position-relative adventure-card animate__animated animate__fadeInUp" style="animation-delay: {{ loop.index0 * 0.1 }}s">
+            <!-- CAMBIO: Borde sólido visible en lugar de border-0 -->
+            <div class="card h-100 shadow-sm border border-secondary border-opacity-25 overflow-hidden position-relative adventure-card animate__animated animate__fadeInUp" style="animation-delay: {{ loop.index0 * 0.1 }}s">
                 
                 <!-- ACCIONES DE ADMIN -->
                 {% if current_user.is_authenticated and current_user.is_superuser %}
@@ -133,8 +127,13 @@
                     </div>
 
                     <div class="row g-2 mb-1 small text-secondary fw-medium">
-                        <div class="col-7"><i class="bi bi-geo-alt-fill me-1 text-warning"></i>{{ event.departure_point.split('-')[-1]|default('Punto Oficial') }}</div>
-                        <div class="col-5 text-end"><i class="bi bi-speedometer2 me-1 text-warning"></i>{{ event.difficulty }}</div>
+                        <!-- CAMBIO: Muestra DISTANCIA en lugar de Lugar de Salida -->
+                        <div class="col-7">
+                            <i class="bi bi-signpost-split-fill me-1 text-warning"></i>{{ event.distance or 'Por definir' }}
+                        </div>
+                        <div class="col-5 text-end">
+                            <i class="bi bi-speedometer2 me-1 text-warning"></i>{{ event.difficulty }}
+                        </div>
                     </div>
                 </div>
 
