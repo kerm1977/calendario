@@ -3,7 +3,7 @@
 # ==============================================================================
 # Maneja la visualización del perfil personal del aventurero.
 # Acceso público mediante PIN para facilitar la experiencia de usuario.
-# VERSIÓN: 5.3 (RETENCIÓN 5% EN COMPRA DE PUNTOS)
+# VERSIÓN: 5.4 (FIX TIMEZONE CR EN MODAL REGALOS)
 # ==============================================================================
 
 from flask import Blueprint, render_template, abort, redirect, url_for, request, flash
@@ -34,9 +34,13 @@ def ver_perfil(pin):
     # B. Obtener historial cronológico de Puntos (Logs)
     logs = PointLog.query.filter_by(member_id=member.id).order_by(PointLog.created_at.desc()).all()
 
+    # --- CORRECCIÓN CRÍTICA DE ZONA HORARIA (CR UTC-6) ---
+    # Definimos 'today' y 'cr_time' AL PRINCIPIO para usarlo en toda la lógica
+    cr_time = datetime.utcnow() - timedelta(hours=6)
+    today = cr_time.date()
+
     # C. GESTIÓN Y CLASIFICACIÓN DE AVENTURAS
     all_bookings = Booking.query.filter_by(member_id=member.id).all()
-    today = datetime.now().date()
     
     proximas_aventuras = []
     bitacora_aventuras = []
@@ -102,14 +106,11 @@ def ver_perfil(pin):
         progreso_vip = int((total_caminatas / 15) * 100)
         mensaje_prox_nivel = f"Completa 15 rutas para el estatus VIP (Llevas {total_caminatas})"
 
-    # Ajuste de Zona Horaria
-    cr_time = datetime.utcnow() - timedelta(hours=6)
-
     # E. VENCIMIENTO DE PUNTOS
     primer_log = PointLog.query.filter_by(member_id=member.id).order_by(PointLog.created_at.asc()).first()
-    fecha_origen = primer_log.created_at.date() if primer_log else cr_time.date()
+    fecha_origen = primer_log.created_at.date() if primer_log else today
     fecha_vencimiento = fecha_origen + timedelta(days=365)
-    dias_restantes = (fecha_vencimiento - cr_time.date()).days
+    dias_restantes = (fecha_vencimiento - today).days
     
     info_vencimiento = {
         'fecha_limite': fecha_vencimiento,
@@ -117,6 +118,8 @@ def ver_perfil(pin):
         'vencido': dias_restantes < 0
     }
     
+    # --- LISTA DE CUMPLEAÑEROS (FILTRADO CON HORA CR) ---
+    # Esto asegura que el modal de "Regalar" muestre a las personas correctas hoy.
     birthdays_today = Member.query.filter(
         extract('month', Member.birth_date) == today.month,
         extract('day', Member.birth_date) == today.day
@@ -128,7 +131,7 @@ def ver_perfil(pin):
         logs=logs,
         proximas=proximas_aventuras,
         bitacora=bitacora_aventuras,
-        eventos_cancelados=eventos_cancelados, # Pasamos la nueva lista al template
+        eventos_cancelados=eventos_cancelados,
         eventos_activos=eventos_activos, 
         nivel=nivel,
         icono_nivel=icono_nivel,

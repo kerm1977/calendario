@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, abort, r
 from flask_login import login_required, current_user
 from db import db, Member, PointLog, Booking, Event, AdminNotification
 from sqlalchemy import desc
-from datetime import date
+from datetime import datetime, date, timedelta # Importamos datetime y timedelta
 
 # Definición del Blueprint
 puntos_bp = Blueprint('puntos', __name__, url_prefix='/admin/puntos')
@@ -229,7 +229,7 @@ def canjear_otro():
         return redirect(request.referrer)
 
     if member.puntos_totales < costo_puntos:
-        flash(f'No tiene suficientes puntos para este canje ({costo_puntos} pts).', 'danger')
+        flash(f'No tiene suficientes puntos ({costo_puntos} pts).', 'danger')
         return redirect(request.referrer)
 
     try:
@@ -312,9 +312,13 @@ def obsequiar_cumple():
     cantidad = request.form.get('cantidad', type=int)
     
     member = Member.query.get_or_404(member_id)
-    hoy = date.today()
     
-    # Validar si es el cumpleaños hoy
+    # --- CORRECCIÓN TIMEZONE (CR) ---
+    # Usamos hora CR para validar el cumpleaños hoy
+    cr_now = datetime.utcnow() - timedelta(hours=6)
+    hoy = cr_now.date()
+    
+    # Validar si es el cumpleaños hoy (con fecha CR)
     if not (member.birth_date and member.birth_date.month == hoy.month and member.birth_date.day == hoy.day):
         flash(f'Error: Hoy ({hoy}) no es el cumpleaños de {member.nombre}. Solo se puede obsequiar el propio día.', 'danger')
         return redirect(request.referrer)
