@@ -3,7 +3,7 @@
 # ==============================================================================
 # Maneja la visualización del perfil personal del aventurero.
 # Acceso público mediante PIN para facilitar la experiencia de usuario.
-# VERSIÓN: 5.1 (MANEJO DE PENALIZACIONES Y RUTAS ACTIVAS)
+# VERSIÓN: 5.3 (RETENCIÓN 5% EN COMPRA DE PUNTOS)
 # ==============================================================================
 
 from flask import Blueprint, render_template, abort, redirect, url_for, request, flash
@@ -40,7 +40,7 @@ def ver_perfil(pin):
     
     proximas_aventuras = []
     bitacora_aventuras = []
-    eventos_cancelados = [] # Nueva lista para penalizaciones/cancelaciones
+    eventos_cancelados = [] # Lista específica para la ventana de penalizaciones
     caminatas_validas_vip = 0 
 
     for b in all_bookings:
@@ -54,25 +54,25 @@ def ver_perfil(pin):
         esta_activa = (b.status == 'Activo')
         esta_cancelada = (b.status in ['No Participó', 'Retirado', 'Cancelado'])
 
-        if esta_activa and es_futura:
-            # 1. Rutas Activas Futuras -> Mis Próximas Rutas
-            proximas_aventuras.append(b)
-            
-        elif esta_cancelada:
-            # 2. Rutas Canceladas/Penalizadas -> Ventana de Alerta
+        if esta_cancelada:
+            # 1. Lógica de Cancelación/Penalización
             # Buscamos si hubo penalización económica (Log negativo asociado al booking)
             penalidad_log = PointLog.query.filter_by(booking_id=b.id).filter(PointLog.amount < 0).first()
-            # Asignamos el monto temporalmente al objeto booking para usarlo en el HTML
+            # Asignamos el monto temporalmente al objeto para usarlo en el HTML
             b.monto_penalizacion = abs(penalidad_log.amount) if penalidad_log else 0
             eventos_cancelados.append(b)
             
+        elif esta_activa and es_futura:
+            # 2. Rutas Activas Futuras -> Mis Próximas Rutas
+            proximas_aventuras.append(b)
+            
         else:
-            # 3. Rutas Pasadas (Completadas) o inactivos antiguos -> Bitácora
+            # 3. Rutas Pasadas (Completadas) o inactivas sin penalización -> Bitácora
             bitacora_aventuras.append(b)
 
-    # Ordenamiento
-    proximas_aventuras.sort(key=lambda x: x.event.event_date) # Lo más pronto primero
-    eventos_cancelados.sort(key=lambda x: x.event.event_date, reverse=True) # Lo más reciente primero
+    # Ordenamiento lógico
+    proximas_aventuras.sort(key=lambda x: x.event.event_date)
+    eventos_cancelados.sort(key=lambda x: x.event.event_date, reverse=True)
     bitacora_aventuras.sort(key=lambda x: x.event.event_date, reverse=True)
 
     eventos_activos = Event.query.filter(
@@ -128,7 +128,7 @@ def ver_perfil(pin):
         logs=logs,
         proximas=proximas_aventuras,
         bitacora=bitacora_aventuras,
-        eventos_cancelados=eventos_cancelados, # Pasamos la nueva lista
+        eventos_cancelados=eventos_cancelados, # Pasamos la nueva lista al template
         eventos_activos=eventos_activos, 
         nivel=nivel,
         icono_nivel=icono_nivel,
@@ -408,7 +408,7 @@ def canjear_otro():
 
 @perfil_bp.route('/accion/comprar-puntos', methods=['POST'])
 def comprar_puntos():
-    """Opción 3: Compra de Puntos"""
+    """Opción 3: Compra de Puntos (Con Retención del 5%)"""
     member_id = request.form.get('member_id', type=int)
     cantidad_bruta = request.form.get('cantidad', type=int)
     
@@ -419,11 +419,15 @@ def comprar_puntos():
     member = Member.query.get_or_404(member_id)
     
     try:
-        deduccion = int(cantidad_bruta * 0.05)
+        # --- CÁLCULO FINANCIERO: RETENCIÓN 5% ---
+        # Si compra 1000, se retienen 50. El usuario recibe 950.
+        deduccion = int(cantidad_bruta * 0.05) 
         cantidad_neta = cantidad_bruta - deduccion
         
+        # Acreditar solo el NETO
         member.puntos_totales += cantidad_neta
         
+        # Registro transparente en el historial
         db.session.add(PointLog(
             member_id=member.id,
             transaction_type='Compra Puntos',
@@ -431,15 +435,16 @@ def comprar_puntos():
             amount=cantidad_neta
         ))
         
+        # Notificación al Admin con el desglose
         db.session.add(AdminNotification(
             category='success',
             title='Ingreso por Compra de Puntos',
-            message=f'{member.nombre} compró {cantidad_bruta} pts. Neto: {cantidad_neta}.',
+            message=f'{member.nombre} compró {cantidad_bruta} pts. Neto acreditado: {cantidad_neta}. Retención Admin: {deduccion}.',
             action_link=url_for('puntos.detalle_miembro', member_id=member.id)
         ))
         
         db.session.commit()
-        flash(f'Compra exitosa. Se acreditaron {cantidad_neta} puntos.', 'success')
+        flash(f'Compra exitosa. Se acreditaron {cantidad_neta} puntos (se descontó el 5% por gastos administrativos).', 'success')
         
     except Exception as e:
         db.session.rollback()
