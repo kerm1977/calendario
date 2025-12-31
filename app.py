@@ -4,7 +4,7 @@
 # Este archivo centraliza la lógica de negocio, el sistema de fidelidad "Brutal"
 # y la gestión logística integral. Está diseñado para una trazabilidad total
 # mediante el uso de cronogramas transaccionales (PointLog).
-# VERSIÓN: 6.5 REACTIVACIÓN INTELIGENTE DE RESERVAS
+# VERSIÓN: 6.6 CORRECCIÓN CRÍTICA REGISTRO NUEVOS USUARIOS
 # ==============================================================================
 
 import os
@@ -539,6 +539,7 @@ def api_reserve():
         event = Event.query.get_or_404(data['event_id'])
         today = date.today()
         member = None
+        existing_booking = None # <-- CORRECCIÓN: Inicializar variable para evitar UnboundLocalError
         
         # Búsqueda por PIN para respetar la identidad y saldo de puntos.
         if data.get('pin'):

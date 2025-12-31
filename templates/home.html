@@ -269,37 +269,48 @@
                                     </div>
                                 </div>
                             </div>
-
-                            <div class="row g-3">
-                                <div class="col-12">
-                                    <label class="form-label small fw-bold text-secondary text-uppercase" style="font-size: 0.65rem;">Nombre</label>
-                                    <input type="text" id="resNombre{{ event.id }}" class="form-control border-warning bg-body py-2 rounded-3" placeholder="Tu nombre" oninput="checkInputs({{ event.id }})">
-                                </div>
-                                <div class="col-6">
-                                    <label class="form-label small fw-bold text-secondary text-uppercase" style="font-size: 0.65rem;">Primer Apellido</label>
-                                    <input type="text" id="resApellido1{{ event.id }}" class="form-control border-warning bg-body py-2 rounded-3" placeholder="Apellido 1" oninput="checkInputs({{ event.id }})">
-                                </div>
-                                <div class="col-6">
-                                    <label class="form-label small fw-bold text-secondary text-uppercase" style="font-size: 0.65rem;">Segundo Apellido</label>
-                                    <input type="text" id="resApellido2{{ event.id }}" class="form-control border-warning bg-body py-2 rounded-3" placeholder="Apellido 2" oninput="checkInputs({{ event.id }})">
-                                </div>
-                                <div class="col-12">
-                                    <label class="form-label small fw-bold text-secondary text-uppercase" style="font-size: 0.65rem;">Número de Celular</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text bg-light border-warning text-muted fw-bold">+506</span>
-                                        <input type="tel" id="resTel{{ event.id }}" class="form-control border-warning bg-body py-2 rounded-end-3" placeholder="88888888" maxlength="8" oninput="checkInputs({{ event.id }})">
+                            
+                            <!-- Contenedor del formulario de registro que se ocultará si se usa PIN -->
+                            <div id="registrationFields{{ event.id }}">
+                                <div class="row g-3">
+                                    <div class="col-12">
+                                        <label class="form-label small fw-bold text-secondary text-uppercase" style="font-size: 0.65rem;">Nombre</label>
+                                        <input type="text" id="resNombre{{ event.id }}" class="form-control border-warning bg-body py-2 rounded-3" placeholder="Tu nombre" oninput="checkInputs({{ event.id }})">
                                     </div>
-                                    <div id="phoneWarning{{ event.id }}" class="text-danger x-small mt-2 d-none fw-bold bg-danger bg-opacity-10 p-2 rounded-3 border border-danger border-opacity-25">
-                                        <i class="bi bi-exclamation-triangle-fill me-1"></i> Use 8 dígitos (empezando con 6, 7 u 8).
+                                    <div class="col-6">
+                                        <label class="form-label small fw-bold text-secondary text-uppercase" style="font-size: 0.65rem;">Primer Apellido</label>
+                                        <input type="text" id="resApellido1{{ event.id }}" class="form-control border-warning bg-body py-2 rounded-3" placeholder="Apellido 1" oninput="checkInputs({{ event.id }})">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small fw-bold text-secondary text-uppercase" style="font-size: 0.65rem;">Segundo Apellido</label>
+                                        <input type="text" id="resApellido2{{ event.id }}" class="form-control border-warning bg-body py-2 rounded-3" placeholder="Apellido 2" oninput="checkInputs({{ event.id }})">
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label small fw-bold text-secondary text-uppercase" style="font-size: 0.65rem;">Número de Celular</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light border-warning text-muted fw-bold">+506</span>
+                                            <input type="tel" id="resTel{{ event.id }}" class="form-control border-warning bg-body py-2 rounded-end-3" placeholder="88888888" maxlength="8" oninput="checkInputs({{ event.id }})">
+                                        </div>
+                                        <div id="phoneWarning{{ event.id }}" class="text-danger x-small mt-2 d-none fw-bold bg-danger bg-opacity-10 p-2 rounded-3 border border-danger border-opacity-25">
+                                            <i class="bi bi-exclamation-triangle-fill me-1"></i> Use 8 dígitos (empezando con 6, 7 u 8).
+                                        </div>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label small fw-bold text-secondary text-uppercase" style="font-size: 0.65rem;">Fecha de Nacimiento</label>
+                                        <input type="date" id="resBirthDate{{ event.id }}" class="form-control border-warning bg-body py-2 text-center rounded-3" oninput="checkInputs({{ event.id }})">
+                                        <!-- TEXTO ACTUALIZADO AQUÍ -->
+                                        <div class="x-small text-muted mt-2 text-center">
+                                            <i class="bi bi-gift-fill text-warning me-1"></i> ¡Registra por primer Vez y Gana 500 puntos!
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="col-12">
-                                    <label class="form-label small fw-bold text-secondary text-uppercase" style="font-size: 0.65rem;">Fecha de Nacimiento</label>
-                                    <input type="date" id="resBirthDate{{ event.id }}" class="form-control border-warning bg-body py-2 text-center rounded-3" oninput="checkInputs({{ event.id }})">
-                                    <!-- TEXTO ACTUALIZADO AQUÍ -->
-                                    <div class="x-small text-muted mt-2 text-center">
-                                        <i class="bi bi-gift-fill text-warning me-1"></i> ¡Registra por primer Vez y Gana 500 puntos!
-                                    </div>
+                            </div>
+                            
+                            <!-- Mensaje de confirmación simplificado (inicialmente oculto) -->
+                            <div id="pinConfirmationMsg{{ event.id }}" class="d-none text-center animate__animated animate__fadeIn">
+                                <div class="alert alert-success border-0 shadow-sm">
+                                    <h5 class="fw-bold mb-1">¡Hola <span id="pinUserName{{ event.id }}">Amigo</span>!</h5>
+                                    <p class="small mb-0">Tus datos ya están cargados. Confirma tu cupo abajo.</p>
                                 </div>
                             </div>
 
@@ -630,12 +641,8 @@
             const response = await fetch(`/api/lookup/${pin}`), 
                   data = await response.json();
             if (data.success) {
-                document.getElementById(`resNombre${id}`).value = data.nombre;
-                document.getElementById(`resApellido1${id}`).value = data.apellido1;
-                document.getElementById(`resApellido2${id}`).value = data.apellido2 || '';
-                document.getElementById(`resTel${id}`).value = data.telefono || '';
-                if (data.birth_date) document.getElementById(`resBirthDate${id}`).value = data.birth_date;
-                togglePinSection(id); checkInputs(id); err.classList.add('d-none');
+                // REDIRECT TO PROFILE
+                window.location.href = `/mi-perfil/${pin}`;
             } else { 
                 err.classList.remove('d-none'); 
             }
