@@ -3,7 +3,7 @@
 # ==============================================================================
 # Maneja la visualización del perfil personal del aventurero.
 # Acceso público mediante PIN para facilitar la experiencia de usuario.
-# VERSIÓN: 3.0 (VIP + BITÁCORA + RUTAS DE ACCIÓN COMPLETAS)
+# VERSIÓN: 5.1 (MANEJO DE PENALIZACIONES Y RUTAS ACTIVAS)
 # ==============================================================================
 
 from flask import Blueprint, render_template, abort, redirect, url_for, request, flash
@@ -23,63 +23,69 @@ perfil_bp = Blueprint('perfil', __name__)
 def ver_perfil(pin):
     """
     Renderiza la vista completa del perfil del aventurero.
-    Muestra datos personales, saldo, nivel (calculado por asistencia), historial y bitácora.
-    Incluye lógica de vencimiento de puntos (Regla de 365 días).
     """
-    # A. Búsqueda del miembro (Si no existe, error 404)
+    # A. Búsqueda del miembro
     member = Member.query.filter_by(pin=pin).first()
     
     if not member:
-        return render_template('errors/404.html'), 404
+        flash('Perfil no encontrado. Verifique el PIN.', 'danger')
+        return redirect(url_for('main.home'))
 
     # B. Obtener historial cronológico de Puntos (Logs)
     logs = PointLog.query.filter_by(member_id=member.id).order_by(PointLog.created_at.desc()).all()
 
-    # --------------------------------------------------------------------------
-    # C. GESTIÓN Y CLASIFICACIÓN DE AVENTURAS (BITÁCORA VS PRÓXIMAS)
-    # --------------------------------------------------------------------------
+    # C. GESTIÓN Y CLASIFICACIÓN DE AVENTURAS
     all_bookings = Booking.query.filter_by(member_id=member.id).all()
     today = datetime.now().date()
     
     proximas_aventuras = []
-    bitacora_aventuras = [] # Historial de eventos pasados, retirados o cancelados
-    caminatas_validas_vip = 0 # Contador exclusivo para estatus VIP
+    bitacora_aventuras = []
+    eventos_cancelados = [] # Nueva lista para penalizaciones/cancelaciones
+    caminatas_validas_vip = 0 
 
     for b in all_bookings:
-        # Protección de integridad: Si el booking no tiene evento asociado, saltar
-        if not b.event:
-            continue
+        if not b.event: continue
 
-        # 1. Conteo para VIP: Solo cuentan las que están en estado 'Activo'
+        # Lógica de conteo VIP (Solo cuentan las activas)
         if b.status == 'Activo':
             caminatas_validas_vip += 1
             
-        # 2. Clasificación Visual para la Interfaz
-        # Si está ACTIVA y es FUTURA (o es HOY) -> Va a "Próximas Rutas"
-        if b.status == 'Activo' and b.event.event_date >= today:
+        es_futura = b.event.event_date >= today
+        esta_activa = (b.status == 'Activo')
+        esta_cancelada = (b.status in ['No Participó', 'Retirado', 'Cancelado'])
+
+        if esta_activa and es_futura:
+            # 1. Rutas Activas Futuras -> Mis Próximas Rutas
             proximas_aventuras.append(b)
+            
+        elif esta_cancelada:
+            # 2. Rutas Canceladas/Penalizadas -> Ventana de Alerta
+            # Buscamos si hubo penalización económica (Log negativo asociado al booking)
+            penalidad_log = PointLog.query.filter_by(booking_id=b.id).filter(PointLog.amount < 0).first()
+            # Asignamos el monto temporalmente al objeto booking para usarlo en el HTML
+            b.monto_penalizacion = abs(penalidad_log.amount) if penalidad_log else 0
+            eventos_cancelados.append(b)
+            
         else:
-            # Todo lo demás (Pasadas Activas, Retiradas, Canceladas, No Participó) -> Va a "Bitácora"
+            # 3. Rutas Pasadas (Completadas) o inactivos antiguos -> Bitácora
             bitacora_aventuras.append(b)
 
-    # Ordenamiento lógico de las listas para mejor experiencia de usuario
-    proximas_aventuras.sort(key=lambda x: x.event.event_date) # Ascendente: Lo más cercano primero
-    bitacora_aventuras.sort(key=lambda x: x.event.event_date, reverse=True) # Descendente: Lo más reciente primero
+    # Ordenamiento
+    proximas_aventuras.sort(key=lambda x: x.event.event_date) # Lo más pronto primero
+    eventos_cancelados.sort(key=lambda x: x.event.event_date, reverse=True) # Lo más reciente primero
+    bitacora_aventuras.sort(key=lambda x: x.event.event_date, reverse=True)
 
-    # Obtener eventos activos generales (necesario para el modal de canje de puntos)
     eventos_activos = Event.query.filter(
         Event.event_date >= today,
         Event.status == 'Activa'
     ).order_by(Event.event_date.asc()).all()
 
-    # --------------------------------------------------------------------------
-    # D. LÓGICA VIP (SISTEMA DE RANGOS POR ASISTENCIA)
-    # --------------------------------------------------------------------------
+    # D. LÓGICA VIP
     total_caminatas = caminatas_validas_vip
     
     if total_caminatas > 15:
         nivel = "VIP - La Tribu"
-        icono_nivel = "bi-crown" # Corona Real
+        icono_nivel = "bi-crown"
         clase_nivel = "text-warning animate__animated animate__pulse animate__infinite"
         progreso_vip = 100
         mensaje_prox_nivel = "¡Eres un miembro de la élite!"
@@ -96,19 +102,12 @@ def ver_perfil(pin):
         progreso_vip = int((total_caminatas / 15) * 100)
         mensaje_prox_nivel = f"Completa 15 rutas para el estatus VIP (Llevas {total_caminatas})"
 
-    # Ajuste de Zona Horaria (UTC-6 Costa Rica)
+    # Ajuste de Zona Horaria
     cr_time = datetime.utcnow() - timedelta(hours=6)
 
-    # --------------------------------------------------------------------------
-    # E. LÓGICA DE VENCIMIENTO DE PUNTOS
-    # --------------------------------------------------------------------------
+    # E. VENCIMIENTO DE PUNTOS
     primer_log = PointLog.query.filter_by(member_id=member.id).order_by(PointLog.created_at.asc()).first()
-    
-    if primer_log:
-        fecha_origen = primer_log.created_at.date()
-    else:
-        fecha_origen = cr_time.date()
-
+    fecha_origen = primer_log.created_at.date() if primer_log else cr_time.date()
     fecha_vencimiento = fecha_origen + timedelta(days=365)
     dias_restantes = (fecha_vencimiento - cr_time.date()).days
     
@@ -118,7 +117,6 @@ def ver_perfil(pin):
         'vencido': dias_restantes < 0
     }
     
-    # Identificar si es el cumpleaños hoy
     birthdays_today = Member.query.filter(
         extract('month', Member.birth_date) == today.month,
         extract('day', Member.birth_date) == today.day
@@ -129,7 +127,8 @@ def ver_perfil(pin):
         member=member,
         logs=logs,
         proximas=proximas_aventuras,
-        bitacora=bitacora_aventuras,     # Lista histórica completa
+        bitacora=bitacora_aventuras,
+        eventos_cancelados=eventos_cancelados, # Pasamos la nueva lista
         eventos_activos=eventos_activos, 
         nivel=nivel,
         icono_nivel=icono_nivel,
@@ -143,64 +142,46 @@ def ver_perfil(pin):
     )
 
 # ==============================================================================
-# 2. RUTAS DE ACCIÓN Y GESTIÓN (FORMULARIOS DEL PERFIL)
+# 2. RUTAS DE ACCIÓN Y GESTIÓN
 # ==============================================================================
 
 @perfil_bp.route('/accion/cambiar-pin', methods=['POST'])
 def cambiar_pin():
-    """
-    Permite al usuario personalizar su PIN único.
-    Reglas: Único globalmente, Alfanumérico, 6-8 caracteres.
-    """
+    """Permite al usuario personalizar su PIN único."""
     member_id = request.form.get('member_id', type=int)
     nuevo_pin = request.form.get('nuevo_pin', '').strip().upper()
     
     member = Member.query.get_or_404(member_id)
     pin_actual = member.pin
 
-    # Validaciones de seguridad del PIN
-    if not (6 <= len(nuevo_pin) <= 8):
-        flash('El PIN debe tener entre 6 y 8 caracteres.', 'danger')
+    if not (6 <= len(nuevo_pin) <= 8) or not re.match("^[A-Z0-9]+$", nuevo_pin):
+        flash('El PIN debe tener entre 6 y 8 caracteres alfanuméricos.', 'danger')
         return redirect(url_for('perfil.ver_perfil', pin=pin_actual))
 
-    if not re.match("^[A-Z0-9]+$", nuevo_pin):
-        flash('El PIN solo puede contener letras y números (sin espacios).', 'danger')
-        return redirect(url_for('perfil.ver_perfil', pin=pin_actual))
-
-    # Verificar que no exista ya en la base de datos
     existe = Member.query.filter_by(pin=nuevo_pin).first()
     if existe and existe.id != member.id:
-        flash('Ese PIN ya está en uso por otro aventurero. Por favor elige otro.', 'warning')
+        flash('Ese PIN ya está en uso.', 'warning')
         return redirect(url_for('perfil.ver_perfil', pin=pin_actual))
 
     try:
-        old_pin = member.pin
         member.pin = nuevo_pin
-        
-        # Registro administrativo del cambio
         db.session.add(AdminNotification(
-            category='info',
-            title='Cambio de PIN',
-            message=f'{member.nombre} actualizó su PIN de seguridad.',
+            category='info', title='Cambio de PIN',
+            message=f'{member.nombre} cambió su PIN de seguridad.',
             action_link=url_for('puntos.detalle_miembro', member_id=member.id)
         ))
-        
         db.session.commit()
-        flash(f'¡Éxito! Tu nuevo PIN es: {nuevo_pin}. No lo olvides.', 'success')
+        flash(f'¡Éxito! Tu nuevo PIN es: {nuevo_pin}.', 'success')
         return redirect(url_for('perfil.ver_perfil', pin=nuevo_pin))
-        
     except Exception as e:
         db.session.rollback()
-        flash(f'Error técnico al guardar el PIN: {str(e)}', 'danger')
+        flash(f'Error técnico: {str(e)}', 'danger')
         return redirect(url_for('perfil.ver_perfil', pin=pin_actual))
 
 
 @perfil_bp.route('/accion/transferir-regalo', methods=['POST'])
 def transferir_regalo():
-    """
-    Permite a un miembro (Sender) enviar puntos de su saldo a un cumpleañero (Recipient).
-    Incluye validaciones de saldo y registro doble en el PointLog.
-    """
+    """Envío de puntos entre miembros."""
     sender_id = request.form.get('sender_id', type=int)
     recipient_id = request.form.get('recipient_id', type=int)
     amount = request.form.get('cantidad', type=int)
@@ -208,7 +189,6 @@ def transferir_regalo():
     sender = Member.query.get_or_404(sender_id)
     recipient = Member.query.get_or_404(recipient_id)
     
-    # Validaciones básicas
     if sender.id == recipient.id:
         flash('No puedes enviarte un regalo a ti mismo.', 'warning')
         return redirect(url_for('perfil.ver_perfil', pin=sender.pin))
@@ -218,11 +198,10 @@ def transferir_regalo():
         return redirect(url_for('perfil.ver_perfil', pin=sender.pin))
 
     if sender.puntos_totales < amount:
-        flash(f'Saldo insuficiente. Tienes {sender.puntos_totales} puntos y quieres enviar {amount}.', 'danger')
+        flash(f'Saldo insuficiente. Tienes {sender.puntos_totales} puntos.', 'danger')
         return redirect(url_for('perfil.ver_perfil', pin=sender.pin))
     
     try:
-        # 1. Debitar al remitente
         sender.puntos_totales -= amount
         db.session.add(PointLog(
             member_id=sender.id,
@@ -231,7 +210,6 @@ def transferir_regalo():
             amount=-amount
         ))
         
-        # 2. Acreditar al destinatario (100% íntegro)
         recipient.puntos_totales += amount
         db.session.add(PointLog(
             member_id=recipient.id,
@@ -240,7 +218,6 @@ def transferir_regalo():
             amount=amount
         ))
         
-        # 3. Notificación Admin
         db.session.add(AdminNotification(
             category='success',
             title='Intercambio de Puntos',
@@ -250,7 +227,6 @@ def transferir_regalo():
         
         db.session.commit()
         flash(f'¡Qué gran detalle! Has enviado {amount} puntos a {recipient.nombre}.', 'success')
-        
     except Exception as e:
         db.session.rollback()
         flash(f'Error en la transferencia: {str(e)}', 'danger')
@@ -261,18 +237,14 @@ def transferir_regalo():
 @perfil_bp.route('/accion/admin-ajuste', methods=['POST'])
 @login_required
 def admin_ajuste_saldo():
-    """
-    Gestión avanzada de saldo para Superusuarios desde el perfil público.
-    Permite: Restituir, Donar, Eliminar (con validación triple).
-    """
-    if not current_user.is_superuser:
-        abort(403)
-
+    """Ajustes manuales por el administrador."""
+    if not current_user.is_superuser: abort(403)
+    
     member_id = request.form.get('member_id', type=int)
     tipo_accion = request.form.get('action_type')
     monto = request.form.get('amount', type=int)
     motivo = request.form.get('reason')
-
+    
     member = Member.query.get_or_404(member_id)
 
     if not monto or monto <= 0:
@@ -281,7 +253,6 @@ def admin_ajuste_saldo():
 
     try:
         log = None
-        
         if tipo_accion == 'restituir':
             member.puntos_totales += monto
             log = PointLog(
@@ -290,7 +261,7 @@ def admin_ajuste_saldo():
                 description=f'Restitución: {motivo}',
                 amount=monto
             )
-            flash(f'Se han restituido {monto} puntos correctamente.', 'success')
+            flash(f'Se han restituido {monto} puntos.', 'success')
             
             db.session.add(AdminNotification(
                 category='info',
@@ -307,7 +278,7 @@ def admin_ajuste_saldo():
                 description=f'Bono/Regalo: {motivo}',
                 amount=monto
             )
-            flash(f'Se han donado {monto} puntos exitosamente.', 'success')
+            flash(f'Se han donado {monto} puntos.', 'success')
             
             db.session.add(AdminNotification(
                 category='success',
@@ -317,7 +288,6 @@ def admin_ajuste_saldo():
             ))
 
         elif tipo_accion == 'eliminar':
-            # Evitar saldos negativos
             member.puntos_totales = max(0, member.puntos_totales - monto)
             log = PointLog(
                 member_id=member.id,
@@ -327,7 +297,7 @@ def admin_ajuste_saldo():
                 is_penalized=True,
                 penalty_reason=motivo
             )
-            flash(f'Se han eliminado {monto} puntos de la cuenta.', 'warning')
+            flash(f'Se han eliminado {monto} puntos.', 'warning')
             
             db.session.add(AdminNotification(
                 category='danger',
@@ -337,15 +307,142 @@ def admin_ajuste_saldo():
             ))
         
         else:
-            flash('Acción no reconocida por el sistema.', 'danger')
+            flash('Acción no reconocida.', 'danger')
             return redirect(url_for('perfil.ver_perfil', pin=member.pin))
 
-        # Guardar cambios
         db.session.add(log)
         db.session.commit()
 
     except Exception as e:
         db.session.rollback()
-        flash(f'Error administrativo crítico: {str(e)}', 'danger')
+        flash(f'Error administrativo: {str(e)}', 'danger')
 
     return redirect(url_for('perfil.ver_perfil', pin=member.pin))
+
+# ==============================================================================
+# 3. LÓGICA DE CANJES Y COMPRAS (FUNCIONES NUEVAS)
+# ==============================================================================
+
+@perfil_bp.route('/accion/canjear-aventura', methods=['POST'])
+def canjear_aventura():
+    """Opción 1: Canjear puntos por una Aventura Activa"""
+    member_id = request.form.get('member_id', type=int)
+    event_id = request.form.get('event_id', type=int)
+    costo_puntos = request.form.get('costo_puntos', type=int)
+    
+    member = Member.query.get_or_404(member_id)
+    event = Event.query.get_or_404(event_id)
+
+    if member.puntos_totales < 5000:
+        flash('Saldo insuficiente. Se requieren 5000 puntos mínimos para canjear.', 'danger')
+        return redirect(request.referrer)
+    
+    if member.puntos_totales < costo_puntos:
+        flash(f'Saldo insuficiente. Costo: {costo_puntos} pts.', 'danger')
+        return redirect(request.referrer)
+
+    try:
+        member.puntos_totales -= costo_puntos
+        db.session.add(PointLog(
+            member_id=member.id,
+            transaction_type='Canje Aventura',
+            description=f'Canje: {event.title}',
+            amount=-costo_puntos
+        ))
+        
+        db.session.add(AdminNotification(
+            category='warning', 
+            title='Nuevo Canje de Aventura',
+            message=f'{member.nombre} canjeó {costo_puntos} pts por "{event.title}".',
+            action_link=url_for('puntos.detalle_miembro', member_id=member.id)
+        ))
+        
+        db.session.commit()
+        flash(f'¡Canje exitoso! Se descontaron {costo_puntos} puntos.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error procesando el canje: {str(e)}', 'danger')
+
+    return redirect(request.referrer)
+
+@perfil_bp.route('/accion/canjear-otro', methods=['POST'])
+def canjear_otro():
+    """Opción 2: Canjear puntos por Otros"""
+    member_id = request.form.get('member_id', type=int)
+    descripcion = request.form.get('descripcion')
+    costo_puntos = request.form.get('costo_puntos', type=int)
+    
+    member = Member.query.get_or_404(member_id)
+
+    if member.puntos_totales < 5000:
+        flash('Saldo insuficiente. Mínimo 5000 pts requeridos.', 'danger')
+        return redirect(request.referrer)
+
+    if member.puntos_totales < costo_puntos:
+        flash(f'No tiene suficientes puntos ({costo_puntos} pts).', 'danger')
+        return redirect(request.referrer)
+
+    try:
+        member.puntos_totales -= costo_puntos
+        db.session.add(PointLog(
+            member_id=member.id,
+            transaction_type='Canje Otro',
+            description=f'Canje: {descripcion}',
+            amount=-costo_puntos
+        ))
+        
+        db.session.add(AdminNotification(
+            category='warning',
+            title='Solicitud de Canje (Items)',
+            message=f'{member.nombre} canjeó {costo_puntos} pts por: {descripcion}.',
+            action_link=url_for('puntos.detalle_miembro', member_id=member.id)
+        ))
+        
+        db.session.commit()
+        flash(f'Canje realizado: {descripcion}.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error: {str(e)}', 'danger')
+
+    return redirect(request.referrer)
+
+@perfil_bp.route('/accion/comprar-puntos', methods=['POST'])
+def comprar_puntos():
+    """Opción 3: Compra de Puntos"""
+    member_id = request.form.get('member_id', type=int)
+    cantidad_bruta = request.form.get('cantidad', type=int)
+    
+    if not (1000 <= cantidad_bruta <= 10000):
+        flash('La compra debe ser entre 1,000 y 10,000 puntos.', 'warning')
+        return redirect(request.referrer)
+
+    member = Member.query.get_or_404(member_id)
+    
+    try:
+        deduccion = int(cantidad_bruta * 0.05)
+        cantidad_neta = cantidad_bruta - deduccion
+        
+        member.puntos_totales += cantidad_neta
+        
+        db.session.add(PointLog(
+            member_id=member.id,
+            transaction_type='Compra Puntos',
+            description=f'Compra: {cantidad_bruta} pts (-{deduccion} gastos admin)',
+            amount=cantidad_neta
+        ))
+        
+        db.session.add(AdminNotification(
+            category='success',
+            title='Ingreso por Compra de Puntos',
+            message=f'{member.nombre} compró {cantidad_bruta} pts. Neto: {cantidad_neta}.',
+            action_link=url_for('puntos.detalle_miembro', member_id=member.id)
+        ))
+        
+        db.session.commit()
+        flash(f'Compra exitosa. Se acreditaron {cantidad_neta} puntos.', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error en la compra: {str(e)}', 'danger')
+
+    return redirect(request.referrer)
