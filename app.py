@@ -4,7 +4,7 @@
 # Este archivo centraliza la lógica de negocio, el sistema de fidelidad "Brutal"
 # y la gestión logística integral. Está diseñado para una trazabilidad total
 # mediante el uso de cronogramas transaccionales (PointLog).
-# VERSIÓN: 6.7 CORRECCIÓN DE RUTAS DE IMAGEN (PATH FIX)
+# VERSIÓN: 6.8 FIX CUMPLEAÑOS (TIMEZONE CR)
 # ==============================================================================
 
 import os
@@ -140,7 +140,11 @@ def inject_global_vars():
     automático de bonos de 500 pts por cumpleaños con registro en PointLog.
     Esto ocurre cada vez que un usuario interactúa con la plataforma.
     """
-    today = date.today()
+    # --- FIX CRÍTICO: CORRECCIÓN DE ZONA HORARIA (COSTA RICA UTC-6) ---
+    # Usamos datetime.utcnow() y restamos 6 horas para asegurar que el servidor
+    # (que suele estar en UTC) use la fecha correcta de CR.
+    cr_now = datetime.utcnow() - timedelta(hours=6)
+    today = cr_now.date()
     
     # Identificación de miembros que celebran su día hoy.
     birthdays_today = Member.query.filter(
@@ -201,7 +205,7 @@ def inject_global_vars():
         month_activity_count=count, 
         meses_lista=MESES_ES, 
         calculate_age=calculate_age, 
-        now=datetime.now(),
+        now=cr_now, # Usamos la hora corregida de CR
         birthdays_today=birthdays_today,
         # Variables nuevas para notificaciones
         admin_unread_count=admin_unread_count,
@@ -280,9 +284,10 @@ def dashboard():
         'total': Event.query.count(),
         'active': Event.query.filter_by(status='Activa').count(),
         'members_count': Member.query.count(),
+        # FIX: Ajuste de timezone también aquí para el contador
         'birthdays_count': Member.query.filter(
-            extract('month', Member.birth_date) == date.today().month,
-            extract('day', Member.birth_date) == date.today().day
+            extract('month', Member.birth_date) == (datetime.utcnow() - timedelta(hours=6)).month,
+            extract('day', Member.birth_date) == (datetime.utcnow() - timedelta(hours=6)).day
         ).count()
     }
     
@@ -539,7 +544,9 @@ def api_reserve():
     data = request.json
     try:
         event = Event.query.get_or_404(data['event_id'])
-        today = date.today()
+        # FIX: Usar la fecha ajustada a CR también aquí
+        today = (datetime.utcnow() - timedelta(hours=6)).date()
+        
         member = None
         existing_booking = None # <-- CORRECCIÓN: Inicializar variable para evitar UnboundLocalError
         
