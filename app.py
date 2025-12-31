@@ -4,7 +4,7 @@
 # Este archivo centraliza la lógica de negocio, el sistema de fidelidad "Brutal"
 # y la gestión logística integral. Está diseñado para una trazabilidad total
 # mediante el uso de cronogramas transaccionales (PointLog).
-# VERSIÓN: 6.4 SEGURIDAD SSL (HTTPS FORZADO)
+# VERSIÓN: 6.5 REACTIVACIÓN INTELIGENTE DE RESERVAS
 # ==============================================================================
 
 import os
@@ -621,25 +621,41 @@ def api_reserve():
             val_pts = event.points_reward or 10
             
             if existing_booking:
-                if existing_booking.status == 'Activo':
-                    return jsonify({'success': False, 'error': 'Usted ya posee un cupo activo en esta ruta.'})
-                else:
-                    # REACTIVACIÓN: El usuario se retiró previamente pero decide volver.
+                # --- LÓGICA DE REACTIVACIÓN INTELIGENTE (VERSIÓN 6.5) ---
+                if existing_booking.status != 'Activo':
+                    # CASO A: REACTIVACIÓN (Estaba retirado/no-show y vuelve a entrar)
+                    # Restauramos el estado a 'Activo'
                     existing_booking.status = 'Activo'
+                    # Actualizamos la fecha para que suba en la lista cronológica
                     existing_booking.created_at = datetime.utcnow()
+                    
+                    # Le devolvemos/sumamos los puntos por inscribirse de nuevo
                     member.puntos_totales += val_pts
                     
+                    # Registro explícito de reactivación en el log
                     db.session.add(PointLog(
                         member_id=member.id,
-                        transaction_type='Inscripción',
-                        description=f'Reactivación de cupo: {event.title}',
+                        transaction_type='Reactivación',
+                        description=f'Reincorporación a: {event.title}',
                         amount=val_pts,
                         booking_id=existing_booking.id
                     ))
+                    
+                    # NOTIFICACIÓN ADMIN: Aviso de retorno
+                    db.session.add(AdminNotification(
+                        category='success',
+                        title='Retorno de Aventurero',
+                        message=f'¡Vuelve a la ruta! {member.nombre} se reactivó en "{event.title}".',
+                        action_link=f'/admin/puntos/miembro/{member.id}'
+                    ))
+                    
                     db.session.commit()
-                    return jsonify({'success': True, 'pin': member.pin, 'puntos': member.puntos_totales})
+                    return jsonify({'success': True, 'pin': member.pin, 'puntos': member.puntos_totales, 'message': '¡Bienvenido de vuelta a la aventura!'})
+                else:
+                    # CASO B: DUPLICADO (Ya estaba activo)
+                    return jsonify({'success': False, 'error': 'Usted ya posee un cupo activo en esta ruta.'})
 
-            # Inscribir miembro existente en actividad nueva.
+            # CASO C: MIEMBRO EXISTENTE, AVENTURA NUEVA (Primera vez en este evento)
             member.puntos_totales += val_pts
             db.session.add(PointLog(
                 member_id=member.id,
@@ -657,18 +673,20 @@ def api_reserve():
             ))
 
         # --- CRÍTICO: CREACIÓN DEL OBJETO BOOKING PARA EL DASHBOARD ---
-        # Esto asegura que el usuario aparezca en la tabla de "Actividad Reciente".
-        new_booking = Booking(
-            member_id=member.id, 
-            event_id=event.id, 
-            pin=member.pin,
-            nombre=member.nombre, 
-            apellido1=member.apellido1, 
-            telefono=member.telefono,
-            points_at_registration=event.points_reward or 10,
-            status='Activo'
-        )
-        db.session.add(new_booking)
+        # Solo se ejecuta si NO existía booking previo (Caso C o Nuevo Miembro)
+        # En Caso A (Reactivación), ya usamos el objeto existente arriba.
+        if not existing_booking:
+            new_booking = Booking(
+                member_id=member.id, 
+                event_id=event.id, 
+                pin=member.pin,
+                nombre=member.nombre, 
+                apellido1=member.apellido1, 
+                telefono=member.telefono,
+                points_at_registration=event.points_reward or 10,
+                status='Activo'
+            )
+            db.session.add(new_booking)
         
         # Verificación de bono anual de cumpleaños para miembros existentes.
         if member.birth_date and member.birth_date.month == today.month and member.birth_date.day == today.day:
