@@ -7,7 +7,7 @@
 
 from flask import Blueprint, render_template, abort, redirect, url_for, request, flash
 from flask_login import login_required, current_user
-from db import db, Member, PointLog, Booking, AdminNotification
+from db import db, Member, PointLog, Booking, AdminNotification, Event # Agregado Event por si acaso
 from datetime import datetime, timedelta, date
 import re
 
@@ -18,7 +18,7 @@ perfil_bp = Blueprint('perfil', __name__)
 def ver_perfil(pin):
     """
     Renderiza la vista completa del perfil del aventurero.
-    Muestra datos personales, saldo, nivel (calculado) e historial.
+    Muestra datos personales, saldo, nivel (calculado por asistencia) e historial.
     Incluye lógica de vencimiento de puntos (Regla de 365 días).
     """
     # 1. Búsqueda del miembro (Si no existe, 404 seguro)
@@ -27,86 +27,102 @@ def ver_perfil(pin):
     if not member:
         return render_template('errors/404.html'), 404
 
-    # 2. Obtener historial cronológico (Reutilizando la lógica de PointLog)
+    # 2. Obtener historial cronológico
     # Ordenamos por más reciente primero
     logs = PointLog.query.filter_by(member_id=member.id).order_by(PointLog.created_at.desc()).all()
 
     # 3. Obtener próximas aventuras (Bookings activos futuros)
     proximas_aventuras = []
+    # Usamos una query más directa para filtrar solo las activas
     bookings = Booking.query.filter_by(member_id=member.id, status='Activo').all()
     today = datetime.now().date()
     
     for b in bookings:
         if b.event.event_date >= today:
             proximas_aventuras.append(b)
+            
+    # Obtener eventos activos generales para el modal de canje
+    eventos_activos = Event.query.filter(
+        Event.event_date >= today,
+        Event.status == 'Activa'
+    ).order_by(Event.event_date.asc()).all()
 
-    # 4. Cálculo de Nivel de Fidelidad (Gamificación simple)
-    # Ejemplo: < 1000: Caminante, 1000-3000: Explorador, > 3000: Leyenda
-    nivel = "Caminante"
-    icono_nivel = "bi-backpack2"
-    clase_nivel = "text-secondary"
+    # --------------------------------------------------------------------------
+    # 4. LÓGICA VIP (NUEVO SISTEMA POR ASISTENCIA)
+    # --------------------------------------------------------------------------
+    # Contamos cuántas veces ha caminado realmente con la tribu (Status Activo)
+    total_caminatas = Booking.query.filter_by(member_id=member.id, status='Activo').count()
     
-    pts = member.puntos_totales
-    if pts >= 1000 and pts < 3000:
-        nivel = "Explorador"
+    # Definición de Rangos según cantidad de caminatas
+    if total_caminatas > 15:
+        nivel = "VIP - La Tribu"
+        icono_nivel = "bi-crown" # Corona Real
+        clase_nivel = "text-warning animate__animated animate__pulse animate__infinite" # Dorado pulsante
+        progreso_vip = 100
+        mensaje_prox_nivel = "¡Eres un miembro de la élite!"
+    elif total_caminatas > 5:
+        nivel = "Explorador Constante"
         icono_nivel = "bi-compass-fill"
-        clase_nivel = "text-primary"
-    elif pts >= 3000:
-        nivel = "Leyenda"
-        icono_nivel = "bi-trophy-fill"
-        clase_nivel = "text-warning"
+        clase_nivel = "text-success"
+        # Calculamos porcentaje entre 5 y 15 (meta es 15)
+        progreso_vip = int((total_caminatas / 15) * 100)
+        mensaje_prox_nivel = f"Faltan {16 - total_caminatas} aventuras para ser VIP"
+    else:
+        nivel = "Aventurero Iniciado"
+        icono_nivel = "bi-backpack2-fill"
+        clase_nivel = "text-secondary"
+        progreso_vip = int((total_caminatas / 15) * 100)
+        mensaje_prox_nivel = f"Completa 15 rutas para el estatus VIP (Llevas {total_caminatas})"
 
     # Ajuste de Zona Horaria para Costa Rica (UTC-6)
-    # Esto asegura que el "hoy" del sistema coincida con el "hoy" real del usuario
     cr_time = datetime.utcnow() - timedelta(hours=6)
 
     # --------------------------------------------------------------------------
-    # LÓGICA DE VENCIMIENTO DE PUNTOS (ANUALIDAD) - RESTAURADA
+    # LÓGICA DE VENCIMIENTO DE PUNTOS (ANUALIDAD)
     # --------------------------------------------------------------------------
-    # Buscamos la fecha de origen (el primer movimiento de puntos o creación)
-    fecha_origen = None
     # Buscamos el log más antiguo para saber cuándo empezó a acumular
     primer_log = PointLog.query.filter_by(member_id=member.id).order_by(PointLog.created_at.asc()).first()
     
     if primer_log:
         fecha_origen = primer_log.created_at.date()
     else:
-        # Si no hay logs (usuario nuevo sin actividad), usamos hoy
         fecha_origen = cr_time.date()
 
     # La fecha de vencimiento es 1 año (365 días) después del origen
     fecha_vencimiento = fecha_origen + timedelta(days=365)
     dias_restantes = (fecha_vencimiento - cr_time.date()).days
     
-    # Datos para el frontend sobre el vencimiento
     info_vencimiento = {
         'fecha_limite': fecha_vencimiento,
         'dias_restantes': dias_restantes,
-        'vencido': dias_restantes < 0,
-        'penalizacion_pendiente': False,
-        'monto_penalizacion': 0
+        'vencido': dias_restantes < 0
     }
+    
+    # Identificar cumpleaños hoy (para lógica de regalos en la vista)
+    birthdays_today = Member.query.filter(
+        db.extract('month', Member.birth_date) == today.month,
+        db.extract('day', Member.birth_date) == today.day
+    ).all()
 
-    # Si ya venció, calculamos cuánto sería el 25% (informativo)
-    if info_vencimiento['vencido'] and member.puntos_totales > 0:
-        info_vencimiento['penalizacion_pendiente'] = True
-        info_vencimiento['monto_penalizacion'] = int(member.puntos_totales * 0.25)
-        
-        # NOTA: Aquí podríamos registrar la notificación de vencimiento si fuera un proceso automático,
-        # pero como es visualización, lo dejamos para cuando se ejecute el job.
-
-    # 5. Renderizar
+    # 5. Renderizar enviando todas las variables nuevas
     return render_template(
         'perfil.html',
         member=member,
         logs=logs,
         proximas=proximas_aventuras,
+        eventos_activos=eventos_activos, # Necesario para el modal de canje
         nivel=nivel,
         icono_nivel=icono_nivel,
         clase_nivel=clase_nivel,
+        total_caminatas=total_caminatas, # Para la barra
+        progreso_vip=progreso_vip,       # Para la barra
+        mensaje_prox_nivel=mensaje_prox_nivel, # Mensaje motivacional
         now=cr_time,
-        vencimiento=info_vencimiento # Pasamos el objeto de vencimiento
+        vencimiento=info_vencimiento,
+        birthdays_today=birthdays_today
     )
+
+# --- RUTAS DE ACCIÓN ORIGINALES (MANTENIDAS INTACTAS) ---
 
 @perfil_bp.route('/accion/cambiar-pin', methods=['POST'])
 def cambiar_pin():
@@ -137,7 +153,6 @@ def cambiar_pin():
         old_pin = member.pin
         member.pin = nuevo_pin
         
-        # NOTIFICACIÓN ADMIN: Cambio de PIN
         db.session.add(AdminNotification(
             category='info',
             title='Cambio de PIN',
@@ -190,7 +205,6 @@ def transferir_regalo():
             amount=amount
         ))
         
-        # NOTIFICACIÓN ADMIN: Transferencia entre usuarios
         db.session.add(AdminNotification(
             category='success',
             title='Regalo de Puntos',
@@ -218,7 +232,7 @@ def admin_ajuste_saldo():
         abort(403)
 
     member_id = request.form.get('member_id', type=int)
-    tipo_accion = request.form.get('action_type') # 'restituir', 'donar', 'eliminar'
+    tipo_accion = request.form.get('action_type')
     monto = request.form.get('amount', type=int)
     motivo = request.form.get('reason')
 
@@ -229,6 +243,7 @@ def admin_ajuste_saldo():
         return redirect(url_for('perfil.ver_perfil', pin=member.pin))
 
     try:
+        log = None
         if tipo_accion == 'restituir':
             member.puntos_totales += monto
             log = PointLog(
@@ -239,7 +254,6 @@ def admin_ajuste_saldo():
             )
             flash(f'Se han restituido {monto} puntos.', 'success')
             
-            # NOTIFICACIÓN ADMIN
             db.session.add(AdminNotification(
                 category='info',
                 title='Restitución de Saldo',
@@ -257,7 +271,6 @@ def admin_ajuste_saldo():
             )
             flash(f'Se han donado {monto} puntos.', 'success')
             
-            # NOTIFICACIÓN ADMIN
             db.session.add(AdminNotification(
                 category='success',
                 title='Donación Admin',
@@ -277,7 +290,6 @@ def admin_ajuste_saldo():
             )
             flash(f'Se han eliminado {monto} puntos.', 'warning')
             
-            # NOTIFICACIÓN ADMIN
             db.session.add(AdminNotification(
                 category='danger',
                 title='Eliminación de Saldo',

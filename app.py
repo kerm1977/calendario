@@ -4,7 +4,7 @@
 # Este archivo centraliza la lógica de negocio, el sistema de fidelidad "Brutal"
 # y la gestión logística integral. Está diseñado para una trazabilidad total
 # mediante el uso de cronogramas transaccionales (PointLog).
-# VERSIÓN: 6.3 NOTIFICACIONES ACTIVAS EN NAVBAR
+# VERSIÓN: 6.4 SEGURIDAD SSL (HTTPS FORZADO)
 # ==============================================================================
 
 import os
@@ -85,6 +85,18 @@ def load_user(user_id):
         return User.query.get(int(user_id))
     except (TypeError, ValueError, Exception):
         return None
+
+# --- SEGURIDAD: FORZAR HTTPS (REDIRECCIÓN AUTOMÁTICA) ---
+@app.before_request
+def force_https():
+    """
+    Redirige todo el tráfico HTTP a HTTPS automáticamente.
+    Vital para que el navegador muestre el candado de seguridad en producción.
+    PythonAnywhere usa la cabecera 'X-Forwarded-Proto' para indicar el protocolo original.
+    """
+    if request.headers.get('X-Forwarded-Proto') == 'http':
+        url = request.url.replace('http://', 'https://', 1)
+        return redirect(url, code=301)
 
 # --- UTILIDADES DE PROCESAMIENTO Y LÓGICA DE NEGOCIO ---
 
