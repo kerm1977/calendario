@@ -4,7 +4,7 @@
 # Este archivo centraliza la lógica de negocio, el sistema de fidelidad "Brutal"
 # y la gestión logística integral. Está diseñado para una trazabilidad total
 # mediante el uso de cronogramas transaccionales (PointLog).
-# VERSIÓN: 6.6 CORRECCIÓN CRÍTICA REGISTRO NUEVOS USUARIOS
+# VERSIÓN: 6.7 CORRECCIÓN DE RUTAS DE IMAGEN (PATH FIX)
 # ==============================================================================
 
 import os
@@ -41,14 +41,16 @@ app.config['SECRET_KEY'] = 'la_tribu_master_key_2026_full_integration_v6_final_u
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Configuración del motor de almacenamiento para Flyers (Imágenes).
-app.config['UPLOAD_FOLDER'] = os.path.join('static', 'uploads', 'flyers')
+# --- CORRECCIÓN DE RUTA DE IMÁGENES (ABSOLUTA) ---
+# Usamos app.root_path para asegurar que la carpeta siempre se cree 
+# en el directorio donde está este archivo app.py, evitando errores de ruta relativa.
+app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static', 'uploads', 'flyers')
 
 # Protocolo de arranque: Verificación de infraestructura de carpetas físicas.
 if not os.path.exists(app.config['UPLOAD_FOLDER']):
     try:
         os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-        print("Infraestructura de archivos inicializada correctamente.")
+        print(f"Infraestructura de archivos inicializada en: {app.config['UPLOAD_FOLDER']}")
     except Exception as e:
         print(f"ALERTA CRÍTICA: Fallo al crear carpetas de sistema: {e}")
 
@@ -745,11 +747,26 @@ def view():
 @login_required
 def add_event():
     """Publica una nueva expedición procesando los 21 campos logísticos del sistema."""
+    
+    # --- DIAGNÓSTICO DE IMAGEN ---
+    if 'flyer' not in request.files:
+        print("ALERTA: No se encontró la parte 'flyer' en la solicitud. ¿Falta enctype=multipart/form-data?")
+    else:
+        file = request.files['flyer']
+        if file.filename == '':
+            print("ALERTA: El usuario no seleccionó ningún archivo.")
+        else:
+            print(f"ÉXITO: Archivo recibido: {file.filename}")
+
     file = request.files.get('flyer')
     filename = secure_filename(file.filename) if file and file.filename != '' else None
     
     if filename:
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        try:
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        except Exception as e:
+            print(f"ERROR GUARDANDO ARCHIVO: {e}")
+            flash(f'Error al guardar la imagen: {str(e)}', 'warning')
 
     try:
         new_ev = Event(
