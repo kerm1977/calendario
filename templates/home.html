@@ -132,14 +132,14 @@
 
                     <!-- NUEVA DISTRIBUCIÓN: DATOS Y PUNTOS -->
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <div class="d-flex flex-column gap-1 small text-secondary fw-medium">
+                        <div class="d-flex flex-column gap-1 small text-secondary fw-medium card-meta-data">
                             <div><i class="bi bi-signpost-split-fill me-2 text-warning"></i>{{ event.distance or 'Por definir' }}</div>
                             <div><i class="bi bi-speedometer2 me-2 text-warning"></i>{{ event.difficulty }}</div>
                         </div>
                         
                         <!-- BADGE DE PUNTOS VISIBLE EN LA CARD -->
                         <div class="text-end">
-                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-3 py-2 fw-bold shadow-sm" title="Recompensa por completar">
+                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-3 py-2 fw-bold shadow-sm points-badge" title="Recompensa por completar">
                                 <i class="bi bi-star-fill me-1"></i> +{{ event.points_reward or 10 }} pts
                             </span>
                         </div>
@@ -251,28 +251,28 @@
                                     <div class="col-sm-6">
                                         <div class="p-3 border border-warning border-opacity-10 rounded-4 bg-warning bg-opacity-5 h-100">
                                             <i class="bi bi-geo-alt text-warning fs-4 mb-2 d-block"></i>
-                                            <small class="text-muted d-block text-uppercase fw-bold" style="font-size: 0.65rem;">Lugar de Salida</small>
+                                            <small class="d-block text-uppercase fw-bold text-black" style="font-size: 0.7rem; letter-spacing: 0.5px;">Lugar de Salida</small>
                                             <strong class="logistics-value text-body">{{ event.departure_point }}</strong>
                                         </div>
                                     </div>
                                     <div class="col-sm-6">
                                         <div class="p-3 border border-warning border-opacity-10 rounded-4 bg-warning bg-opacity-5 h-100">
                                             <i class="bi bi-clock text-warning fs-4 mb-2 d-block"></i>
-                                            <small class="text-muted d-block text-uppercase fw-bold" style="font-size: 0.65rem;">Hora de Encuentro</small>
+                                            <small class="d-block text-uppercase fw-bold text-black" style="font-size: 0.7rem; letter-spacing: 0.5px;">Hora de Encuentro</small>
                                             <strong class="logistics-value text-body">{{ event.departure_time }}</strong>
                                         </div>
                                     </div>
                                     <div class="col-sm-6">
                                         <div class="p-3 border border-warning border-opacity-10 rounded-4 bg-warning bg-opacity-5 h-100">
                                             <i class="bi bi-map text-warning fs-4 mb-2 d-block"></i>
-                                            <small class="text-muted d-block text-uppercase fw-bold" style="font-size: 0.65rem;">Recorrido Total</small>
+                                            <small class="d-block text-uppercase fw-bold text-black" style="font-size: 0.7rem; letter-spacing: 0.5px;">Recorrido Total</small>
                                             <strong class="logistics-value text-body">{{ event.distance or 'N/A' }}</strong>
                                         </div>
                                     </div>
                                     <div class="col-sm-6">
                                         <div class="p-3 border border-warning border-opacity-10 rounded-4 bg-warning bg-opacity-5 h-100">
                                             <i class="bi bi-bar-chart text-warning fs-4 mb-2 d-block"></i>
-                                            <small class="text-muted d-block text-uppercase fw-bold" style="font-size: 0.65rem;">Nivel de Dificultad</small>
+                                            <small class="d-block text-uppercase fw-bold text-black" style="font-size: 0.7rem; letter-spacing: 0.5px;">Nivel de Dificultad</small>
                                             <strong class="logistics-value text-body">{{ event.difficulty }}</strong>
                                         </div>
                                     </div>
@@ -857,6 +857,14 @@
     /* Estilo para la tarjeta de imagen en el modal */
     [data-bs-theme="dark"] .thumbnail-card {
         border-color: rgba(255, 193, 7, 0.25) !important; /* Borde naranja sutil en modo oscuro */
+    }
+
+    /* MEJORA DE CONTRASTE ESPECÍFICA PARA MODO OSCURO */
+    [data-bs-theme="dark"] .card-meta-data {
+        color: #e0e0e0 !important; /* Texto casi blanco para distancia y dificultad */
+    }
+    [data-bs-theme="dark"] .points-badge {
+        color: #75b798 !important; /* Verde claro luminoso para el texto de puntos */
     }
 
     @media (max-width: 500px) {

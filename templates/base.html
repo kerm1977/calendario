@@ -84,11 +84,51 @@
             border-radius: 1rem;
         }
         
-        /* Estilos Notificaciones Dropdown */
+        /* Estilos Notificaciones Dropdown con Blur Premium y Fix de Desbordamiento */
         .dropdown-menu-notifications {
             width: 320px;
+            max-width: 90vw; 
             max-height: 400px;
             overflow-y: auto;
+            
+            /* Efecto Glassmorphism (Blur) Refinado */
+            background-color: rgba(255, 255, 255, 0.7) !important; /* Más translúcido */
+            backdrop-filter: blur(16px) saturate(180%); /* Blur intenso y saturación para viveza */
+            -webkit-backdrop-filter: blur(16px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+        }
+
+        /* Soporte Glassmorphism para modo oscuro */
+        [data-bs-theme="dark"] .dropdown-menu-notifications {
+            background-color: rgba(33, 37, 41, 0.65) !important;
+            border-color: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        /* CORRECCIÓN CRÍTICA PARA MÓVILES (< 992px) */
+        @media (max-width: 991.98px) {
+            .dropdown-menu-notifications {
+                /* Forzamos el centrado en pantalla para evitar desbordes laterales */
+                position: fixed !important;
+                top: 50% !important;
+                left: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                width: 90% !important;
+                max-width: 350px !important;
+                margin: 0 !important;
+                z-index: 1055 !important; /* Encima de todo */
+                border-radius: 1rem !important;
+            }
+            
+            /* Fondo oscuro tenue detrás para resaltar el menú (efecto modal light) */
+            .dropdown-menu-notifications::before {
+                content: '';
+                position: absolute;
+                top: 0; left: 0; right: 0; bottom: 0;
+                border-radius: 1rem;
+                z-index: -1;
+            }
         }
     </style>
 </head>
@@ -145,7 +185,8 @@
                             </span>
                             {% endif %}
                         </button>
-                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 mt-3 animate__animated animate__fadeIn p-0 dropdown-menu-notifications">
+                        <!-- CORRECCIÓN AQUÍ: dropdown-menu-lg-end en lugar de dropdown-menu-end -->
+                        <ul class="dropdown-menu dropdown-menu-lg-end shadow-lg border-0 mt-3 animate__animated animate__fadeIn p-0 dropdown-menu-notifications">
                             <li class="p-3 bg-warning bg-opacity-10 border-bottom d-flex justify-content-between align-items-center">
                                 <span class="fw-bold small text-uppercase text-dark">Actividad Reciente</span>
                                 {% if admin_unread_count > 0 %}
@@ -157,7 +198,7 @@
                             {% if admin_recent_notifications %}
                                 {% for n in admin_recent_notifications %}
                                 <li>
-                                    <a class="dropdown-item p-3 border-bottom {{ 'bg-light' if not n.is_read else '' }}" href="{{ n.action_link or '#' }}">
+                                    <a class="dropdown-item p-3 border-bottom {{ 'bg-light bg-opacity-50' if not n.is_read else '' }}" href="{{ n.action_link or '#' }}">
                                         <div class="d-flex align-items-start">
                                             <div class="text-{{ n.category }} me-2 mt-1">
                                                 {% if n.category == 'danger' %}<i class="bi bi-exclamation-circle-fill"></i>
@@ -174,7 +215,7 @@
                                     </a>
                                 </li>
                                 {% endfor %}
-                                <li><a class="dropdown-item text-center small fw-bold py-2 text-warning bg-body" href="{{ url_for('main.dashboard') }}">Ver Centro de Mensajes</a></li>
+                                <li><a class="dropdown-item text-center small fw-bold py-2 text-warning bg-transparent" href="{{ url_for('main.dashboard') }}">Ver Centro de Mensajes</a></li>
                             {% else %}
                                 <li class="p-4 text-center text-muted small">
                                     <i class="bi bi-bell-slash fs-4 d-block opacity-50 mb-2"></i>
