@@ -53,19 +53,22 @@
                             <div class="row g-3 mt-3">
                                 <div class="col-auto">
                                     <!-- SECCIÓN PIN CON BOTÓN DE EDICIÓN -->
-                                    <div class="p-2 border rounded-3 bg-light position-relative pe-5 shadow-sm">
-                                        <small class="d-block text-muted x-small text-uppercase">PIN Único</small>
+                                    <div class="p-2 border rounded-3 bg-dark position-relative pe-5 shadow-sm">
+                                        <!-- CAMBIO: Color de texto PIN Único a negro -->
+                                        <small class="d-block text-dark fw-bold x-small text-uppercase">PIN Único</small>
                                         <span class="fw-bold font-monospace fs-5 text-primary">{{ member.pin }}</span>
                                         
                                         <!-- BOTÓN CAMBIAR PIN (Oculto al imprimir) -->
                                         <button class="btn btn-sm btn-white border position-absolute top-50 end-0 translate-middle-y me-2 rounded-circle shadow-sm hover-scale no-print" style="width: 32px; height: 32px;" data-bs-toggle="modal" data-bs-target="#changePinModal" title="Personalizar PIN">
-                                            <i class="bi bi-pencil-fill small text-muted"></i>
+                                            <!-- CAMBIO: Icono a color naranja -->
+                                            <i class="bi bi-pencil-fill small text-warning"></i>
                                         </button>
                                     </div>
                                 </div>
                                 <div class="col-auto">
-                                    <div class="p-2 border rounded-3 bg-light">
-                                        <small class="d-block text-muted x-small text-uppercase">Teléfono</small>
+                                    <!-- CAMBIO: Fondo gris oscuro y texto blanco para teléfono -->
+                                    <div class="p-2 border rounded-3 bg-dark text-white shadow-sm">
+                                        <small class="d-block text-white-50 x-small text-uppercase">Teléfono</small>
                                         <span class="fw-bold">+506 {{ member.telefono }}</span>
                                     </div>
                                 </div>
@@ -390,8 +393,8 @@
                             <button onclick="compartirEstadoWhatsApp()" class="btn btn-success btn-sm rounded-pill fw-bold shadow-sm" title="Enviar por WhatsApp">
                                 <i class="bi bi-whatsapp me-1"></i> <span class="d-none d-sm-inline">Enviar</span>
                             </button>
-                            <button onclick="generarPDF()" class="btn btn-danger btn-sm rounded-pill fw-bold shadow-sm" title="Descargar PDF">
-                                <i class="bi bi-file-earmark-pdf-fill me-1"></i> <span class="d-none d-sm-inline">PDF</span>
+                            <button onclick="descargarTXT()" class="btn btn-dark btn-sm rounded-pill fw-bold shadow-sm" title="Descargar Historial TXT">
+                                <i class="bi bi-file-text-fill me-1"></i> <span class="d-none d-sm-inline">TXT</span>
                             </button>
                         </div>
                     </div>
@@ -466,105 +469,76 @@
     </div>
 </div>
 
-<!-- ============================================================== -->
-<!-- PLANTILLA OCULTA PARA PDF (DISEÑO LISTA/TABLA) -->
-<!-- ============================================================== -->
-<div id="pdfTemplate" class="d-none bg-white p-4">
-    <!-- Encabezado del PDF -->
-    <div class="text-center mb-4 border-bottom pb-3">
-        <h2 class="fw-bold mb-1" style="color: #333;">LA TRIBU DE LOS LIBRES</h2>
-        <h5 class="text-muted text-uppercase" style="letter-spacing: 2px;">Estado de Cuenta Oficial</h5>
-        <div class="mt-2 text-muted small">Generado el: <span id="pdfDate"></span></div>
-    </div>
-
-    <!-- Datos del Cliente -->
-    <div class="mb-4 p-3 bg-light rounded-3 border">
-        <div class="row">
-            <div class="col-6">
-                <strong>Miembro:</strong> {{ member.nombre }} {{ member.apellido1 }}<br>
-                <strong>PIN:</strong> {{ member.pin }}<br>
-                <strong>Nivel:</strong> {{ nivel }}
-            </div>
-            <div class="col-6 text-end">
-                <div class="fw-bold text-uppercase text-secondary small">Saldo Actual</div>
-                <div class="display-6 fw-bold text-success">{{ member.puntos_totales }} pts</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Tabla Detallada -->
-    <h6 class="fw-bold border-bottom pb-2 mb-3">Detalle de Movimientos</h6>
-    <table class="table table-striped table-bordered w-100" style="font-size: 0.85rem;">
-        <thead class="table-dark">
-            <tr>
-                <th style="width: 15%">Fecha</th>
-                <th style="width: 20%">Tipo</th>
-                <th style="width: 45%">Descripción</th>
-                <th style="width: 20%" class="text-end">Monto</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% if logs %}
-                {% for log in logs %}
-                <tr>
-                    <td>{{ log.created_at.strftime('%d/%m/%Y') }}</td>
-                    <td class="text-uppercase small">{{ log.transaction_type }}</td>
-                    <td>{{ log.description }}</td>
-                    <td class="text-end fw-bold {{ 'text-success' if log.amount > 0 else 'text-danger' }}">
-                        {{ '+' if log.amount > 0 }}{{ log.amount }} pts
-                    </td>
-                </tr>
-                {% endfor %}
-            {% else %}
-                <tr><td colspan="4" class="text-center">Sin movimientos registrados.</td></tr>
-            {% endif %}
-        </tbody>
-    </table>
-    
-    <!-- Pie de Página PDF -->
-    <div class="mt-5 text-center small text-muted border-top pt-3">
-        Este documento es un comprobante oficial generado por la plataforma de La Tribu.
-        <br>Cualquier duda contactar a la administración.
-    </div>
-</div>
-
 <!-- IMPORTAR MODALES EXTERNOS -->
 {% include "modales_perfil.html" %}
 
 <!-- ============================================================== -->
-<!-- SCRIPTS DE EXPORTACIÓN (PDF Y WHATSAPP) -->
+<!-- SCRIPTS DE EXPORTACIÓN (TXT Y WHATSAPP) -->
 <!-- ============================================================== -->
 <script>
     /**
-     * Generar PDF del Estado de Cuenta (Usando la plantilla de tabla oculta)
+     * Generar Archivo TXT con tabla formateada
      */
-    function generarPDF() {
-        // 1. Preparar el elemento
-        const element = document.getElementById('pdfTemplate');
-        document.getElementById('pdfDate').innerText = new Date().toLocaleDateString();
+    function descargarTXT() {
+        const nombre = "{{ member.nombre }} {{ member.apellido1 }}";
+        const pin = "{{ member.pin }}";
+        const saldo = "{{ member.puntos_totales }}";
+        const fecha = new Date().toLocaleDateString();
         
-        // Hacemos visible el template temporalmente (quitando d-none) pero clonado o manejado por html2pdf
-        // Para que html2pdf lo vea, debe estar visible en el DOM o clonarlo y quitarle la clase.
-        // Una mejor estrategia es quitar d-none, imprimir y volver a poner d-none.
+        let contenido = `
+LA TRIBU DE LOS LIBRES
+Estado de Cuenta Oficial
+==================================================
+Miembro: ${nombre}
+PIN:     ${pin}
+Fecha:   ${fecha}
+SALDO:   ${saldo} pts
+==================================================
+
+DETALLE DE MOVIMIENTOS
+--------------------------------------------------
+FECHA       | TIPO             | DESCRIPCION                  | MONTO
+--------------------------------------------------
+`;
+
+        // Recopilar datos del DOM para la tabla
+        const items = document.querySelectorAll('.log-item');
         
-        element.classList.remove('d-none'); // Hacer visible
+        if(items.length === 0) {
+            contenido += "Sin movimientos registrados.\n";
+        } else {
+            items.forEach((item) => {
+                // Extraer texto limpio
+                let fechaMov = item.querySelector('.log-date').innerText.split(' ')[0].trim();
+                let tipoRaw = item.querySelector('.log-date span').innerText.trim();
+                let descRaw = item.querySelector('.log-desc').innerText.trim();
+                let montoRaw = item.querySelector('.log-amount').innerText.trim();
 
-        const nombreArchivo = 'EstadoCuenta_LaTribu_{{ member.nombre }}.pdf';
+                // Truncar textos largos para que cuadren en columnas
+                let tipo = tipoRaw.substring(0, 15).padEnd(16, ' ');
+                let desc = descRaw.substring(0, 28).padEnd(28, ' ');
+                let fechaCol = fechaMov.padEnd(11, ' ');
+                let montoCol = montoRaw.padStart(8, ' '); // Alineado a derecha
 
-        // Opciones de configuración
-        const opt = {
-            margin:       [15, 15, 15, 15],
-            filename:     nombreArchivo,
-            image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true, letterRendering: true },
-            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        };
+                contenido += `${fechaCol} | ${tipo} | ${desc} | ${montoCol}\n`;
+            });
+        }
 
-        // Generamos el PDF
-        html2pdf().set(opt).from(element).save().then(() => {
-            // Restauramos: Ocultar de nuevo
-            element.classList.add('d-none');
-        });
+        contenido += `--------------------------------------------------
+Fin del reporte.
+Generado automáticamente por la plataforma.
+`;
+
+        // Crear blob y descargar
+        const blob = new Blob([contenido], { type: 'text/plain' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `EstadoCuenta_${nombre.replace(/\s+/g, '_')}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
     }
 
     /**
@@ -622,7 +596,6 @@
 </script>
 
 <style>
-    /* Estilos existentes... */
     .shadow-2xl { box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15); }
     .x-small { font-size: 0.7rem; }
     .transition-hover { transition: transform 0.2s ease, box-shadow 0.2s ease; }
@@ -640,10 +613,15 @@
     [data-bs-theme="dark"] .text-dark { color: #f8f9fa !important; }
     [data-bs-theme="dark"] .list-group-item { background-color: #212529; border-color: #333; }
     
-    /* ESTILOS PARA PDF E IMPRESIÓN */
+    /* ESTILOS PARA IMPRESIÓN (Por si acaso alguien usa Ctrl+P) */
     @media print {
         .no-print, .navbar, .footer-sticky-blur, .modal {
             display: none !important;
+        }
+        #historialSection {
+            width: 100% !important; /* Historial a ancho completo */
+            flex: 0 0 100%;
+            max-width: 100%;
         }
         body { padding-bottom: 0; background: white; }
     }
