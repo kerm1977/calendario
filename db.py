@@ -116,6 +116,9 @@ class Member(db.Model):
     # Saldo de Puntos (Caché para acceso rápido, la verdad está en los logs)
     puntos_totales = db.Column(db.Integer, default=0)
     
+    # NUEVO: Estado de Deuda (True = Debe dinero/comprobante)
+    debt_pending = db.Column(db.Boolean, default=False)
+    
     # Control de Bonos
     ultimo_regalo_bday = db.Column(db.Integer, default=0) # Año del último regalo
     

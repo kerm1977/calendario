@@ -151,7 +151,7 @@
     </div>
 </div>
 
-<!-- 1. CANJEAR AVENTURA -->
+<!-- 1. CANJEAR AVENTURA (MODIFICADO: CON CALCULADORA DE COPAGO) -->
 <div class="modal fade" id="redeemAdventureModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <form class="modal-content border-0 shadow-lg rounded-5 overflow-hidden" data-bs-theme="light" style="background-color: #ffffff !important; color: #000000 !important;" action="{{ url_for('puntos.canjear_aventura') }}" method="POST">
@@ -165,24 +165,51 @@
                     <div class="alert alert-success border-0 small py-2 mb-3">
                         <i class="bi bi-check-circle-fill me-1"></i> Saldo disponible para canje (>5,000 pts).
                     </div>
+                    
+                    <!-- SELECTOR DE AVENTURA CON DATA-PRICE -->
                     <div class="mb-3">
                         <label class="form-label x-small fw-bold text-uppercase" style="color: #000000 !important;">Selecciona Aventura Activa</label>
-                        <select name="event_id" class="form-select border-warning shadow-none mb-2" style="background-color: #ffffff !important; color: #000000 !important;" required>
-                            <option value="" disabled selected>Seleccione una ruta...</option>
+                        <select name="event_id" id="selectEventRedeem" class="form-select border-warning shadow-none mb-2" style="background-color: #ffffff !important; color: #000000 !important;" required onchange="calcularCopago()">
+                            <option value="" disabled selected data-price="0">Seleccione una ruta...</option>
                             {% if eventos_activos %}
                                 {% for ev in eventos_activos %}
-                                <option value="{{ ev.id }}">{{ ev.title }} ({{ ev.event_date }})</option>
+                                <!-- IMPORTANTE: Se agrega data-price y data-currency para el cálculo -->
+                                <option value="{{ ev.id }}" data-price="{{ ev.price }}" data-currency="{{ ev.currency }}">{{ ev.title }} ({{ ev.event_date }}) - {{ ev.currency }}{{ ev.price }}</option>
                                 {% endfor %}
                             {% else %}
-                                <option disabled>Cargando lista o no disponible...</option>
+                                <option disabled data-price="0">Cargando lista o no disponible...</option>
                             {% endif %}
                         </select>
                     </div>
+
+                    <!-- INPUT DE PUNTOS -->
                     <div class="mb-3">
-                        <label class="form-label x-small fw-bold text-uppercase" style="color: #000000 !important;">Puntos a Descontar</label>
-                        <input type="number" name="costo_puntos" class="form-control form-control-lg text-center fw-bold border-warning" style="background-color: #ffffff !important; color: #000000 !important;" placeholder="Ej: 5000" min="1" max="{{ member.puntos_totales }}" required>
-                        <small class="text-muted d-block mt-1 x-small">Este monto se restará del saldo del miembro.</small>
+                        <label class="form-label x-small fw-bold text-uppercase" style="color: #000000 !important;">Puntos a Aplicar</label>
+                        <input type="number" name="costo_puntos" id="inputPointsRedeem" class="form-control form-control-lg text-center fw-bold border-warning" style="background-color: #ffffff !important; color: #000000 !important;" placeholder="Ej: 5000" min="1" max="{{ member.puntos_totales }}" required oninput="calcularCopago()">
+                        <small class="text-muted d-block mt-1 x-small">Máximo disponible: {{ member.puntos_totales }} pts</small>
                     </div>
+
+                    <!-- CALCULADORA VISUAL DE COPAGO -->
+                    <div id="paymentBreakdown" class="alert alert-light border border-secondary border-opacity-25 rounded-3 p-3 mt-3 d-none animate__animated animate__fadeIn">
+                        <div class="d-flex justify-content-between x-small text-secondary mb-1">
+                            <span>Costo Total Aventura:</span>
+                            <span class="fw-bold" id="lblAdventureCost">0</span>
+                        </div>
+                        <div class="d-flex justify-content-between x-small text-success mb-2">
+                            <span>Descuento por Puntos:</span>
+                            <span class="fw-bold" id="lblPointsDiscount">-0</span>
+                        </div>
+                        <div class="border-top border-secondary border-opacity-25 pt-2 mt-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="fw-bold text-dark small text-uppercase">Saldo a Transferir:</span>
+                                <span class="fw-bold fs-5 text-danger" id="lblPendingBalance">0</span>
+                            </div>
+                        </div>
+                        <div class="text-center mt-2">
+                            <small class="text-muted x-small fst-italic"><i class="bi bi-info-circle me-1"></i>Debes enviar el comprobante por este saldo.</small>
+                        </div>
+                    </div>
+
                     <div class="d-grid mt-4">
                         <button type="submit" class="btn btn-warning fw-bold rounded-pill shadow-sm" style="color: #000000 !important;">CONFIRMAR CANJE</button>
                     </div>
@@ -248,7 +275,7 @@
                 <div class="mb-3">
                     <label class="form-label x-small fw-bold text-uppercase text-success">Cantidad a Comprar</label>
                     <input type="number" name="cantidad" class="form-control form-control-lg text-center fw-bold border-success" style="background-color: #ffffff !important; color: #000000 !important;" placeholder="1000" min="1000" max="10000" step="100" required>
-                    <small class="text-muted d-block mt-1 x-small">Rango permitido: 1,000 - 10,000 pts</small>
+                    <small class="text-muted d-block mt-1 x-small" style="color: #6c757d !important;">Rango permitido: 1,000 - 10,000 pts</small>
                 </div>
                 <div class="d-grid mt-4">
                     <button type="submit" class="btn btn-success fw-bold rounded-pill shadow-sm">ACREDITAR PUNTOS</button>
@@ -282,7 +309,7 @@
                     <div class="text-primary mb-3">
                         <i class="bi bi-balloon-heart-fill display-3"></i>
                     </div>
-                    <p class="small text-muted mb-3">
+                    <p class="small text-muted mb-3" style="color: #6c757d !important;">
                         ¡Hoy hay fiesta en la Tribu! Selecciona al amigo que quieres sorprender con tus puntos.
                     </p>
                     
@@ -298,7 +325,7 @@
                     <div class="mb-3 text-start">
                         <label class="form-label x-small fw-bold text-uppercase text-primary">Puntos a Regalar</label>
                         <input type="number" name="cantidad" class="form-control form-control-lg text-center fw-bold border-primary" style="background-color: #ffffff !important; color: #000000 !important;" placeholder="500" min="100" max="{{ member.puntos_totales }}" required>
-                        <small class="text-muted d-block mt-1 x-small">Se descontarán de tu saldo.</small>
+                        <small class="text-muted d-block mt-1 x-small" style="color: #6c757d !important;">Se descontarán de tu saldo.</small>
                     </div>
 
                     <div class="d-grid mt-4">
@@ -309,7 +336,7 @@
                         <i class="bi bi-calendar-x display-3"></i>
                     </div>
                     <h6 class="fw-bold text-secondary mb-2">No hay cumpleañeros hoy.</h6>
-                    <p class="small text-muted mb-3">
+                    <p class="small text-muted mb-3" style="color: #6c757d !important;">
                         Nadie en la Tribu (excepto tú, si fuera el caso) cumple años hoy para recibir regalos.
                     </p>
                     <div class="alert alert-info border-0 x-small py-2 mt-2">
@@ -321,3 +348,46 @@
         </form>
     </div>
 </div>
+
+<!-- ============================================================== -->
+<!-- SCRIPT DE CÁLCULO DE COPAGO (NUEVO) -->
+<!-- ============================================================== -->
+<script>
+    function calcularCopago() {
+        // Elementos del DOM
+        const select = document.getElementById('selectEventRedeem');
+        const inputPoints = document.getElementById('inputPointsRedeem');
+        const breakdownDiv = document.getElementById('paymentBreakdown');
+        
+        const lblCost = document.getElementById('lblAdventureCost');
+        const lblDiscount = document.getElementById('lblPointsDiscount');
+        const lblTotal = document.getElementById('lblPendingBalance');
+
+        // Valores
+        const option = select.options[select.selectedIndex];
+        const price = parseFloat(option.getAttribute('data-price')) || 0;
+        const currency = option.getAttribute('data-currency') || '¢';
+        const points = parseInt(inputPoints.value) || 0;
+
+        // Si no hay evento seleccionado, ocultar
+        if (!select.value) {
+            breakdownDiv.classList.add('d-none');
+            return;
+        }
+
+        // Mostrar desglose
+        breakdownDiv.classList.remove('d-none');
+
+        // Cálculo (1 Punto = 1 Unidad de Moneda, según lógica de negocio)
+        // Evitamos valores negativos en el total a pagar
+        const pending = Math.max(0, price - points);
+
+        // Formatear números
+        const formatNum = (num) => num.toLocaleString('en-US'); // Usamos formato estándar con comas
+
+        // Actualizar UI
+        lblCost.innerText = `${currency}${formatNum(price)}`;
+        lblDiscount.innerText = `-${currency}${formatNum(points)}`;
+        lblTotal.innerText = `${currency}${formatNum(pending)}`;
+    }
+</script>

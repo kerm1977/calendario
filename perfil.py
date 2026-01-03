@@ -3,10 +3,10 @@
 # ==============================================================================
 # Maneja la visualización del perfil personal del aventurero.
 # Acceso público mediante PIN para facilitar la experiencia de usuario.
-# VERSIÓN: 5.4 (FIX TIMEZONE CR EN MODAL REGALOS)
+# VERSIÓN: 5.8 (DEBT MANAGEMENT + FULL TRANSACTIONS + ORIGINAL LOGIC)
 # ==============================================================================
 
-from flask import Blueprint, render_template, abort, redirect, url_for, request, flash
+from flask import Blueprint, render_template, abort, redirect, url_for, request, flash, jsonify
 from flask_login import login_required, current_user
 from db import db, Member, PointLog, Booking, AdminNotification, Event
 from sqlalchemy import extract
@@ -137,7 +137,7 @@ def ver_perfil(pin):
         icono_nivel=icono_nivel,
         clase_nivel=clase_nivel,
         total_caminatas=total_caminatas, 
-        progreso_vip=progreso_vip,       
+        progreso_vip=progreso_vip,        
         mensaje_prox_nivel=mensaje_prox_nivel, 
         now=cr_time,
         vencimiento=info_vencimiento,
@@ -454,3 +454,30 @@ def comprar_puntos():
         flash(f'Error en la compra: {str(e)}', 'danger')
 
     return redirect(request.referrer)
+
+# ==============================================================================
+# 5. API: TOGGLE DEUDA (NUEVO)
+# ==============================================================================
+@perfil_bp.route('/admin/toggle_debt/<int:member_id>', methods=['POST'])
+@login_required
+def toggle_debt(member_id):
+    """
+    Alterna el estado de deuda pendiente del miembro.
+    Solo accesible por SuperAdmin.
+    """
+    if not current_user.is_superuser:
+        return jsonify({'success': False, 'message': 'No autorizado'}), 403
+        
+    member = Member.query.get_or_404(member_id)
+    
+    # Invertir estado
+    member.debt_pending = not member.debt_pending
+    db.session.commit()
+    
+    status_text = "Pendiente" if member.debt_pending else "Al Día"
+    
+    return jsonify({
+        'success': True, 
+        'new_status': member.debt_pending, 
+        'message': f'Estado de deuda actualizado a: {status_text}'
+    })
