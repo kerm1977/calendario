@@ -179,7 +179,7 @@
                         <div id="pinEntrySection{{ event.id }}" class="d-none mt-3 animate__animated animate__fadeIn">
                             <div class="input-group input-group-lg">
                                 <!-- AQUÍ ESTÁ EL CAMBIO LÓGICO: oninput dispara la automatización -->
-                                <input type="text" id="lookupPin{{ event.id }}" class="form-control border-warning text-center fw-bold text-primary" placeholder="000000" maxlength="6" oninput="handleAutoPin(this, {{ event.id }})">
+                                <input type="text" id="lookupPin{{ event.id }}" class="form-control border-warning text-center fw-bold text-primary" placeholder="PIN..." maxlength="6" oninput="handleAutoPin(this, {{ event.id }})">
                                 <button class="btn btn-warning text-dark fw-bold px-4 disabled" id="btnValidatePin{{ event.id }}" type="button" onclick="lookupUserByPin({{ event.id }})">CARGAR</button>
                             </div>
                             <div id="pinError{{ event.id }}" class="text-danger x-small fw-bold d-none mt-2 text-center animate__animated animate__shakeX">
@@ -347,13 +347,13 @@
     }
 
     /**
-     * LÓGICA AUTOMÁTICA: Detecta 6 dígitos en el input existente
+     * LÓGICA AUTOMÁTICA: Detecta 6 caracteres en el input existente
+     * ACTUALIZADO: Permite caracteres alfanuméricos
      */
     async function handleAutoPin(input, eventId) {
-        // Limpiar todo lo que no sea números
-        input.value = input.value.replace(/[^0-9]/g, '');
+        // Se eliminó la restricción numérica
         
-        // Si llega a 6 dígitos, disparar inscripción automática
+        // Si llega a 6 caracteres, disparar inscripción automática
         if (input.value.length === 6) {
             input.blur(); // Quitar foco para evitar doble envío
             input.disabled = true; // Bloquear input momentáneamente
