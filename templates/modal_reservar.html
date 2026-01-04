@@ -1,0 +1,270 @@
+<!-- ========================================== -->
+<!-- 1. MODAL DE DETALLES Y RESERVA (USUARIO) -->
+<!-- ========================================== -->
+<!-- Este archivo maneja la experiencia de usuario final: Ver info y Registrarse -->
+
+<!-- MODAL DETALLES -->
+<div class="modal fade" id="detailsModal{{ event.id }}" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 rounded-5 overflow-hidden shadow-2xl">
+            
+            <div class="modal-header border-0 pb-0 pt-4 px-4 px-md-5">
+                <div class="w-100">
+                        <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <span class="badge bg-warning text-dark px-3 py-2 fw-bold text-uppercase mb-2 shadow-sm rounded-pill">{{ event.activity_type }}</span>
+                            <h2 class="fw-bold mb-0 text-body">{{ event.title }}</h2>
+                        </div>
+                        <button type="button" class="btn-close shadow-none p-2 bg-light rounded-circle" data-bs-dismiss="modal"></button>
+                        </div>
+                </div>
+            </div>
+
+            <div class="modal-body p-4 p-md-5 text-body bg-body">
+                <div class="row g-5">
+                    
+                    <!-- COLUMNA IZQUIERDA: IMAGEN Y ACCIONES -->
+                    <div class="col-lg-4 order-lg-1 order-1">
+                        <div class="card shadow-none border border-dark border-opacity-10 rounded-4 overflow-hidden mb-4 bg-light position-relative group-hover-zoom thumbnail-card">
+                            {% if event.flyer %}
+                                <div class="position-relative overflow-hidden" style="border-radius: 1rem;">
+                                    <img src="{{ url_for('static', filename='uploads/flyers/' + event.flyer) }}" 
+                                            class="img-fluid w-100 shadow-sm" 
+                                            style="object-fit: cover; cursor: pointer; transition: transform 0.3s ease;"
+                                            alt="{{ event.title }}"
+                                            onclick="showFullImage(this.src, this.alt)"
+                                            onmouseover="this.style.transform='scale(1.03)'"
+                                            onmouseout="this.style.transform='scale(1)'">
+                                    
+                                    <div class="position-absolute bottom-0 end-0 m-2">
+                                        <button class="btn btn-sm btn-dark bg-opacity-50 border-0 rounded-circle text-white pointer-events-none">
+                                            <i class="bi bi-arrows-fullscreen"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            {% else %}
+                                <div class="ratio ratio-1x1 bg-secondary bg-opacity-10 d-flex align-items-center justify-content-center text-muted rounded-4">
+                                    <div class="text-center">
+                                        <i class="bi bi-image fs-1 opacity-25"></i>
+                                        <small class="d-block mt-2">Sin Imagen</small>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- TARJETA DE PRECIO STICKY -->
+                        <div class="card border-0 rounded-4 p-4 shadow-sm text-center bg-body-tertiary sticky-lg-top" style="top: 20px; z-index: 1;">
+                            <div class="mb-4">
+                                <small class="text-muted fw-bold text-uppercase d-block mb-1">Inversión por Persona</small>
+                                <div class="display-5 fw-bold text-body text-truncate">{{ event.currency }}{{ "{:,.0f}".format(event.price) }}</div>
+                            </div>
+
+                            {% if event.reservation_fee %}
+                            <div class="bg-warning bg-opacity-10 rounded-4 p-3 mb-4 border border-warning border-opacity-20">
+                                <small class="d-block text-warning fw-bold text-uppercase mb-1" style="font-size: 0.7rem;">Reserva tu cupo con:</small>
+                                <span class="h4 fw-bold text-warning-emphasis">{{ event.currency }}{{ event.reservation_fee }}</span>
+                            </div>
+                            {% endif %}
+
+                            <!-- CONTADOR DE CUPOS EN MODAL -->
+                            <div class="mb-3 p-2 rounded-3 border fw-bold small
+                                {% if disponibles <= 5 and disponibles > 0 %}
+                                    bg-danger bg-opacity-10 text-danger border-danger border-opacity-25 animate__animated animate__pulse animate__infinite
+                                {% elif disponibles == 0 %}
+                                    bg-secondary bg-opacity-10 text-muted border-secondary
+                                {% else %}
+                                    bg-success bg-opacity-10 text-success border-success border-opacity-25
+                                {% endif %}">
+                                
+                                {% if disponibles > 0 %}
+                                    <i class="bi bi-person-walking me-2"></i>
+                                    {% if disponibles <= 5 %}
+                                        ¡ÚLTIMOS {{ disponibles }} CUPOS!
+                                    {% else %}
+                                        {{ disponibles }} lugares disponibles
+                                    {% endif %}
+                                {% else %}
+                                    <i class="bi bi-x-circle-fill me-2"></i>¡CUPOS AGOTADOS!
+                                {% endif %}
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                {% if disponibles > 0 %}
+                                <button class="btn btn-warning rounded-pill fw-bold py-3 shadow-sm btn-confirm-trigger text-dark" data-bs-toggle="modal" data-bs-target="#reserveModal{{ event.id }}">
+                                    RESERVAR AHORA
+                                </button>
+                                {% else %}
+                                <button class="btn btn-secondary rounded-pill fw-bold py-3 disabled" disabled>NO HAY CUPO</button>
+                                {% endif %}
+                                <button class="btn btn-outline-secondary rounded-pill fw-bold py-2 border-0" onclick="exportToWhatsApp('{{ event.title|e }}', '{{ event.activity_type|e }}', '{{ event.currency }}{{ event.price }}', '{% if event.duration_days > 1 %}Del {{ event.event_date.day }} al {{ event.end_date.day }} de {{ meses[event.end_date.month] }}{% else %}{{ event.event_date.day }} de {{ meses[event.event_date.month] }}{% endif %}', '{{ event.departure_point|e }}', '{{ event.departure_time|e }}', '{{ event.difficulty|e }}', '{{ event.distance|e }}', '{{ event.pickup_point|e }}', '{{ event.reservation_fee|e }}', '{{ event.description|e }}')">
+                                    <i class="bi bi-whatsapp me-2"></i>Compartir
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- COLUMNA DERECHA: INFORMACIÓN -->
+                    <div class="col-lg-8 order-lg-2 order-2">
+                        <div class="d-flex align-items-center gap-3 mb-4">
+                            <div class="bg-success bg-opacity-10 text-success p-3 rounded-4 border border-success border-opacity-25 flex-grow-1">
+                                <h6 class="mb-0 fw-bold"><i class="bi bi-star-fill me-2"></i>Recompensa de la Tribu</h6>
+                                <small>Gana <strong>{{ event.points_reward or 10 }} puntos</strong> al completar esta aventura.</small>
+                            </div>
+                        </div>
+                        
+                        <h5 class="fw-bold mb-3 text-warning text-uppercase small" style="letter-spacing: 2px;">Itinerario y Detalles</h5>
+                        <p class="text-secondary lh-lg mb-5" style="white-space: pre-line; font-size: 1rem;">
+                            {{ event.description or 'Los detalles específicos de esta ruta están siendo finalizados por los guías líderes. Por favor mantente atento a nuestras redes sociales o contacta al administrador.' }}
+                        </p>
+                        
+                        <h5 class="fw-bold mb-4 text-body border-bottom pb-2 small text-uppercase">Información Logística</h5>
+                        <div class="row g-3">
+                            <div class="col-sm-6">
+                                <div class="p-3 border border-warning border-opacity-10 rounded-4 bg-warning bg-opacity-5 h-100">
+                                    <i class="bi bi-geo-alt text-warning fs-4 mb-2 d-block"></i>
+                                    <small class="d-block text-uppercase fw-bold text-black" style="font-size: 0.7rem; letter-spacing: 0.5px;">Lugar de Salida</small>
+                                    <strong class="logistics-value text-body">{{ event.departure_point }}</strong>
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <div class="p-3 border border-warning border-opacity-10 rounded-4 bg-warning bg-opacity-5 h-100">
+                                    <i class="bi bi-clock text-warning fs-4 mb-2 d-block"></i>
+                                    <small class="d-block text-uppercase fw-bold text-black" style="font-size: 0.7rem; letter-spacing: 0.5px;">Hora de Encuentro</small>
+                                    <strong class="logistics-value text-body">{{ event.departure_time }}</strong>
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <div class="p-3 border border-warning border-opacity-10 rounded-4 bg-warning bg-opacity-5 h-100">
+                                    <i class="bi bi-map text-warning fs-4 mb-2 d-block"></i>
+                                    <small class="d-block text-uppercase fw-bold text-black" style="font-size: 0.7rem; letter-spacing: 0.5px;">Recorrido Total</small>
+                                    <strong class="logistics-value text-body">{{ event.distance or 'N/A' }}</strong>
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <div class="p-3 border border-warning border-opacity-10 rounded-4 bg-warning bg-opacity-5 h-100">
+                                    <i class="bi bi-bar-chart text-warning fs-4 mb-2 d-block"></i>
+                                    <small class="d-block text-uppercase fw-bold text-black" style="font-size: 0.7rem; letter-spacing: 0.5px;">Nivel de Dificultad</small>
+                                    <strong class="logistics-value text-body">{{ event.difficulty }}</strong>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="mt-5 x-small text-muted fst-italic">
+                            * Al hacer clic en "Reservar Ahora", aceptas nuestras condiciones de senderismo y confirmas tu estado de salud apto para la actividad.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL RESERVA INTELIGENTE -->
+<div class="modal fade" id="reserveModal{{ event.id }}" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-2xl rounded-5 overflow-hidden">
+            <div id="reserveFormContainer{{ event.id }}">
+                <div class="modal-header border-0 pt-4 px-4 text-center d-block">
+                    <h5 class="modal-title fw-bold fs-4">Únete a la Expedición</h5>
+                    <p class="text-muted small mb-0">{{ event.title }}</p>
+                    <button type="button" class="btn-close position-absolute top-0 end-0 m-4 shadow-none" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body px-4 pb-5 bg-body">
+                    
+                    <!-- SECCIÓN DE PIN -->
+                    <div class="pin-access-card p-3 rounded-4 border border-warning mb-4 shadow-sm bg-warning bg-opacity-10" style="border-style: dashed !important;">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <h6 class="mb-0 fw-bold text-dark small"><i class="bi bi-key-fill me-2"></i>¿Ya eres socio de La Tribu?</h6>
+                            <button type="button" class="btn btn-xs btn-outline-dark rounded-pill py-1 px-3 small fw-bold" onclick="togglePinSection({{ event.id }})" id="btnTogglePin{{ event.id }}">Usar PIN</button>
+                        </div>
+                        <div id="pinEntrySection{{ event.id }}" class="d-none mt-3 animate__animated animate__fadeIn">
+                            <div class="input-group input-group-lg">
+                                <input type="text" id="lookupPin{{ event.id }}" class="form-control border-warning text-center fw-bold text-primary" placeholder="000000" maxlength="6" oninput="checkInputs({{ event.id }})">
+                                <button class="btn btn-warning text-dark fw-bold px-4 disabled" id="btnValidatePin{{ event.id }}" type="button" onclick="lookupUserByPin({{ event.id }})">CARGAR</button>
+                            </div>
+                            <div id="pinError{{ event.id }}" class="text-danger x-small fw-bold d-none mt-2 text-center animate__animated animate__shakeX">
+                                <i class="bi bi-x-circle-fill"></i> PIN no encontrado.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- FORMULARIO DE REGISTRO -->
+                    <div id="registrationFields{{ event.id }}">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label small fw-bold text-secondary text-uppercase" style="font-size: 0.65rem;">Nombre</label>
+                                <input type="text" id="resNombre{{ event.id }}" class="form-control border-warning bg-body py-2 rounded-3" placeholder="Tu nombre" oninput="checkInputs({{ event.id }})">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-bold text-secondary text-uppercase" style="font-size: 0.65rem;">Primer Apellido</label>
+                                <input type="text" id="resApellido1{{ event.id }}" class="form-control border-warning bg-body py-2 rounded-3" placeholder="Apellido 1" oninput="checkInputs({{ event.id }})">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-bold text-secondary text-uppercase" style="font-size: 0.65rem;">Segundo Apellido</label>
+                                <input type="text" id="resApellido2{{ event.id }}" class="form-control border-warning bg-body py-2 rounded-3" placeholder="Apellido 2" oninput="checkInputs({{ event.id }})">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small fw-bold text-secondary text-uppercase" style="font-size: 0.65rem;">Número de Celular</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-warning text-muted fw-bold">+506</span>
+                                    <input type="tel" id="resTel{{ event.id }}" class="form-control border-warning bg-body py-2 rounded-end-3" placeholder="88888888" maxlength="8" oninput="checkPhoneExistence({{ event.id }}); checkInputs({{ event.id }})">
+                                </div>
+                                <!-- MENSAJE DE DUPLICADO -->
+                                <div id="phoneDuplicateError{{ event.id }}" class="text-danger x-small mt-2 d-none fw-bold bg-danger bg-opacity-10 p-2 rounded-3 border border-danger border-opacity-25 animate__animated animate__fadeIn">
+                                    <i class="bi bi-x-octagon-fill me-1"></i> Ya este número existe.
+                                    <div class="mt-1 small text-dark opacity-75 fw-normal">
+                                        Si lo olvidó o no lo sabe Solicite su PIN a <strong>LA TRIBU DE LOS LIBRES</strong>...
+                                        <br>Movil - <a href="https://wa.me/50686227500" target="_blank" class="fw-bold text-danger text-decoration-underline">86227500</a>
+                                    </div>
+                                </div>
+                                <div id="phoneWarning{{ event.id }}" class="text-danger x-small mt-2 d-none fw-bold bg-danger bg-opacity-10 p-2 rounded-3 border border-danger border-opacity-25">
+                                    <i class="bi bi-exclamation-triangle-fill me-1"></i> Use 8 dígitos (empezando con 6, 7 u 8).
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small fw-bold text-secondary text-uppercase" style="font-size: 0.65rem;">Fecha de Nacimiento</label>
+                                <input type="date" id="resBirthDate{{ event.id }}" class="form-control border-warning bg-body py-2 text-center rounded-3" oninput="checkInputs({{ event.id }})">
+                                <div class="x-small text-muted mt-2 text-center">
+                                    <i class="bi bi-gift-fill text-warning me-1"></i> ¡Registra por primer Vez y Gana 500 puntos!
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="pinConfirmationMsg{{ event.id }}" class="d-none text-center animate__animated animate__fadeIn">
+                        <div class="alert alert-success border-0 shadow-sm">
+                            <h5 class="fw-bold mb-1">¡Hola <span id="pinUserName{{ event.id }}">Amigo</span>!</h5>
+                            <p class="small mb-0">Tus datos ya están cargados. Confirma tu cupo abajo.</p>
+                        </div>
+                    </div>
+
+                    <div class="d-grid mt-5">
+                        <button type="button" id="btnSubmitRes{{ event.id }}" class="btn btn-warning py-3 fw-bold rounded-pill text-dark disabled shadow-sm transition-all fs-5" onclick="processReservation({{ event.id }}, '{{ event.title|e }}', '{{ event.event_date }}', '{{ event.currency }}{{ event.price }}')">
+                            ¡CONFIRMAR MI REGISTRO!
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- EXITO -->
+            <div id="reserveSuccessContainer{{ event.id }}" class="d-none">
+                <div class="modal-body p-5 text-center bg-body">
+                    <div class="bg-success bg-opacity-10 d-inline-block p-4 rounded-circle mb-4 text-success animate__animated animate__bounceIn">
+                        <i class="bi bi-check-circle-fill display-1"></i>
+                    </div>
+                    <h3 class="fw-bold text-body">¡Registro Exitoso!</h3>
+                    <p class="text-secondary mt-3 fs-6">Guarde su <strong>PIN único</strong> de miembro para futuras aventuras y ver sus puntos:</p>
+                    <div class="bg-primary p-4 rounded-5 border-2 border border-white border-opacity-25 mb-4 shadow-sm">
+                        <h2 class="display-3 fw-bold text-white mb-0" id="pinDisplay{{ event.id }}" style="letter-spacing: 12px; margin-left: 12px;">XXXX</h2>
+                    </div>
+                    <hr class="my-4 opacity-10">
+                    <div class="d-grid gap-2 mt-3">
+                        <button type="button" class="btn btn-success py-3 fw-bold rounded-pill shadow-sm" id="btnSendWa{{ event.id }}">
+                            <i class="bi bi-whatsapp me-2"></i>NOTIFICAR A LA TRIBU
+                        </button>
+                        <button type="button" class="btn btn-light py-2 fw-bold text-muted rounded-pill mt-2" data-bs-dismiss="modal" onclick="window.location.reload()">Cerrar Ventana</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

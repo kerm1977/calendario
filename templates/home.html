@@ -68,7 +68,7 @@
         <div class="col-md-6 col-lg-4">
             <div class="card h-100 shadow-sm border border-secondary border-opacity-25 overflow-hidden position-relative adventure-card animate__animated animate__fadeInUp" style="animation-delay: {{ loop.index0 * 0.1 }}s">
                 
-                <!-- ACCIONES DE ADMIN -->
+                <!-- ACCIONES DE ADMIN (VISUALIZACIÓN FLOTANTE) -->
                 {% if current_user.is_authenticated and current_user.is_superuser %}
                 <div class="position-absolute top-0 end-0 m-3 z-3 d-flex gap-2">
                     <button class="btn btn-warning btn-sm rounded-circle shadow text-dark border-0 btn-admin-float" title="Editar Actividad" data-bs-toggle="modal" data-bs-target="#editModal{{ event.id }}">
@@ -176,417 +176,15 @@
             </div>
         </div>
 
-        <!-- ========================================== -->
-        <!-- MODAL DE DETALLES (REDDISEÑADO) -->
-        <!-- ========================================== -->
-        <div class="modal fade" id="detailsModal{{ event.id }}" tabindex="-1">
-            <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-                <div class="modal-content border-0 rounded-5 overflow-hidden shadow-2xl">
-                    
-                    <!-- NUEVA CABECERA LIMPIA -->
-                    <div class="modal-header border-0 pb-0 pt-4 px-4 px-md-5">
-                        <div class="w-100">
-                             <div class="d-flex justify-content-between align-items-start">
-                                <div>
-                                    <span class="badge bg-warning text-dark px-3 py-2 fw-bold text-uppercase mb-2 shadow-sm rounded-pill">{{ event.activity_type }}</span>
-                                    <h2 class="fw-bold mb-0 text-body">{{ event.title }}</h2>
-                                </div>
-                                <button type="button" class="btn-close shadow-none p-2 bg-light rounded-circle" data-bs-dismiss="modal"></button>
-                             </div>
-                        </div>
-                    </div>
+        <!-- ============================================== -->
+        <!-- IMPORTACIÓN DE MODALES MODULARIZADOS -->
+        <!-- ============================================== -->
+        <!-- 1. Modales de Reserva (Detalles y Formulario) -->
+        {% include 'modal_reservar.html' %}
+        
+        <!-- 2. Modales de Administración (Editar y Borrar) -->
+        {% include 'modales_admin.html' %}
 
-                    <div class="modal-body p-4 p-md-5 text-body bg-body">
-                        <div class="row g-5">
-                            
-                            <!-- COLUMNA IZQUIERDA: IMAGEN (THUMBNAIL) Y ACCIONES -->
-                            <div class="col-lg-4 order-lg-1 order-1">
-                                <!-- IMAGEN COMO TARJETA VERTICAL/THUMBNAIL -->
-                                <div class="card shadow-none border border-dark border-opacity-10 rounded-4 overflow-hidden mb-4 bg-light position-relative group-hover-zoom thumbnail-card">
-                                    {% if event.flyer %}
-                                        <div class="position-relative overflow-hidden" style="border-radius: 1rem;">
-                                            <img src="{{ url_for('static', filename='uploads/flyers/' + event.flyer) }}" 
-                                                 class="img-fluid w-100 shadow-sm" 
-                                                 style="object-fit: cover; cursor: pointer; transition: transform 0.3s ease;"
-                                                 alt="{{ event.title }}"
-                                                 onclick="showFullImage(this.src, this.alt)"
-                                                 onmouseover="this.style.transform='scale(1.03)'"
-                                                 onmouseout="this.style.transform='scale(1)'">
-                                            
-                                            <div class="position-absolute bottom-0 end-0 m-2">
-                                                <button class="btn btn-sm btn-dark bg-opacity-50 border-0 rounded-circle text-white pointer-events-none">
-                                                    <i class="bi bi-arrows-fullscreen"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    {% else %}
-                                        <div class="ratio ratio-1x1 bg-secondary bg-opacity-10 d-flex align-items-center justify-content-center text-muted rounded-4">
-                                            <div class="text-center">
-                                                <i class="bi bi-image fs-1 opacity-25"></i>
-                                                <small class="d-block mt-2">Sin Imagen</small>
-                                            </div>
-                                        </div>
-                                    {% endif %}
-                                </div>
-
-                                <!-- TARJETA DE PRECIO Y ACCIÓN (STICKY) -->
-                                <div class="card border-0 rounded-4 p-4 shadow-sm text-center bg-body-tertiary sticky-lg-top" style="top: 20px; z-index: 1;">
-                                    <div class="mb-4">
-                                        <small class="text-muted fw-bold text-uppercase d-block mb-1">Inversión por Persona</small>
-                                        <div class="display-5 fw-bold text-body text-truncate">{{ event.currency }}{{ "{:,.0f}".format(event.price) }}</div>
-                                    </div>
-
-                                    {% if event.reservation_fee %}
-                                    <div class="bg-warning bg-opacity-10 rounded-4 p-3 mb-4 border border-warning border-opacity-20">
-                                        <small class="d-block text-warning fw-bold text-uppercase mb-1" style="font-size: 0.7rem;">Reserva tu cupo con:</small>
-                                        <span class="h4 fw-bold text-warning-emphasis">{{ event.currency }}{{ event.reservation_fee }}</span>
-                                    </div>
-                                    {% endif %}
-
-                                    <!-- CONTADOR DE CUPOS EN MODAL DETALLE -->
-                                    <div class="mb-3 p-2 rounded-3 border fw-bold small
-                                        {% if disponibles <= 5 and disponibles > 0 %}
-                                            bg-danger bg-opacity-10 text-danger border-danger border-opacity-25 animate__animated animate__pulse animate__infinite
-                                        {% elif disponibles == 0 %}
-                                            bg-secondary bg-opacity-10 text-muted border-secondary
-                                        {% else %}
-                                            bg-success bg-opacity-10 text-success border-success border-opacity-25
-                                        {% endif %}">
-                                        
-                                        {% if disponibles > 0 %}
-                                            <i class="bi bi-person-walking me-2"></i>
-                                            {% if disponibles <= 5 %}
-                                                ¡ÚLTIMOS {{ disponibles }} CUPOS!
-                                            {% else %}
-                                                {{ disponibles }} lugares disponibles
-                                            {% endif %}
-                                        {% else %}
-                                            <i class="bi bi-x-circle-fill me-2"></i>¡CUPOS AGOTADOS!
-                                        {% endif %}
-                                    </div>
-
-                                    <div class="d-grid gap-2">
-                                        {% if disponibles > 0 %}
-                                        <button class="btn btn-warning rounded-pill fw-bold py-3 shadow-sm btn-confirm-trigger text-dark" data-bs-toggle="modal" data-bs-target="#reserveModal{{ event.id }}">
-                                            RESERVAR AHORA
-                                        </button>
-                                        {% else %}
-                                        <button class="btn btn-secondary rounded-pill fw-bold py-3 disabled" disabled>NO HAY CUPO</button>
-                                        {% endif %}
-                                        <button class="btn btn-outline-secondary rounded-pill fw-bold py-2 border-0" onclick="exportToWhatsApp('{{ event.title|e }}', '{{ event.activity_type|e }}', '{{ event.currency }}{{ event.price }}', '{% if event.duration_days > 1 %}Del {{ event.event_date.day }} al {{ event.end_date.day }} de {{ meses[event.end_date.month] }}{% else %}{{ event.event_date.day }} de {{ meses[event.event_date.month] }}{% endif %}', '{{ event.departure_point|e }}', '{{ event.departure_time|e }}', '{{ event.difficulty|e }}', '{{ event.distance|e }}', '{{ event.pickup_point|e }}', '{{ event.reservation_fee|e }}', '{{ event.description|e }}')">
-                                            <i class="bi bi-whatsapp me-2"></i>Compartir
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- COLUMNA DERECHA: INFORMACIÓN DETALLADA -->
-                            <div class="col-lg-8 order-lg-2 order-2">
-                                <div class="d-flex align-items-center gap-3 mb-4">
-                                    <div class="bg-success bg-opacity-10 text-success p-3 rounded-4 border border-success border-opacity-25 flex-grow-1">
-                                        <h6 class="mb-0 fw-bold"><i class="bi bi-star-fill me-2"></i>Recompensa de la Tribu</h6>
-                                        <small>Gana <strong>{{ event.points_reward or 10 }} puntos</strong> al completar esta aventura.</small>
-                                    </div>
-                                </div>
-                                
-                                <h5 class="fw-bold mb-3 text-warning text-uppercase small" style="letter-spacing: 2px;">Itinerario y Detalles</h5>
-                                <p class="text-secondary lh-lg mb-5" style="white-space: pre-line; font-size: 1rem;">
-                                    {{ event.description or 'Los detalles específicos de esta ruta están siendo finalizados por los guías líderes. Por favor mantente atento a nuestras redes sociales o contacta al administrador.' }}
-                                </p>
-                                
-                                <h5 class="fw-bold mb-4 text-body border-bottom pb-2 small text-uppercase">Información Logística</h5>
-                                <div class="row g-3">
-                                    <div class="col-sm-6">
-                                        <div class="p-3 border border-warning border-opacity-10 rounded-4 bg-warning bg-opacity-5 h-100">
-                                            <i class="bi bi-geo-alt text-warning fs-4 mb-2 d-block"></i>
-                                            <small class="d-block text-uppercase fw-bold text-black" style="font-size: 0.7rem; letter-spacing: 0.5px;">Lugar de Salida</small>
-                                            <strong class="logistics-value text-body">{{ event.departure_point }}</strong>
-                                        </div>
-                                    </div>
-                                    <div class="col-sm-6">
-                                        <div class="p-3 border border-warning border-opacity-10 rounded-4 bg-warning bg-opacity-5 h-100">
-                                            <i class="bi bi-clock text-warning fs-4 mb-2 d-block"></i>
-                                            <small class="d-block text-uppercase fw-bold text-black" style="font-size: 0.7rem; letter-spacing: 0.5px;">Hora de Encuentro</small>
-                                            <strong class="logistics-value text-body">{{ event.departure_time }}</strong>
-                                        </div>
-                                    </div>
-                                    <div class="col-sm-6">
-                                        <div class="p-3 border border-warning border-opacity-10 rounded-4 bg-warning bg-opacity-5 h-100">
-                                            <i class="bi bi-map text-warning fs-4 mb-2 d-block"></i>
-                                            <small class="d-block text-uppercase fw-bold text-black" style="font-size: 0.7rem; letter-spacing: 0.5px;">Recorrido Total</small>
-                                            <strong class="logistics-value text-body">{{ event.distance or 'N/A' }}</strong>
-                                        </div>
-                                    </div>
-                                    <div class="col-sm-6">
-                                        <div class="p-3 border border-warning border-opacity-10 rounded-4 bg-warning bg-opacity-5 h-100">
-                                            <i class="bi bi-bar-chart text-warning fs-4 mb-2 d-block"></i>
-                                            <small class="d-block text-uppercase fw-bold text-black" style="font-size: 0.7rem; letter-spacing: 0.5px;">Nivel de Dificultad</small>
-                                            <strong class="logistics-value text-body">{{ event.difficulty }}</strong>
-                                        </div>
-                                    </div>
-                                </div>
-                                <p class="mt-5 x-small text-muted fst-italic">
-                                    * Al hacer clic en "Reservar Ahora", aceptas nuestras condiciones de senderismo y confirmas tu estado de salud apto para la actividad.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ========================================== -->
-        <!-- MODAL DE RESERVA INTELIGENTE -->
-        <!-- ========================================== -->
-        <div class="modal fade" id="reserveModal{{ event.id }}" tabindex="-1" data-bs-backdrop="static">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content border-0 shadow-2xl rounded-5 overflow-hidden">
-                    <div id="reserveFormContainer{{ event.id }}">
-                        <div class="modal-header border-0 pt-4 px-4 text-center d-block">
-                            <h5 class="modal-title fw-bold fs-4">Únete a la Expedición</h5>
-                            <p class="text-muted small mb-0">{{ event.title }}</p>
-                            <button type="button" class="btn-close position-absolute top-0 end-0 m-4 shadow-none" data-bs-dismiss="modal"></button>
-                        </div>
-                        <div class="modal-body px-4 pb-5 bg-body">
-                            
-                            <!-- SECCIÓN DE PIN -->
-                            <div class="pin-access-card p-3 rounded-4 border border-warning mb-4 shadow-sm bg-warning bg-opacity-10" style="border-style: dashed !important;">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <h6 class="mb-0 fw-bold text-dark small"><i class="bi bi-key-fill me-2"></i>¿Ya eres socio de La Tribu?</h6>
-                                    <button type="button" class="btn btn-xs btn-outline-dark rounded-pill py-1 px-3 small fw-bold" onclick="togglePinSection({{ event.id }})" id="btnTogglePin{{ event.id }}">Usar PIN</button>
-                                </div>
-                                <div id="pinEntrySection{{ event.id }}" class="d-none mt-3 animate__animated animate__fadeIn">
-                                    <div class="input-group input-group-lg">
-                                        <input type="text" id="lookupPin{{ event.id }}" class="form-control border-warning text-center fw-bold text-primary" placeholder="000000" maxlength="6" oninput="checkInputs({{ event.id }})">
-                                        <button class="btn btn-warning text-dark fw-bold px-4 disabled" id="btnValidatePin{{ event.id }}" type="button" onclick="lookupUserByPin({{ event.id }})">CARGAR</button>
-                                    </div>
-                                    <div id="pinError{{ event.id }}" class="text-danger x-small fw-bold d-none mt-2 text-center animate__animated animate__shakeX">
-                                        <i class="bi bi-x-circle-fill"></i> PIN no encontrado.
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Contenedor del formulario de registro que se ocultará si se usa PIN -->
-                            <div id="registrationFields{{ event.id }}">
-                                <div class="row g-3">
-                                    <div class="col-12">
-                                        <label class="form-label small fw-bold text-secondary text-uppercase" style="font-size: 0.65rem;">Nombre</label>
-                                        <input type="text" id="resNombre{{ event.id }}" class="form-control border-warning bg-body py-2 rounded-3" placeholder="Tu nombre" oninput="checkInputs({{ event.id }})">
-                                    </div>
-                                    <div class="col-6">
-                                        <label class="form-label small fw-bold text-secondary text-uppercase" style="font-size: 0.65rem;">Primer Apellido</label>
-                                        <input type="text" id="resApellido1{{ event.id }}" class="form-control border-warning bg-body py-2 rounded-3" placeholder="Apellido 1" oninput="checkInputs({{ event.id }})">
-                                    </div>
-                                    <div class="col-6">
-                                        <label class="form-label small fw-bold text-secondary text-uppercase" style="font-size: 0.65rem;">Segundo Apellido</label>
-                                        <input type="text" id="resApellido2{{ event.id }}" class="form-control border-warning bg-body py-2 rounded-3" placeholder="Apellido 2" oninput="checkInputs({{ event.id }})">
-                                    </div>
-                                    <div class="col-12">
-                                        <label class="form-label small fw-bold text-secondary text-uppercase" style="font-size: 0.65rem;">Número de Celular</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text bg-light border-warning text-muted fw-bold">+506</span>
-                                            <!-- VALIDACIÓN EN TIEMPO REAL: Se agrega oninput para disparar la verificación -->
-                                            <input type="tel" id="resTel{{ event.id }}" class="form-control border-warning bg-body py-2 rounded-end-3" placeholder="88888888" maxlength="8" oninput="checkPhoneExistence({{ event.id }}); checkInputs({{ event.id }})">
-                                        </div>
-                                        <!-- MENSAJE DE ERROR PERSONALIZADO PARA TELÉFONO DUPLICADO -->
-                                        <div id="phoneDuplicateError{{ event.id }}" class="text-danger x-small mt-2 d-none fw-bold bg-danger bg-opacity-10 p-2 rounded-3 border border-danger border-opacity-25 animate__animated animate__fadeIn">
-                                            <i class="bi bi-x-octagon-fill me-1"></i> Ya este número existe.
-                                            <div class="mt-1 small text-dark opacity-75 fw-normal">
-                                                Si lo olvidó o no lo sabe Solicite su PIN a <strong>LA TRIBU DE LOS LIBRES</strong>...
-                                                <br>Movil - <a href="https://wa.me/50686227500" target="_blank" class="fw-bold text-danger text-decoration-underline">86227500</a>
-                                            </div>
-                                        </div>
-                                        <!-- Mensaje de formato (se oculta si hay duplicado) -->
-                                        <div id="phoneWarning{{ event.id }}" class="text-danger x-small mt-2 d-none fw-bold bg-danger bg-opacity-10 p-2 rounded-3 border border-danger border-opacity-25">
-                                            <i class="bi bi-exclamation-triangle-fill me-1"></i> Use 8 dígitos (empezando con 6, 7 u 8).
-                                        </div>
-                                    </div>
-                                    <div class="col-12">
-                                        <label class="form-label small fw-bold text-secondary text-uppercase" style="font-size: 0.65rem;">Fecha de Nacimiento</label>
-                                        <input type="date" id="resBirthDate{{ event.id }}" class="form-control border-warning bg-body py-2 text-center rounded-3" oninput="checkInputs({{ event.id }})">
-                                        <!-- TEXTO ACTUALIZADO AQUÍ -->
-                                        <div class="x-small text-muted mt-2 text-center">
-                                            <i class="bi bi-gift-fill text-warning me-1"></i> ¡Registra por primer Vez y Gana 500 puntos!
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Mensaje de confirmación simplificado (inicialmente oculto) -->
-                            <div id="pinConfirmationMsg{{ event.id }}" class="d-none text-center animate__animated animate__fadeIn">
-                                <div class="alert alert-success border-0 shadow-sm">
-                                    <h5 class="fw-bold mb-1">¡Hola <span id="pinUserName{{ event.id }}">Amigo</span>!</h5>
-                                    <p class="small mb-0">Tus datos ya están cargados. Confirma tu cupo abajo.</p>
-                                </div>
-                            </div>
-
-                            <div class="d-grid mt-5">
-                                <button type="button" id="btnSubmitRes{{ event.id }}" class="btn btn-warning py-3 fw-bold rounded-pill text-dark disabled shadow-sm transition-all fs-5" onclick="processReservation({{ event.id }}, '{{ event.title|e }}', '{{ event.event_date }}', '{{ event.currency }}{{ event.price }}')">
-                                    ¡CONFIRMAR MI REGISTRO!
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Mensaje de Éxito con el PIN -->
-                    <div id="reserveSuccessContainer{{ event.id }}" class="d-none">
-                        <div class="modal-body p-5 text-center bg-body">
-                            <div class="bg-success bg-opacity-10 d-inline-block p-4 rounded-circle mb-4 text-success animate__animated animate__bounceIn">
-                                <i class="bi bi-check-circle-fill display-1"></i>
-                            </div>
-                            <h3 class="fw-bold text-body">¡Registro Exitoso!</h3>
-                            <p class="text-secondary mt-3 fs-6">Guarde su <strong>PIN único</strong> de miembro para futuras aventuras y ver sus puntos:</p>
-                            <div class="bg-primary p-4 rounded-5 border-2 border border-white border-opacity-25 mb-4 shadow-sm">
-                                <h2 class="display-3 fw-bold text-white mb-0" id="pinDisplay{{ event.id }}" style="letter-spacing: 12px; margin-left: 12px;">XXXX</h2>
-                            </div>
-                            <hr class="my-4 opacity-10">
-                            <div class="d-grid gap-2 mt-3">
-                                <button type="button" class="btn btn-success py-3 fw-bold rounded-pill shadow-sm" id="btnSendWa{{ event.id }}">
-                                    <i class="bi bi-whatsapp me-2"></i>NOTIFICAR A LA TRIBU
-                                </button>
-                                <button type="button" class="btn btn-light py-2 fw-bold text-muted rounded-pill mt-2" data-bs-dismiss="modal" onclick="window.location.reload()">Cerrar Ventana</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        {% if current_user.is_authenticated and current_user.is_superuser %}
-        <!-- ========================================== -->
-        <!-- MODAL DE EDICIÓN (ADMIN) -->
-        <!-- ========================================== -->
-        <div class="modal fade" id="editModal{{ event.id }}" tabindex="-1">
-            <div class="modal-dialog modal-lg">
-                <form class="modal-content border-0 shadow-lg rounded-5 overflow-hidden" action="{{ url_for('calendar_view.edit_event', event_id=event.id) }}" method="POST" enctype="multipart/form-data">
-                    <div class="modal-header bg-warning text-dark border-0 py-3">
-                        <h5 class="modal-title fw-bold"><i class="bi bi-pencil-square me-2"></i>Editar Actividad</h5>
-                        <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body p-4 p-md-5 bg-body">
-                        <div class="row g-4">
-                            <!-- Sección 1 -->
-                            <div class="col-md-12"><h6 class="border-bottom pb-2 fw-bold text-warning text-uppercase small">1. Información General</h6></div>
-                            <div class="col-md-6">
-                                <label class="form-label small fw-bold text-secondary">Imagen del Evento</label>
-                                <input type="file" name="flyer" class="form-control border-warning bg-body shadow-none" accept="image/*">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label small fw-bold text-secondary">Nombre de la Aventura</label>
-                                <input type="text" name="title" class="form-control border-warning bg-body" value="{{ event.title }}" required>
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label small fw-bold text-secondary">Moneda</label>
-                                <select name="currency" class="form-select border-warning bg-body">
-                                    <option value="¢" {% if event.currency == '¢' %}selected{% endif %}>¢ Colones</option>
-                                    <option value="$" {% if event.currency == '$' %}selected{% endif %}>$ Dólares</option>
-                                </select>
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label small fw-bold text-secondary">Precio</label>
-                                <input type="number" step="0.01" name="price" class="form-control border-warning bg-body" value="{{ event.price }}">
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label small fw-bold text-secondary">Puntos</label>
-                                <input type="number" name="points_reward" class="form-control border-warning bg-body" value="{{ event.points_reward or 10 }}">
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label small fw-bold text-secondary">Tipo</label>
-                                <select name="activity_type" class="form-select border-warning bg-body">
-                                    {% for type in ['Caminata', 'El Camino de Costa Rica', 'Parque Nacional', 'Internacional', 'Convivio', 'Taller'] %}
-                                    <option {% if event.activity_type == type %}selected{% endif %}>{{ type }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-
-                            <!-- Sección 2 -->
-                            <div class="col-md-12 mt-5"><h6 class="border-bottom pb-2 fw-bold text-warning text-uppercase small">2. Calendario</h6></div>
-                            <div class="col-md-4">
-                                <label class="form-label small fw-bold text-secondary">Días (1-10)</label>
-                                <input type="number" name="duration_days" class="form-control border-warning bg-body edit-duration-input" data-event-id="{{ event.id }}" min="1" max="10" value="{{ event.duration_days }}">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label small fw-bold text-secondary edit-label-date" data-event-id="{{ event.id }}">{% if event.duration_days > 1 %}Fecha Inicio{% else %}Fecha Actividad{% endif %}</label>
-                                <input type="date" name="event_date" class="form-control border-warning bg-body" value="{{ event.event_date }}" required>
-                            </div>
-                            <div class="col-md-4 {% if event.duration_days <= 1 %}d-none{% endif %} edit-end-date-container" data-event-id="{{ event.id }}">
-                                <label class="form-label small fw-bold text-secondary">Fecha Cierre</label>
-                                <input type="date" name="end_date" class="form-control border-warning bg-body" value="{{ event.end_date }}">
-                            </div>
-
-                            <!-- Sección 3 -->
-                            <div class="col-md-12 mt-5"><h6 class="border-bottom pb-2 fw-bold text-warning text-uppercase small">3. Logística</h6></div>
-                            <div class="col-md-6">
-                                <label class="form-label small fw-bold text-secondary">Lugar de Salida</label>
-                                <input type="text" name="departure_point" class="form-control border-warning bg-body" value="{{ event.departure_point }}">
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label small fw-bold text-secondary">Hora Salida</label>
-                                <input type="time" name="departure_time" class="form-control border-warning bg-body" value="{{ event.departure_time }}">
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label small fw-bold text-secondary">Dificultad</label>
-                                <select name="difficulty" class="form-select border-warning bg-body">
-                                    {% for d in ['Básica', 'Paseo', 'Intermedio', 'Dificil', 'Avanzado'] %}
-                                    <option {% if event.difficulty == d %}selected{% endif %}>{{ d }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="col-md-4"><label class="form-label small fw-bold text-secondary">Distancia</label><input type="text" name="distance" class="form-control border-warning bg-body" value="{{ event.distance }}"></div>
-                            <div class="col-md-4"><label class="form-label small fw-bold text-secondary">Capacidad</label><input type="number" name="capacity" class="form-control border-warning bg-body" value="{{ event.capacity }}"></div>
-                            <div class="col-md-4"><label class="form-label small fw-bold text-secondary">Monto Reserva</label><input type="text" name="reservation_fee" class="form-control border-warning bg-body" value="{{ event.reservation_fee }}"></div>
-
-                            <div class="col-12"><label class="form-label small fw-bold text-secondary">Descripción Detallada</label><textarea name="description" class="form-control border-warning bg-body" rows="6">{{ event.description }}</textarea></div>
-
-                            <!-- Sección 4 -->
-                            <div class="col-md-12 mt-5"><h6 class="border-bottom pb-2 fw-bold text-warning text-uppercase small">4. Estado</h6></div>
-                            <div class="col-md-6">
-                                <label class="form-label small fw-bold text-secondary">Estado de Publicación</label>
-                                <select name="status" class="form-select border-warning bg-body edit-status-select" data-event-id="{{ event.id }}">
-                                    <option value="Activa" {% if event.status == 'Activa' %}selected{% endif %}>Activa</option>
-                                    <option value="Suspendido" {% if event.status == 'Suspendido' %}selected{% endif %}>Suspendido</option>
-                                    <option value="Se Traslado" {% if event.status == 'Se Traslado' %}selected{% endif %}>Se Traslado</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6 {% if event.status != 'Se Traslado' %}d-none{% endif %} edit-moved-date-container" data-event-id="{{ event.id }}">
-                                <label class="form-label small fw-bold text-secondary">Nueva Fecha</label>
-                                <input type="date" name="moved_date" class="form-control border-warning bg-body" value="{{ event.moved_date }}">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer bg-light border-0 py-3">
-                        <button type="button" class="btn btn-secondary rounded-pill px-4 fw-bold" data-bs-dismiss="modal">Cerrar</button>
-                        <button type="submit" class="btn btn-warning fw-bold text-dark rounded-pill px-5 shadow">Guardar Cambios</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- MODAL DE ELIMINACIÓN -->
-        <div class="modal fade" id="deleteModal{{ event.id }}" tabindex="-1">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content border-0 shadow-lg rounded-5 overflow-hidden">
-                    <div class="modal-header bg-danger text-white border-0 py-3 text-center d-block">
-                        <h5 class="modal-title fw-bold"><i class="bi bi-shield-fill-exclamation me-2"></i>Confirmación Crítica</h5>
-                        <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-4 shadow-none" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body p-5 text-center">
-                        <div class="mb-4"><i class="bi bi-trash-fill text-danger display-1 opacity-10"></i></div>
-                        <h4 class="fw-bold mb-3">¿Borrar esta actividad?</h4>
-                        <p class="text-secondary px-3">Estás a punto de eliminar permanentemente la aventura:<br><strong>"{{ event.title }}"</strong>.</p>
-                        <div class="bg-danger bg-opacity-5 p-4 rounded-4 text-start small border border-danger border-opacity-10 mt-4 mb-4 mx-2">
-                            <div class="form-check mb-3"><input class="form-check-input border-danger" type="checkbox" id="check1{{ event.id }}" onchange="validateDelete({{ event.id }})"><label class="form-check-label text-dark fw-bold" for="check1{{ event.id }}">Confirmo que es IRREVERSIBLE.</label></div>
-                            <div class="form-check"><input class="form-check-input border-danger" type="checkbox" id="check2{{ event.id }}" onchange="validateDelete({{ event.id }})"><label class="form-check-label text-dark fw-bold" for="check2{{ event.id }}">Se borrarán todas las reservas asociadas.</label></div>
-                        </div>
-                        <div class="d-grid gap-2">
-                            <a href="{{ url_for('calendar_view.delete_event', event_id=event.id) }}" id="deleteBtn{{ event.id }}" class="btn btn-danger py-3 fw-bold rounded-pill disabled shadow-sm fs-5">ELIMINAR AHORA</a>
-                            <button type="button" class="btn btn-light py-2 fw-bold text-muted rounded-pill mt-2" data-bs-dismiss="modal">CANCELAR</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        {% endif %}
         {% endfor %}
     {% else %}
         <!-- ESTADO VACÍO -->
@@ -646,7 +244,6 @@
     }
 
     // Variable global para controlar el estado de duplicado del teléfono
-    // Usamos un objeto para manejar el estado por ID de evento
     const phoneDuplicateState = {};
 
     /**
@@ -660,37 +257,29 @@
         
         const phone = telInput.value.replace(/[^0-9]/g, '');
         
-        // Solo verificamos si tiene 8 dígitos
         if (phone.length === 8) {
             try {
                 const response = await fetch(`/api/check-phone/${phone}`);
                 const data = await response.json();
                 
                 if (data.exists) {
-                    // Si existe, mostramos error y bloqueamos
                     warningDiv.classList.remove('d-none');
-                    formatWarning.classList.add('d-none'); // Ocultamos el de formato
+                    formatWarning.classList.add('d-none');
                     telInput.classList.add('is-invalid', 'border-danger');
                     telInput.classList.remove('border-warning');
-                    
-                    // Bloqueamos el botón
                     btnSub.classList.add('disabled');
                     phoneDuplicateState[id] = true;
                 } else {
-                    // Si no existe, limpiamos
                     warningDiv.classList.add('d-none');
                     telInput.classList.remove('is-invalid', 'border-danger');
                     telInput.classList.add('border-warning');
                     phoneDuplicateState[id] = false;
-                    
-                    // Re-verificamos el resto del formulario
                     checkInputs(id);
                 }
             } catch (error) {
                 console.error("Error verificando teléfono:", error);
             }
         } else {
-            // Si no tiene 8 dígitos, limpiamos el error de duplicado (el de formato se encarga checkInputs)
             warningDiv.classList.add('d-none');
             telInput.classList.remove('is-invalid', 'border-danger');
             telInput.classList.add('border-warning');
@@ -702,7 +291,6 @@
      * Valida y formatea los inputs del formulario de reserva
      */
     function checkInputs(id) {
-        // Obtenemos los elementos de forma segura
         const nomI = document.getElementById('resNombre' + id);
         const ap1I = document.getElementById('resApellido1' + id);
         const ap2I = document.getElementById('resApellido2' + id);
@@ -710,41 +298,23 @@
         const bdtI = document.getElementById('resBirthDate' + id);
         const pinI = document.getElementById('lookupPin' + id);
 
-        // FUNCIONES AUXILIARES DE FORMATEO ROBUSTO
-
-        // 1. Formateador Estricto (Nombre y Apellido 1)
-        // Elimina cualquier caracter que no sea una letra válida (incluyendo espacios y números)
-        // Fuerza la primera letra mayúscula y el resto minúsculas.
         const formatStrict = (inputElement) => {
             if (!inputElement) return "";
-            
             let value = inputElement.value;
-            // Reemplaza todo lo que NO sea a-z, A-Z, o letras con tilde/ñ por nada.
-            // Esto elimina espacios, números y símbolos.
             value = value.replace(/[^a-zA-ZñÑáéíóúÁÉÍÓÚüÜ]/g, '');
-            
-            // Capitalización forzada
             if (value.length > 0) {
                 value = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
             }
-            
-            // Solo actualizamos si cambió para evitar saltos de cursor innecesarios
             if (inputElement.value !== value) {
                 inputElement.value = value;
             }
             return value;
         };
 
-        // 2. Formateador Título (Segundo Apellido)
-        // Permite espacios (por si es compuesto) pero fuerza Title Case.
         const formatTitle = (inputElement) => {
             if (!inputElement) return "";
-            
             let value = inputElement.value;
-            // Permite letras y espacios
             value = value.replace(/[^a-zA-ZñÑáéíóúÁÉÍÓÚüÜ ]/g, '');
-            
-            // Title Case lógica
             if (value.length > 0) {
                 const words = value.split(' ');
                 for (let i = 0; i < words.length; i++) {
@@ -754,19 +324,16 @@
                 }
                 value = words.join(' ');
             }
-            
             if (inputElement.value !== value) {
                 inputElement.value = value;
             }
             return value;
         };
 
-        // Ejecutar formateo en tiempo real
         const nombre = formatStrict(nomI);
         const ap1 = formatStrict(ap1I);
         const ap2 = formatTitle(ap2I);
 
-        // Validación de Teléfono (Solo números, max 8)
         if (telI) {
             let telVal = telI.value.replace(/[^0-9]/g, '').substring(0, 8);
             if (telI.value !== telVal) telI.value = telVal;
@@ -774,7 +341,6 @@
             const warning = document.getElementById('phoneWarning' + id);
             const isTelValid = telVal.length === 8 && ['6', '7', '8'].includes(telVal[0]);
 
-            // Solo mostramos advertencia de formato si NO hay error de duplicado activo
             if (!phoneDuplicateState[id]) {
                 if (telVal.length > 0) {
                     warning.classList.toggle('d-none', isTelValid);
@@ -782,27 +348,22 @@
                     warning.classList.add('d-none');
                 }
             } else {
-                warning.classList.add('d-none'); // Prioridad al error de duplicado
+                warning.classList.add('d-none');
             }
         }
 
-        // Validación de PIN (Solo números, max 6)
         if (pinI) {
             let pinVal = pinI.value.replace(/[^0-9]/g, '');
             if (pinI.value !== pinVal) pinI.value = pinVal;
             document.getElementById('btnValidatePin' + id).classList.toggle('disabled', pinVal.length !== 6);
         }
         
-        // Habilitar botón de envío si todo es válido
         const btnSub = document.getElementById('btnSubmitRes' + id);
         const telVal = telI ? telI.value : "";
         const isTelValid = telVal.length === 8 && ['6', '7', '8'].includes(telVal[0]);
         
-        // Regla: Nombre y Ap1 >= 2 chars, Tel válido, Fecha no vacía Y NO HAY DUPLICADO
         const isValid = nombre.length >= 2 && ap1.length >= 2 && isTelValid && bdtI.value !== '' && !phoneDuplicateState[id];
         
-        // Solo habilitamos si es válido. Si es inválido por duplicado, checkPhoneExistence ya lo deshabilitó,
-        // pero aquí nos aseguramos de no rehabilitarlo accidentalmente.
         if (isValid) {
             btnSub.classList.remove('disabled');
         } else {
@@ -810,9 +371,6 @@
         }
     }
 
-    /**
-     * Alterna la visibilidad de la sección de PIN
-     */
     function togglePinSection(id) {
         const sec = document.getElementById(`pinEntrySection${id}`), 
               btn = document.getElementById(`btnTogglePin${id}`);
@@ -826,9 +384,6 @@
         }
     }
 
-    /**
-     * Busca los datos de un usuario por su PIN
-     */
     async function lookupUserByPin(id) {
         const pin = document.getElementById(`lookupPin${id}`).value, 
               btn = document.getElementById(`btnValidatePin${id}`), 
@@ -840,7 +395,6 @@
             const response = await fetch(`/api/lookup/${pin}`), 
                   data = await response.json();
             if (data.success) {
-                // REDIRECT TO PROFILE
                 window.location.href = `/mi-perfil/${pin}`;
             } else { 
                 err.classList.remove('d-none'); 
@@ -852,9 +406,6 @@
         }
     }
 
-    /**
-     * Procesa el registro de la reserva
-     */
     async function processReservation(id, title, date, price) {
         const payload = {
             nombre: document.getElementById(`resNombre${id}`).value.trim(),
@@ -863,7 +414,7 @@
             telefono: document.getElementById(`resTel${id}`).value.trim(),
             birth_date: document.getElementById(`resBirthDate${id}`).value,
             event_id: id,
-            pin: document.getElementById(`lookupPin${id}`).value.trim() // FIX: Enviar PIN actual para evitar duplicados
+            pin: document.getElementById(`lookupPin${id}`).value.trim()
         };
 
         const btn = document.getElementById(`btnSubmitRes${id}`), 
@@ -900,17 +451,11 @@
         }
     }
 
-    /**
-     * Comparte información de la aventura por WhatsApp
-     */
     function exportToWhatsApp(t, ty, p, d, de, ti, di, ds, pi, f, desc) {
         let msg = `*🌟 AVENTURA: ${t.toUpperCase()} 🌟*%0A*🧗 Tipo:* ${ty}%0A*📅 Fecha:* ${d}%0A*💰 Precio:* ${p}%0A%0A*📍 DETALLES:*%0A• Salida: ${de}%0A• Hora: ${ti}%0A• Nivel: ${di}%0A*✨ Somos la tribu de los libres ✨*`;
         window.open(`https://wa.me/?text=${msg}`, '_blank');
     }
 
-    /**
-     * Valida los checkboxes de eliminación crítica
-     */
     function validateDelete(id) {
         const c1 = document.getElementById('check1' + id).checked, 
               c2 = document.getElementById('check2' + id).checked, 
@@ -925,7 +470,6 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        // Lógica para etiquetas dinámicas en edición
         document.querySelectorAll('.edit-duration-input').forEach(input => {
             input.addEventListener('input', function() {
                 const eid = this.getAttribute('data-event-id'), 
@@ -941,7 +485,6 @@
             });
         });
         
-        // Mostrar campo de fecha si se traslada
         document.querySelectorAll('.edit-status-select').forEach(select => {
             select.addEventListener('change', function() {
                 const eid = this.getAttribute('data-event-id'), 
