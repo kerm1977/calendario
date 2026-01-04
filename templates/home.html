@@ -22,7 +22,7 @@
 </div>
 
 <!-- ========================================== -->
-<!-- NUEVA SECCIÓN: ACCESO RÁPIDO A PERFIL -->
+<!-- SECCIÓN: ACCESO RÁPIDO A PERFIL -->
 <!-- ========================================== -->
 <div class="row justify-content-center mb-5 animate__animated animate__fadeInUp" style="animation-delay: 0.2s;">
     <div class="col-md-8 col-lg-6">
@@ -59,6 +59,12 @@
 <div class="row g-4">
     {% if events %}
         {% for event in events %}
+        
+        <!-- CÁLCULO DE CUPOS EN TIEMPO REAL -->
+        {# Filtramos solo las reservas con estado 'Activo' para contar los espacios ocupados reales #}
+        {% set ocupados = event.bookings | selectattr("status", "equalto", "Activo") | list | length %}
+        {% set disponibles = event.capacity - ocupados %}
+        
         <div class="col-md-6 col-lg-4">
             <div class="card h-100 shadow-sm border border-secondary border-opacity-25 overflow-hidden position-relative adventure-card animate__animated animate__fadeInUp" style="animation-delay: {{ loop.index0 * 0.1 }}s">
                 
@@ -130,11 +136,21 @@
                         </div>
                     </div>
 
-                    <!-- NUEVA DISTRIBUCIÓN: DATOS Y PUNTOS -->
+                    <!-- NUEVA DISTRIBUCIÓN: DATOS, PUNTOS Y CUPOS -->
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <div class="d-flex flex-column gap-1 small text-secondary fw-medium card-meta-data">
                             <div><i class="bi bi-signpost-split-fill me-2 text-warning"></i>{{ event.distance or 'Por definir' }}</div>
                             <div><i class="bi bi-speedometer2 me-2 text-warning"></i>{{ event.difficulty }}</div>
+                            
+                            <!-- NUEVA IMPLEMENTACIÓN: CONTADOR DE ESPACIOS DISPONIBLES -->
+                            <div class="{{ 'text-danger fw-bold animate__animated animate__pulse animate__infinite' if disponibles <= 5 else '' }}">
+                                <i class="bi bi-person-walking me-2 text-warning"></i>
+                                {% if disponibles > 0 %}
+                                    {{ disponibles }} lugares disponibles
+                                {% else %}
+                                    <span class="badge bg-danger">AGOTADO</span>
+                                {% endif %}
+                            </div>
                         </div>
                         
                         <!-- BADGE DE PUNTOS VISIBLE EN LA CARD -->
@@ -147,9 +163,15 @@
                 </div>
 
                 <div class="card-footer bg-body border-0 p-4 pt-0">
+                    {% if disponibles > 0 %}
                     <button class="btn btn-warning rounded-pill fw-bold py-3 shadow-sm w-100 text-dark transition-all btn-main-reserve" data-bs-toggle="modal" data-bs-target="#detailsModal{{ event.id }}">
                         <i class="bi bi-binoculars-fill me-2"></i>Ver Detalles y Reservar
                     </button>
+                    {% else %}
+                    <button class="btn btn-secondary rounded-pill fw-bold py-3 w-100 disabled" disabled>
+                        <i class="bi bi-x-circle-fill me-2"></i>Cupos Agotados
+                    </button>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -221,10 +243,24 @@
                                     </div>
                                     {% endif %}
 
+                                    <!-- INFO CUPOS EN MODAL DETALLE -->
+                                    <div class="mb-3 text-muted small fw-bold">
+                                        <i class="bi bi-people-fill me-1"></i>
+                                        {% if disponibles > 0 %}
+                                            Quedan {{ disponibles }} lugares
+                                        {% else %}
+                                            <span class="text-danger">¡Cupos Agotados!</span>
+                                        {% endif %}
+                                    </div>
+
                                     <div class="d-grid gap-2">
+                                        {% if disponibles > 0 %}
                                         <button class="btn btn-warning rounded-pill fw-bold py-3 shadow-sm btn-confirm-trigger text-dark" data-bs-toggle="modal" data-bs-target="#reserveModal{{ event.id }}">
                                             RESERVAR AHORA
                                         </button>
+                                        {% else %}
+                                        <button class="btn btn-secondary rounded-pill fw-bold py-3 disabled" disabled>NO HAY CUPO</button>
+                                        {% endif %}
                                         <button class="btn btn-outline-secondary rounded-pill fw-bold py-2 border-0" onclick="exportToWhatsApp('{{ event.title|e }}', '{{ event.activity_type|e }}', '{{ event.currency }}{{ event.price }}', '{% if event.duration_days > 1 %}Del {{ event.event_date.day }} al {{ event.end_date.day }} de {{ meses[event.end_date.month] }}{% else %}{{ event.event_date.day }} de {{ meses[event.event_date.month] }}{% endif %}', '{{ event.departure_point|e }}', '{{ event.departure_time|e }}', '{{ event.difficulty|e }}', '{{ event.distance|e }}', '{{ event.pickup_point|e }}', '{{ event.reservation_fee|e }}', '{{ event.description|e }}')">
                                             <i class="bi bi-whatsapp me-2"></i>Compartir
                                         </button>
