@@ -4,7 +4,7 @@
 # Este archivo centraliza la lógica de negocio, el sistema de fidelidad "Brutal"
 # y la gestión logística integral. Está diseñado para una trazabilidad total
 # mediante el uso de cronogramas transaccionales (PointLog).
-# VERSIÓN: 6.8 FIX CUMPLEAÑOS (TIMEZONE CR)
+# VERSIÓN: 6.9 SECURITY UPDATE (PHONE CHECK BLOCK)
 # ==============================================================================
 
 import os
@@ -225,7 +225,7 @@ calendar_bp = Blueprint('calendar_view', __name__)
 def login():
     """Ruta administrativa para el ingreso de guías líderes."""
     if current_user.is_authenticated:
-        return redirect(url_for('main.home'))
+        return redirect(url_for('main.dashboard'))
         
     if request.method == 'POST':
         email = request.form.get('email')
@@ -516,6 +516,29 @@ def export_participants(event_id):
 # SECCIÓN 4: API ENDPOINTS Y REGISTRO INTELIGENTE
 # ==============================================================================
 
+@main_bp.route('/api/check-phone/<string:phone>', methods=['GET'])
+def check_phone_exists(phone):
+    """
+    ENDPOINT DE SEGURIDAD
+    Verifica si un número de teléfono ya está registrado en la base de datos.
+    Se utiliza para prevenir registros duplicados en el formulario de reserva.
+    Retorna JSON { "exists": true/false }
+    """
+    try:
+        # Limpiamos el teléfono para buscar solo números
+        clean_phone = ''.join(filter(str.isdigit, phone))
+        
+        # Buscamos coincidencias exactas
+        member = Member.query.filter_by(telefono=clean_phone).first()
+        
+        if member:
+            return jsonify({"exists": True})
+        
+        return jsonify({"exists": False})
+    except Exception as e:
+        print(f"Error verificando teléfono: {e}")
+        return jsonify({"exists": False, "error": str(e)})
+
 @main_bp.route('/api/lookup/<pin>')
 def api_lookup(pin):
     """Endpoint AJAX para consulta instantánea de identidad mediante PIN."""
@@ -551,10 +574,25 @@ def api_reserve():
         existing_booking = None # <-- CORRECCIÓN: Inicializar variable para evitar UnboundLocalError
         
         # Búsqueda por PIN para respetar la identidad y saldo de puntos.
-        if data.get('pin'):
-            member = Member.query.filter_by(pin=data.get('pin')).first()
+        provided_pin = data.get('pin')
+        if provided_pin:
+            member = Member.query.filter_by(pin=provided_pin).first()
 
         if not member:
+            # Caso B: Usuario NO ingresó PIN (Registro por formulario)
+            
+            # --- VALIDACIÓN DE SEGURIDAD ANTI-DUPLICADOS ---
+            # Si el teléfono YA existe, bloqueamos el registro y obligamos a usar PIN.
+            raw_tel = data.get('telefono', '').strip()
+            telefono = ''.join(filter(str.isdigit, raw_tel))
+            existing_member = Member.query.filter_by(telefono=telefono).first()
+            
+            if existing_member:
+                return jsonify({
+                    'success': False, 
+                    'error': 'Ya este número existe. Si lo olvidó o no lo sabe Solicite su PIN a LA TRIBU DE LOS LIBRES... Movil - 86227500'
+                })
+
             # FLUJO: NUEVO AVENTURERO (Creación e Identidad).
             while True:
                 new_pin = str(random.randint(100000, 999999))
@@ -932,11 +970,10 @@ with app.app_context():
     for m in masters:
         if not User.query.filter_by(email=m['email']).first():
             hashed_pw = bcrypt.generate_password_hash(m['pass']).decode('utf-8')
-            db.session.add(User(
-                email=m['email'], 
-                password=hashed_pw, 
-                is_superuser=True
-            ))
+            # is_superuser=True para los maestros
+            user = User(email=m['email'], password=hashed_pw, is_superuser=True)
+            db.session.add(user)
+    
     db.session.commit()
 
 # --- LANZAMIENTO DEL SERVIDOR MAESTRO ---

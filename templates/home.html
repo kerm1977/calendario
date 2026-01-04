@@ -142,7 +142,7 @@
                             <div><i class="bi bi-signpost-split-fill me-2 text-warning"></i>{{ event.distance or 'Por definir' }}</div>
                             <div><i class="bi bi-speedometer2 me-2 text-warning"></i>{{ event.difficulty }}</div>
                             
-                            <!-- NUEVA IMPLEMENTACIÓN: CONTADOR DE ESPACIOS DISPONIBLES (EN CARD) -->
+                            <!-- CONTADOR DE ESPACIOS DISPONIBLES (EN CARD) -->
                             <div class="{{ 'text-danger fw-bold animate__animated animate__pulse animate__infinite' if disponibles <= 5 else '' }}">
                                 <i class="bi bi-person-walking me-2 text-warning"></i>
                                 {% if disponibles > 0 %}
@@ -243,9 +243,7 @@
                                     </div>
                                     {% endif %}
 
-                                    <!-- ======================================================= -->
-                                    <!-- NUEVA IMPLEMENTACIÓN: CONTADOR DE CUPOS EN MODAL DETALLE -->
-                                    <!-- ======================================================= -->
+                                    <!-- CONTADOR DE CUPOS EN MODAL DETALLE -->
                                     <div class="mb-3 p-2 rounded-3 border fw-bold small
                                         {% if disponibles <= 5 and disponibles > 0 %}
                                             bg-danger bg-opacity-10 text-danger border-danger border-opacity-25 animate__animated animate__pulse animate__infinite
@@ -266,7 +264,6 @@
                                             <i class="bi bi-x-circle-fill me-2"></i>¡CUPOS AGOTADOS!
                                         {% endif %}
                                     </div>
-                                    <!-- ======================================================= -->
 
                                     <div class="d-grid gap-2">
                                         {% if disponibles > 0 %}
@@ -388,8 +385,18 @@
                                         <label class="form-label small fw-bold text-secondary text-uppercase" style="font-size: 0.65rem;">Número de Celular</label>
                                         <div class="input-group">
                                             <span class="input-group-text bg-light border-warning text-muted fw-bold">+506</span>
-                                            <input type="tel" id="resTel{{ event.id }}" class="form-control border-warning bg-body py-2 rounded-end-3" placeholder="88888888" maxlength="8" oninput="checkInputs({{ event.id }})">
+                                            <!-- VALIDACIÓN EN TIEMPO REAL: Se agrega oninput para disparar la verificación -->
+                                            <input type="tel" id="resTel{{ event.id }}" class="form-control border-warning bg-body py-2 rounded-end-3" placeholder="88888888" maxlength="8" oninput="checkPhoneExistence({{ event.id }}); checkInputs({{ event.id }})">
                                         </div>
+                                        <!-- MENSAJE DE ERROR PERSONALIZADO PARA TELÉFONO DUPLICADO -->
+                                        <div id="phoneDuplicateError{{ event.id }}" class="text-danger x-small mt-2 d-none fw-bold bg-danger bg-opacity-10 p-2 rounded-3 border border-danger border-opacity-25 animate__animated animate__fadeIn">
+                                            <i class="bi bi-x-octagon-fill me-1"></i> Ya este número existe.
+                                            <div class="mt-1 small text-dark opacity-75 fw-normal">
+                                                Si lo olvidó o no lo sabe Solicite su PIN a <strong>LA TRIBU DE LOS LIBRES</strong>...
+                                                <br>Movil - <a href="https://wa.me/50686227500" target="_blank" class="fw-bold text-danger text-decoration-underline">86227500</a>
+                                            </div>
+                                        </div>
+                                        <!-- Mensaje de formato (se oculta si hay duplicado) -->
                                         <div id="phoneWarning{{ event.id }}" class="text-danger x-small mt-2 d-none fw-bold bg-danger bg-opacity-10 p-2 rounded-3 border border-danger border-opacity-25">
                                             <i class="bi bi-exclamation-triangle-fill me-1"></i> Use 8 dígitos (empezando con 6, 7 u 8).
                                         </div>
@@ -638,6 +645,59 @@
         }
     }
 
+    // Variable global para controlar el estado de duplicado del teléfono
+    // Usamos un objeto para manejar el estado por ID de evento
+    const phoneDuplicateState = {};
+
+    /**
+     * Verifica en tiempo real si el teléfono ya existe
+     */
+    async function checkPhoneExistence(id) {
+        const telInput = document.getElementById('resTel' + id);
+        const warningDiv = document.getElementById('phoneDuplicateError' + id);
+        const formatWarning = document.getElementById('phoneWarning' + id);
+        const btnSub = document.getElementById('btnSubmitRes' + id);
+        
+        const phone = telInput.value.replace(/[^0-9]/g, '');
+        
+        // Solo verificamos si tiene 8 dígitos
+        if (phone.length === 8) {
+            try {
+                const response = await fetch(`/api/check-phone/${phone}`);
+                const data = await response.json();
+                
+                if (data.exists) {
+                    // Si existe, mostramos error y bloqueamos
+                    warningDiv.classList.remove('d-none');
+                    formatWarning.classList.add('d-none'); // Ocultamos el de formato
+                    telInput.classList.add('is-invalid', 'border-danger');
+                    telInput.classList.remove('border-warning');
+                    
+                    // Bloqueamos el botón
+                    btnSub.classList.add('disabled');
+                    phoneDuplicateState[id] = true;
+                } else {
+                    // Si no existe, limpiamos
+                    warningDiv.classList.add('d-none');
+                    telInput.classList.remove('is-invalid', 'border-danger');
+                    telInput.classList.add('border-warning');
+                    phoneDuplicateState[id] = false;
+                    
+                    // Re-verificamos el resto del formulario
+                    checkInputs(id);
+                }
+            } catch (error) {
+                console.error("Error verificando teléfono:", error);
+            }
+        } else {
+            // Si no tiene 8 dígitos, limpiamos el error de duplicado (el de formato se encarga checkInputs)
+            warningDiv.classList.add('d-none');
+            telInput.classList.remove('is-invalid', 'border-danger');
+            telInput.classList.add('border-warning');
+            phoneDuplicateState[id] = false;
+        }
+    }
+
     /**
      * Valida y formatea los inputs del formulario de reserva
      */
@@ -714,10 +774,15 @@
             const warning = document.getElementById('phoneWarning' + id);
             const isTelValid = telVal.length === 8 && ['6', '7', '8'].includes(telVal[0]);
 
-            if (telVal.length > 0) {
-                warning.classList.toggle('d-none', isTelValid);
+            // Solo mostramos advertencia de formato si NO hay error de duplicado activo
+            if (!phoneDuplicateState[id]) {
+                if (telVal.length > 0) {
+                    warning.classList.toggle('d-none', isTelValid);
+                } else {
+                    warning.classList.add('d-none');
+                }
             } else {
-                warning.classList.add('d-none');
+                warning.classList.add('d-none'); // Prioridad al error de duplicado
             }
         }
 
@@ -733,9 +798,16 @@
         const telVal = telI ? telI.value : "";
         const isTelValid = telVal.length === 8 && ['6', '7', '8'].includes(telVal[0]);
         
-        // Regla: Nombre y Ap1 >= 2 chars, Tel válido, Fecha no vacía.
-        const isValid = nombre.length >= 2 && ap1.length >= 2 && isTelValid && bdtI.value !== '';
-        btnSub.classList.toggle('disabled', !isValid);
+        // Regla: Nombre y Ap1 >= 2 chars, Tel válido, Fecha no vacía Y NO HAY DUPLICADO
+        const isValid = nombre.length >= 2 && ap1.length >= 2 && isTelValid && bdtI.value !== '' && !phoneDuplicateState[id];
+        
+        // Solo habilitamos si es válido. Si es inválido por duplicado, checkPhoneExistence ya lo deshabilitó,
+        // pero aquí nos aseguramos de no rehabilitarlo accidentalmente.
+        if (isValid) {
+            btnSub.classList.remove('disabled');
+        } else {
+            btnSub.classList.add('disabled');
+        }
     }
 
     /**
