@@ -61,9 +61,12 @@
         {% for event in events %}
         
         <!-- CÁLCULO DE CUPOS EN TIEMPO REAL -->
-        {# Filtramos solo las reservas con estado 'Activo' para contar los espacios ocupados reales #}
+        {# Filtramos solo las reservas con estado 'Activo' #}
         {% set ocupados = event.bookings | selectattr("status", "equalto", "Activo") | list | length %}
         {% set disponibles = event.capacity - ocupados %}
+        
+        <!-- LÓGICA DE FECHA PASADA -->
+        {% set es_pasado = event.event_date < now.date() %}
         
         <div class="col-md-6 col-lg-4">
             <div class="card h-100 shadow-sm border border-secondary border-opacity-25 overflow-hidden position-relative adventure-card animate__animated animate__fadeInUp" style="animation-delay: {{ loop.index0 * 0.1 }}s">
@@ -71,10 +74,19 @@
                 <!-- ACCIONES DE ADMIN (VISUALIZACIÓN FLOTANTE) -->
                 {% if current_user.is_authenticated and current_user.is_superuser %}
                 <div class="position-absolute top-0 end-0 m-3 z-3 d-flex gap-2">
+                    
+                    <!-- BOTÓN ESPECIAL: CONCLUIR CAMINATA (Solo si ya pasó la fecha) -->
+                    {% if es_pasado %}
+                    <button class="btn btn-success btn-sm rounded-pill shadow fw-bold border-0 px-3 animate__animated animate__pulse animate__infinite" title="Caminata Concluida - Limpiar" data-bs-toggle="modal" data-bs-target="#concludeModal{{ event.id }}">
+                        <i class="bi bi-check-circle-fill me-1"></i>Concluir
+                    </button>
+                    {% endif %}
+
                     <button class="btn btn-warning btn-sm rounded-circle shadow text-dark border-0 btn-admin-float" title="Editar Actividad" data-bs-toggle="modal" data-bs-target="#editModal{{ event.id }}">
                         <i class="bi bi-pencil-fill"></i>
                     </button>
-                    <button class="btn btn-white btn-sm rounded-circle shadow text-danger border-0 btn-admin-float" title="Eliminar" data-bs-toggle="modal" data-bs-target="#deleteModal{{ event.id }}">
+                    
+                    <button class="btn btn-white btn-sm rounded-circle shadow text-danger border-0 btn-admin-float" title="Eliminar Radical" data-bs-toggle="modal" data-bs-target="#deleteModal{{ event.id }}">
                         <i class="bi bi-trash3-fill"></i>
                     </button>
                 </div>
@@ -92,12 +104,10 @@
                 <!-- CONTENEDOR DE IMAGEN (FLYER) -->
                 <div class="card-img-container" style="height: 300px; background: var(--bs-tertiary-bg); position: relative; overflow: hidden;">
                     {% if event.flyer %}
-                        <!-- IMAGEN PRINCIPAL (CARD) -->
                         <img src="{{ url_for('static', filename='uploads/flyers/' + event.flyer) }}" 
                              class="card-img-top w-100 h-100 flyer-zoom" 
                              style="object-fit: cover; cursor: pointer;" 
                              alt="{{ event.title }}"
-                             title="Clic para ver imagen completa"
                              onclick="showFullImage(this.src, this.alt)">
                     {% else %}
                         <div class="w-100 h-100 d-flex flex-column align-items-center justify-content-center text-muted">
@@ -112,6 +122,13 @@
                             <span class="h3 fw-bold mb-0 text-white shadow-text">{{ event.currency }}{{ "{:,.2f}".format(event.price) }}</span>
                         </div>
                     </div>
+
+                    <!-- OVERLAY DE EVENTO PASADO -->
+                    {% if es_pasado %}
+                    <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style="background: rgba(0,0,0,0.6); pointer-events: none;">
+                        <h2 class="text-white fw-bold border-2 border-white border px-4 py-2 text-uppercase" style="transform: rotate(-15deg);">FINALIZADO</h2>
+                    </div>
+                    {% endif %}
                 </div>
 
                 <div class="card-body p-4">
@@ -163,23 +180,24 @@
                 </div>
 
                 <div class="card-footer bg-body border-0 p-4 pt-0">
-                    {% if disponibles > 0 %}
-                    <button class="btn btn-warning rounded-pill fw-bold py-3 shadow-sm w-100 text-dark transition-all btn-main-reserve" data-bs-toggle="modal" data-bs-target="#detailsModal{{ event.id }}">
-                        <i class="bi bi-binoculars-fill me-2"></i>Ver Detalles y Reservar
-                    </button>
+                    {% if es_pasado %}
+                         <button class="btn btn-secondary rounded-pill fw-bold py-3 w-100 disabled" disabled>Evento Finalizado</button>
+                    {% elif disponibles > 0 %}
+                        <button class="btn btn-warning rounded-pill fw-bold py-3 shadow-sm w-100 text-dark transition-all btn-main-reserve" data-bs-toggle="modal" data-bs-target="#detailsModal{{ event.id }}">
+                            <i class="bi bi-binoculars-fill me-2"></i>Ver Detalles y Reservar
+                        </button>
                     {% else %}
-                    <button class="btn btn-secondary rounded-pill fw-bold py-3 w-100 disabled" disabled>
-                        <i class="bi bi-x-circle-fill me-2"></i>Cupos Agotados
-                    </button>
+                        <button class="btn btn-secondary rounded-pill fw-bold py-3 w-100 disabled" disabled>Cupos Agotados</button>
                     {% endif %}
                 </div>
             </div>
         </div>
 
         <!-- ============================================== -->
-        <!-- IMPORTACIÓN DE MODALES MODULARIZADOS -->
+        <!-- IMPORTACIÓN DE COMPONENTES MODULARES -->
         <!-- ============================================== -->
-        <!-- 1. Modales de Reserva (Detalles y Formulario) -->
+        
+        <!-- 1. Modal de Reserva (Usuario) -->
         {% include 'modal_reservar.html' %}
         
         <!-- 2. Modales de Administración (Editar y Borrar) -->
@@ -263,23 +281,30 @@
                 const data = await response.json();
                 
                 if (data.exists) {
+                    // Si existe, mostramos error y bloqueamos
                     warningDiv.classList.remove('d-none');
                     formatWarning.classList.add('d-none');
                     telInput.classList.add('is-invalid', 'border-danger');
                     telInput.classList.remove('border-warning');
+                    
+                    // Bloqueamos el botón
                     btnSub.classList.add('disabled');
                     phoneDuplicateState[id] = true;
                 } else {
+                    // Si no existe, limpiamos
                     warningDiv.classList.add('d-none');
                     telInput.classList.remove('is-invalid', 'border-danger');
                     telInput.classList.add('border-warning');
                     phoneDuplicateState[id] = false;
+                    
+                    // Re-verificamos el resto del formulario
                     checkInputs(id);
                 }
             } catch (error) {
                 console.error("Error verificando teléfono:", error);
             }
         } else {
+            // Si no tiene 8 dígitos, limpiamos el error de duplicado (el de formato se encarga checkInputs)
             warningDiv.classList.add('d-none');
             telInput.classList.remove('is-invalid', 'border-danger');
             telInput.classList.add('border-warning');
@@ -334,6 +359,7 @@
         const ap1 = formatStrict(ap1I);
         const ap2 = formatTitle(ap2I);
 
+        // Validación de Teléfono (Solo números, max 8)
         if (telI) {
             let telVal = telI.value.replace(/[^0-9]/g, '').substring(0, 8);
             if (telI.value !== telVal) telI.value = telVal;
@@ -341,6 +367,7 @@
             const warning = document.getElementById('phoneWarning' + id);
             const isTelValid = telVal.length === 8 && ['6', '7', '8'].includes(telVal[0]);
 
+            // Solo mostramos advertencia de formato si NO hay error de duplicado activo
             if (!phoneDuplicateState[id]) {
                 if (telVal.length > 0) {
                     warning.classList.toggle('d-none', isTelValid);
@@ -348,22 +375,27 @@
                     warning.classList.add('d-none');
                 }
             } else {
-                warning.classList.add('d-none');
+                warning.classList.add('d-none'); // Prioridad al error de duplicado
             }
         }
 
+        // Validación de PIN (Solo números, max 6)
         if (pinI) {
             let pinVal = pinI.value.replace(/[^0-9]/g, '');
             if (pinI.value !== pinVal) pinI.value = pinVal;
             document.getElementById('btnValidatePin' + id).classList.toggle('disabled', pinVal.length !== 6);
         }
         
+        // Habilitar botón de envío si todo es válido
         const btnSub = document.getElementById('btnSubmitRes' + id);
         const telVal = telI ? telI.value : "";
         const isTelValid = telVal.length === 8 && ['6', '7', '8'].includes(telVal[0]);
         
+        // Regla: Nombre y Ap1 >= 2 chars, Tel válido, Fecha no vacía Y NO HAY DUPLICADO
         const isValid = nombre.length >= 2 && ap1.length >= 2 && isTelValid && bdtI.value !== '' && !phoneDuplicateState[id];
         
+        // Solo habilitamos si es válido. Si es inválido por duplicado, checkPhoneExistence ya lo deshabilitó,
+        // pero aquí nos aseguramos de no rehabilitarlo accidentalmente.
         if (isValid) {
             btnSub.classList.remove('disabled');
         } else {
@@ -395,6 +427,7 @@
             const response = await fetch(`/api/lookup/${pin}`), 
                   data = await response.json();
             if (data.success) {
+                // REDIRECT TO PROFILE
                 window.location.href = `/mi-perfil/${pin}`;
             } else { 
                 err.classList.remove('d-none'); 
@@ -406,6 +439,9 @@
         }
     }
 
+    /**
+     * Procesa el registro de la reserva
+     */
     async function processReservation(id, title, date, price) {
         const payload = {
             nombre: document.getElementById(`resNombre${id}`).value.trim(),
@@ -414,7 +450,7 @@
             telefono: document.getElementById(`resTel${id}`).value.trim(),
             birth_date: document.getElementById(`resBirthDate${id}`).value,
             event_id: id,
-            pin: document.getElementById(`lookupPin${id}`).value.trim()
+            pin: document.getElementById(`lookupPin${id}`).value.trim() // FIX: Enviar PIN actual para evitar duplicados
         };
 
         const btn = document.getElementById(`btnSubmitRes${id}`), 
@@ -468,8 +504,22 @@
             btn.classList.remove('animate__animated', 'animate__pulse', 'animate__infinite'); 
         }
     }
+    
+    // Función de validación para el modal de concluir (2 pasos)
+    function validateConclude(id) {
+        const c1 = document.getElementById('checkConclude1' + id).checked;
+        const c2 = document.getElementById('checkConclude2' + id).checked;
+        const btn = document.getElementById('concludeBtn' + id);
+        
+        if (c1 && c2) {
+            btn.classList.remove('disabled');
+        } else {
+            btn.classList.add('disabled');
+        }
+    }
 
     document.addEventListener('DOMContentLoaded', function() {
+        // Lógica para etiquetas dinámicas en edición
         document.querySelectorAll('.edit-duration-input').forEach(input => {
             input.addEventListener('input', function() {
                 const eid = this.getAttribute('data-event-id'), 
@@ -485,6 +535,7 @@
             });
         });
         
+        // Mostrar campo de fecha si se traslada
         document.querySelectorAll('.edit-status-select').forEach(select => {
             select.addEventListener('change', function() {
                 const eid = this.getAttribute('data-event-id'), 

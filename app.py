@@ -4,7 +4,7 @@
 # Este archivo centraliza la lógica de negocio, el sistema de fidelidad "Brutal"
 # y la gestión logística integral. Está diseñado para una trazabilidad total
 # mediante el uso de cronogramas transaccionales (PointLog).
-# VERSIÓN: 6.9 SECURITY UPDATE (PHONE CHECK BLOCK)
+# VERSIÓN: 7.0 COMPLETE (LIFECYCLE + SECURITY)
 # ==============================================================================
 
 import os
@@ -262,10 +262,18 @@ def service_worker():
 def home():
     """Catálogo público inteligente. Filtra rutas por mes y cercanía cronológica."""
     search_month = request.args.get('search_month', type=int)
+    # FIX: Usar la fecha ajustada a CR
+    today = (datetime.utcnow() - timedelta(hours=6)).date()
     query = Event.query
     
     if search_month:
         query = query.filter(extract('month', Event.event_date) == search_month)
+    
+    # VISIBILIDAD INTELIGENTE:
+    # - Usuarios normales: Solo ven eventos futuros o de hoy.
+    # - Admins: Ven eventos futuros Y eventos pasados (para poder concluirlos/eliminarlos).
+    if not (current_user.is_authenticated and current_user.is_superuser):
+        query = query.filter(Event.event_date >= today)
     
     # Mostrar primero las expediciones más próximas a ocurrir.
     events = query.order_by(Event.event_date.asc()).all()
@@ -539,7 +547,7 @@ def check_phone_exists(phone):
         print(f"Error verificando teléfono: {e}")
         return jsonify({"exists": False, "error": str(e)})
 
-@main_bp.route('/api/lookup/<pin>')
+@main_bp.route('/api/lookup/<string:pin>')
 def api_lookup(pin):
     """Endpoint AJAX para consulta instantánea de identidad mediante PIN."""
     member = Member.query.filter_by(pin=pin).first()
@@ -619,7 +627,7 @@ def api_reserve():
                 nombre=data['nombre'], 
                 apellido1=data['apellido1'], 
                 apellido2=data.get('apellido2', ''),
-                telefono=data['telefono'], 
+                telefono=telefono,
                 birth_date=b_date, 
                 puntos_totales=pts_ganados,
                 ultimo_regalo_bday=reg_year_bono
@@ -630,8 +638,15 @@ def api_reserve():
             # REGISTRO TRANSACTIONAL 1: Bono de Bienvenida (Primero, como base).
             db.session.add(PointLog(
                 member_id=member.id,
+                transaction_type='Bienvenida',
+                description='Registro Inicial en La Tribu',
+                amount=0,
+                created_at=datetime.utcnow()
+            ))
+            db.session.add(PointLog(
+                member_id=member.id,
                 transaction_type='Bono Bienvenida',
-                description='Regalo único por unirse a La Tribu',
+                description='Regalo por primer registro',
                 amount=WELCOME_BONUS,
                 created_at=datetime.utcnow()
             ))
@@ -911,32 +926,111 @@ def edit_event(event_id):
         
     return redirect(request.referrer or url_for('main.home'))
 
-@calendar_bp.route('/admin/event/delete/<int:event_id>')
+# --- RUTAS DE CICLO DE VIDA (CONCLUIR / ELIMINAR) ---
+
+@calendar_bp.route('/admin/event/conclude/<int:event_id>')
 @login_required
-def delete_event(event_id):
-    """Borrado íntegro de expedición, inscripciones y archivo físico flyer."""
+def conclude_event(event_id):
+    """
+    ELIMINACIÓN SEGURA (CONCLUIR):
+    Borra el evento de la cartelera y las reservas, PERO MANTIENE LOS PUNTOS.
+    Desvincula los PointLogs para que queden como historial histórico.
+    """
+    if not current_user.is_superuser: abort(403)
     ev = Event.query.get_or_404(event_id)
+    titulo = ev.title
+    
     try:
-        titulo = ev.title
+        # 1. Desvincular PointLogs de las reservas para protegerlos
+        # Buscamos todas las reservas de este evento
+        bookings = Booking.query.filter_by(event_id=ev.id).all()
+        for b in bookings:
+            # Buscamos logs asociados a esta reserva
+            logs = PointLog.query.filter_by(booking_id=b.id).all()
+            for l in logs:
+                l.booking_id = None # Romper el vínculo FK para que no se borre
+                # Opcional: Agregar nota en descripción
+                if "Histórico" not in l.description:
+                    l.description += " (Evento Concluido)"
+        
+        # Guardamos la desvinculación antes de borrar
+        db.session.commit()
+
+        # 2. Borrar Imagen
         if ev.flyer:
             try:
                 path = os.path.join(app.config['UPLOAD_FOLDER'], ev.flyer)
                 if os.path.exists(path): os.remove(path)
-            except Exception:
-                pass
+            except Exception: pass
         
+        # 3. Borrar Evento (Booking se borra en cascada, pero los logs ya están salvos)
         db.session.delete(ev)
         
-        # NOTIFICACIÓN ADMIN: Aventura Eliminada
         db.session.add(AdminNotification(
-            category='danger',
-            title='Aventura Eliminada',
-            message=f'La ruta "{titulo}" ha sido borrada del calendario.',
+            category='success',
+            title='Caminata Concluida',
+            message=f'El evento "{titulo}" se cerró correctamente. Puntos de usuarios preservados.',
             action_link='#'
         ))
         
         db.session.commit()
-        flash('Ruta eliminada permanentemente del sistema.', 'success')
+        flash(f'Caminata "{titulo}" concluida y eliminada de cartelera. Historial de puntos conservado.', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error concluyendo evento {event_id}: {e}")
+        flash(f'Error al concluir evento: {str(e)}', 'danger')
+
+    return redirect(url_for('main.home'))
+
+@calendar_bp.route('/admin/event/delete/<int:event_id>')
+@login_required
+def delete_event(event_id):
+    """
+    ELIMINACIÓN RADICAL (BASURERO):
+    Borra evento, reservas Y REVIERTE LOS PUNTOS ganados.
+    Se usa para errores o cancelaciones totales donde no deben quedar puntos.
+    """
+    if not current_user.is_superuser: abort(403)
+    ev = Event.query.get_or_404(event_id)
+    titulo = ev.title
+    
+    try:
+        # 1. Revertir Puntos (Castigo masivo)
+        bookings = Booking.query.filter_by(event_id=ev.id).all()
+        puntos_revocados_total = 0
+        
+        for b in bookings:
+            # Buscar logs positivos (Inscripción/Reactivación) de esta reserva
+            logs = PointLog.query.filter_by(booking_id=b.id).all()
+            for l in logs:
+                if l.amount > 0:
+                    # Restar al usuario
+                    b.member.puntos_totales = max(0, b.member.puntos_totales - l.amount)
+                    puntos_revocados_total += l.amount
+                    # Borramos el log para que no quede rastro sucio
+                    db.session.delete(l)
+        
+        # 2. Borrar Imagen
+        if ev.flyer:
+            try:
+                path = os.path.join(app.config['UPLOAD_FOLDER'], ev.flyer)
+                if os.path.exists(path): os.remove(path)
+            except Exception: pass
+        
+        # 3. Borrar Evento
+        db.session.delete(ev)
+        
+        db.session.add(AdminNotification(
+            category='danger',
+            title='Aventura Eliminada (Radical)',
+            message=f'"{titulo}" eliminada. Se revocaron {puntos_revocados_total} pts en total.',
+            action_link='#'
+        ))
+        
+        db.session.commit()
+        flash(f'Evento "{titulo}" eliminado y puntos revocados a todos los participantes.', 'warning')
+        
     except Exception as e:
         db.session.rollback()
         logger.error(f"Fallo borrando evento {event_id}: {e}")
