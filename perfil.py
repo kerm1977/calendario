@@ -3,13 +3,13 @@
 # ==============================================================================
 # Maneja la visualización del perfil personal del aventurero.
 # Acceso público mediante PIN para facilitar la experiencia de usuario.
-# VERSIÓN: 5.8 (DEBT MANAGEMENT + FULL TRANSACTIONS + ORIGINAL LOGIC)
+# VERSIÓN: 6.5 (CORRECCIÓN FINAL DE RUTAS Y SEGURIDAD)
 # ==============================================================================
 
 from flask import Blueprint, render_template, abort, redirect, url_for, request, flash, jsonify
 from flask_login import login_required, current_user
 from db import db, Member, PointLog, Booking, AdminNotification, Event
-from sqlalchemy import extract
+from sqlalchemy import extract, desc
 from datetime import datetime, timedelta, date
 import re
 
@@ -31,11 +31,10 @@ def ver_perfil(pin):
         flash('Perfil no encontrado. Verifique el PIN.', 'danger')
         return redirect(url_for('main.home'))
 
-    # B. Obtener historial cronológico de Puntos (Logs)
+    # B. Obtener historial cronológico (PointLog)
     logs = PointLog.query.filter_by(member_id=member.id).order_by(PointLog.created_at.desc()).all()
 
-    # --- CORRECCIÓN CRÍTICA DE ZONA HORARIA (CR UTC-6) ---
-    # Definimos 'today' y 'cr_time' AL PRINCIPIO para usarlo en toda la lógica
+    # --- ZONA HORARIA (CR UTC-6) ---
     cr_time = datetime.utcnow() - timedelta(hours=6)
     today = cr_time.date()
 
@@ -44,13 +43,12 @@ def ver_perfil(pin):
     
     proximas_aventuras = []
     bitacora_aventuras = []
-    eventos_cancelados = [] # Lista específica para la ventana de penalizaciones
+    eventos_cancelados = [] 
     caminatas_validas_vip = 0 
 
     for b in all_bookings:
         if not b.event: continue
 
-        # Lógica de conteo VIP (Solo cuentan las activas)
         if b.status == 'Activo':
             caminatas_validas_vip += 1
             
@@ -59,22 +57,17 @@ def ver_perfil(pin):
         esta_cancelada = (b.status in ['No Participó', 'Retirado', 'Cancelado'])
 
         if esta_cancelada:
-            # 1. Lógica de Cancelación/Penalización
-            # Buscamos si hubo penalización económica (Log negativo asociado al booking)
             penalidad_log = PointLog.query.filter_by(booking_id=b.id).filter(PointLog.amount < 0).first()
-            # Asignamos el monto temporalmente al objeto para usarlo en el HTML
             b.monto_penalizacion = abs(penalidad_log.amount) if penalidad_log else 0
             eventos_cancelados.append(b)
             
         elif esta_activa and es_futura:
-            # 2. Rutas Activas Futuras -> Mis Próximas Rutas
             proximas_aventuras.append(b)
             
         else:
-            # 3. Rutas Pasadas (Completadas) o inactivas sin penalización -> Bitácora
             bitacora_aventuras.append(b)
 
-    # Ordenamiento lógico
+    # Ordenamiento
     proximas_aventuras.sort(key=lambda x: x.event.event_date)
     eventos_cancelados.sort(key=lambda x: x.event.event_date, reverse=True)
     bitacora_aventuras.sort(key=lambda x: x.event.event_date, reverse=True)
@@ -118,8 +111,6 @@ def ver_perfil(pin):
         'vencido': dias_restantes < 0
     }
     
-    # --- LISTA DE CUMPLEAÑEROS (FILTRADO CON HORA CR) ---
-    # Esto asegura que el modal de "Regalar" muestre a las personas correctas hoy.
     birthdays_today = Member.query.filter(
         extract('month', Member.birth_date) == today.month,
         extract('day', Member.birth_date) == today.day
@@ -145,25 +136,41 @@ def ver_perfil(pin):
     )
 
 # ==============================================================================
-# 2. RUTAS DE ACCIÓN Y GESTIÓN
+# 2. RUTAS DE ACCIÓN (SOLUCIÓN ERROR BUILDERROR)
 # ==============================================================================
 
 @perfil_bp.route('/accion/cambiar-pin', methods=['POST'])
 def cambiar_pin():
-    """Permite al usuario personalizar su PIN único."""
-    member_id = request.form.get('member_id', type=int)
-    nuevo_pin = request.form.get('nuevo_pin', '').strip().upper()
+    """
+    Ruta para cambiar el PIN. 
+    NO requiere el PIN en la URL (lo toma del member_id oculto).
+    """
+    member_id = request.form.get('member_id')
+    nuevo_pin = request.form.get('nuevo_pin', '').strip()
     
-    member = Member.query.get_or_404(member_id)
+    # Si no hay ID, redirigir a home (seguridad)
+    if not member_id:
+        flash('Error de identificación. Por favor intenta de nuevo.', 'danger')
+        return redirect(url_for('main.home'))
+
+    member = Member.query.get_or_404(int(member_id))
     pin_actual = member.pin
 
-    if not (6 <= len(nuevo_pin) <= 8) or not re.match("^[A-Z0-9]+$", nuevo_pin):
-        flash('El PIN debe tener entre 6 y 8 caracteres alfanuméricos.', 'danger')
+    # 1. Validación de Longitud (Exactamente 6) y Caracteres (Alfanumérico)
+    if len(nuevo_pin) != 6 or not re.match("^[a-zA-Z0-9]+$", nuevo_pin):
+        flash('El PIN debe tener exactamente 6 caracteres alfanuméricos.', 'danger')
         return redirect(url_for('perfil.ver_perfil', pin=pin_actual))
 
-    existe = Member.query.filter_by(pin=nuevo_pin).first()
+    # 2. Lista Negra de Seguridad
+    pines_debiles = ['123456', '654321', 'abcdef', 'ABCDEF', 'qwerty', 'admin1', '111111', '000000']
+    if nuevo_pin.lower() in pines_debiles:
+        flash('Ese PIN es demasiado fácil de adivinar. Elige uno más seguro.', 'warning')
+        return redirect(url_for('perfil.ver_perfil', pin=pin_actual))
+
+    # 3. Validación de Unicidad (Case sensitive)
+    existe = Member.query.filter(Member.pin == nuevo_pin).first()
     if existe and existe.id != member.id:
-        flash('Ese PIN ya está en uso.', 'warning')
+        flash('Ese PIN ya está en uso por otro aventurero.', 'warning')
         return redirect(url_for('perfil.ver_perfil', pin=pin_actual))
 
     try:
@@ -175,7 +182,9 @@ def cambiar_pin():
         ))
         db.session.commit()
         flash(f'¡Éxito! Tu nuevo PIN es: {nuevo_pin}.', 'success')
+        # Redirigir al perfil con el NUEVO pin
         return redirect(url_for('perfil.ver_perfil', pin=nuevo_pin))
+        
     except Exception as e:
         db.session.rollback()
         flash(f'Error técnico: {str(e)}', 'danger')
@@ -196,7 +205,7 @@ def transferir_regalo():
         flash('No puedes enviarte un regalo a ti mismo.', 'warning')
         return redirect(url_for('perfil.ver_perfil', pin=sender.pin))
 
-    if amount <= 0:
+    if not amount or amount <= 0:
         flash('La cantidad a regalar debe ser mayor a cero.', 'danger')
         return redirect(url_for('perfil.ver_perfil', pin=sender.pin))
 
@@ -296,9 +305,7 @@ def admin_ajuste_saldo():
                 member_id=member.id,
                 transaction_type='Penalización Admin',
                 description=f'Deducción: {motivo}',
-                amount=-monto,
-                is_penalized=True,
-                penalty_reason=motivo
+                amount=-monto
             )
             flash(f'Se han eliminado {monto} puntos.', 'warning')
             
@@ -321,10 +328,6 @@ def admin_ajuste_saldo():
         flash(f'Error administrativo: {str(e)}', 'danger')
 
     return redirect(url_for('perfil.ver_perfil', pin=member.pin))
-
-# ==============================================================================
-# 3. LÓGICA DE CANJES Y COMPRAS (FUNCIONES NUEVAS)
-# ==============================================================================
 
 @perfil_bp.route('/accion/canjear-aventura', methods=['POST'])
 def canjear_aventura():
@@ -415,22 +418,18 @@ def comprar_puntos():
     member_id = request.form.get('member_id', type=int)
     cantidad_bruta = request.form.get('cantidad', type=int)
     
-    if not (1000 <= cantidad_bruta <= 10000):
+    if not cantidad_bruta or not (1000 <= cantidad_bruta <= 10000):
         flash('La compra debe ser entre 1,000 y 10,000 puntos.', 'warning')
         return redirect(request.referrer)
 
     member = Member.query.get_or_404(member_id)
     
     try:
-        # --- CÁLCULO FINANCIERO: RETENCIÓN 5% ---
-        # Si compra 1000, se retienen 50. El usuario recibe 950.
         deduccion = int(cantidad_bruta * 0.05) 
         cantidad_neta = cantidad_bruta - deduccion
         
-        # Acreditar solo el NETO
         member.puntos_totales += cantidad_neta
         
-        # Registro transparente en el historial
         db.session.add(PointLog(
             member_id=member.id,
             transaction_type='Compra Puntos',
@@ -438,7 +437,6 @@ def comprar_puntos():
             amount=cantidad_neta
         ))
         
-        # Notificación al Admin con el desglose
         db.session.add(AdminNotification(
             category='success',
             title='Ingreso por Compra de Puntos',
@@ -456,7 +454,7 @@ def comprar_puntos():
     return redirect(request.referrer)
 
 # ==============================================================================
-# 5. API: TOGGLE DEUDA (NUEVO)
+# 5. API: TOGGLE DEUDA
 # ==============================================================================
 @perfil_bp.route('/admin/toggle_debt/<int:member_id>', methods=['POST'])
 @login_required
@@ -470,14 +468,20 @@ def toggle_debt(member_id):
         
     member = Member.query.get_or_404(member_id)
     
-    # Invertir estado
-    member.debt_pending = not member.debt_pending
-    db.session.commit()
-    
-    status_text = "Pendiente" if member.debt_pending else "Al Día"
-    
-    return jsonify({
-        'success': True, 
-        'new_status': member.debt_pending, 
-        'message': f'Estado de deuda actualizado a: {status_text}'
-    })
+    try:
+        member.debt_pending = not member.debt_pending
+        estado_nuevo = "PENDIENTE" if member.debt_pending else "AL DÍA"
+        
+        db.session.add(AdminNotification(
+            category='warning' if member.debt_pending else 'success',
+            title='Gestión de Deuda',
+            message=f'Admin cambió estado de deuda de {member.nombre} a: {estado_nuevo}',
+            action_link=url_for('puntos.detalle_miembro', member_id=member.id)
+        ))
+        
+        db.session.commit()
+        return jsonify({'success': True, 'new_status': member.debt_pending})
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
