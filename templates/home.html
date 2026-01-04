@@ -22,7 +22,7 @@
 </div>
 
 <!-- ========================================== -->
-<!-- SECCIÓN: ACCESO RÁPIDO A PERFIL -->
+<!-- SECCIÓN: ACCESO RÁPIDO A PERFIL (ÁREA DEL CAMINANTE) -->
 <!-- ========================================== -->
 <div class="row justify-content-center mb-5 animate__animated animate__fadeInUp" style="animation-delay: 0.2s;">
     <div class="col-md-8 col-lg-6">
@@ -38,12 +38,15 @@
                     <h5 class="fw-bold mb-0 text-dark">Área del Caminante</h5>
                 </div>
                 
+                <!-- AQUÍ ESTÁ EL TEXTO QUE MENCIONASTE -->
                 <p class="text-muted small mb-4">
                     Ingresa tu PIN para consultar tu nivel, saldo de puntos y próximas expediciones. Tu Pin Puede ser modificado en tu perfil.
                 </p>
                 
                 <div class="input-group input-group-lg shadow-sm rounded-pill overflow-hidden border border-warning bg-white">
-                    <input type="text" id="quickPinInput" class="form-control border-0 text-center fw-bold text-primary fs-4" placeholder="000000" maxlength="6" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                    <!-- ACTUALIZADO: Se eliminó el oninput regex para permitir símbolos y letras -->
+                    <!-- Cambiado placeholder a ****** para indicar privacidad/flexibilidad -->
+                    <input type="text" id="quickPinInput" class="form-control border-0 text-center fw-bold text-primary fs-4" placeholder="PIN..." maxlength="6">
                     <button class="btn btn-warning fw-bold text-dark px-4 transition-hover" type="button" onclick="goToProfileQuick()">
                         <span class="ver-text">VER </span>MI PERFIL <i class="bi bi-arrow-right-short ms-1"></i>
                     </button>
@@ -249,6 +252,7 @@
 
     /**
      * Lógica de acceso rápido al perfil desde el Home
+     * ACTUALIZADO: Permite caracteres alfanuméricos
      */
     function goToProfileQuick() {
         const pinInput = document.getElementById('quickPinInput');
@@ -256,7 +260,7 @@
         if (pin.length === 6) {
             window.location.href = `/mi-perfil/${pin}`;
         } else {
-            alert("Por favor ingresa los 6 dígitos de tu PIN.");
+            alert("Por favor ingresa los 6 caracteres de tu PIN.");
             pinInput.focus();
         }
     }
@@ -314,6 +318,7 @@
 
     /**
      * Valida y formatea los inputs del formulario de reserva
+     * ACTUALIZADO: Se permite validación de PIN alfanumérico en reserva también
      */
     function checkInputs(id) {
         const nomI = document.getElementById('resNombre' + id);
@@ -379,10 +384,10 @@
             }
         }
 
-        // Validación de PIN (Solo números, max 6)
+        // Validación de PIN (ALFANUMÉRICO, 6 CARACTERES)
+        // Se removió la restricción replace(/[^0-9]/g, '')
         if (pinI) {
-            let pinVal = pinI.value.replace(/[^0-9]/g, '');
-            if (pinI.value !== pinVal) pinI.value = pinVal;
+            let pinVal = pinI.value; 
             document.getElementById('btnValidatePin' + id).classList.toggle('disabled', pinVal.length !== 6);
         }
         
