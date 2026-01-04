@@ -4,7 +4,7 @@
 # Este archivo centraliza la lógica de negocio, el sistema de fidelidad "Brutal"
 # y la gestión logística integral. Está diseñado para una trazabilidad total
 # mediante el uso de cronogramas transaccionales (PointLog).
-# VERSIÓN: 7.0 COMPLETE (LIFECYCLE + SECURITY)
+# VERSIÓN: 7.1 COMPLETE (LIFECYCLE + SECURITY + EXPORT TOOLS)
 # ==============================================================================
 
 import os
@@ -328,6 +328,66 @@ def mark_notifications_read():
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 500
+
+# --- NUEVA RUTA: EXPORTACIÓN MASIVA DE MIEMBROS A TXT ---
+@main_bp.route('/admin/export/members/txt')
+@login_required
+def export_all_members_txt():
+    """
+    Genera un reporte TXT completo de toda la base de datos de miembros.
+    Incluye: Nombre, PIN, Teléfono, Edad, Cumpleaños y Puntos.
+    """
+    if not current_user.is_superuser:
+        abort(403)
+
+    members = Member.query.order_by(Member.nombre.asc()).all()
+    
+    # Encabezado del archivo
+    output =  "====================================================================================================\n"
+    output += "                            LA TRIBU - REPORTE GENERAL DE MIEMBROS                                  \n"
+    output += f"                            Fecha de Corte: {datetime.now().strftime('%d/%m/%Y %H:%M')}\n"
+    output += "====================================================================================================\n\n"
+    
+    # Definición de anchos de columna para alineación (tipo tabla)
+    # Nombre(35) | PIN(8) | Tel(12) | Edad(5) | Cumple(12) | Puntos(10)
+    header = f"{'NOMBRE COMPLETO'.ljust(35)} | {'PIN'.center(8)} | {'TELÉFONO'.center(12)} | {'EDAD'.center(5)} | {'CUMPLEAÑOS'.center(12)} | {'PUNTOS'.rjust(10)}\n"
+    output += header
+    output += "-" * 105 + "\n"
+
+    total_puntos_sistema = 0
+
+    for m in members:
+        # Calcular edad
+        edad = calculate_age(m.birth_date)
+        
+        # Formatear fecha cumple (DD/MM)
+        cumple = m.birth_date.strftime('%d/%m') if m.birth_date else "N/A"
+        
+        # Construir nombre completo
+        nombre_full = f"{m.nombre} {m.apellido1} {m.apellido2 or ''}".strip()
+        # Truncar nombre si es muy largo para que no rompa la tabla
+        nombre_fmt = nombre_full[:34].ljust(35)
+        
+        pin_fmt = m.pin.center(8)
+        tel_fmt = m.telefono.center(12)
+        edad_fmt = str(edad).center(5)
+        cumple_fmt = cumple.center(12)
+        pts_fmt = str(m.puntos_totales).rjust(10)
+        
+        total_puntos_sistema += m.puntos_totales
+
+        output += f"{nombre_fmt} | {pin_fmt} | {tel_fmt} | {edad_fmt} | {cumple_fmt} | {pts_fmt}\n"
+
+    output += "-" * 105 + "\n"
+    output += f"TOTAL MIEMBROS: {len(members)}\n"
+    output += f"TOTAL PUNTOS CIRCULANTES: {total_puntos_sistema}\n"
+    output += "====================================================================================================\n"
+
+    # Crear respuesta como archivo descargable
+    response = make_response(output)
+    response.headers["Content-Disposition"] = f"attachment; filename=Reporte_Miembros_LaTribu_{datetime.now().strftime('%Y%m%d')}.txt"
+    response.headers["Content-type"] = "text/plain; charset=utf-8"
+    return response
 
 @main_bp.route('/admin/booking/cancel/<int:booking_id>', methods=['POST'])
 @login_required
