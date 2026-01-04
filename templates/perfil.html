@@ -446,7 +446,8 @@
                         <div class="list-group list-group-flush" id="listaMovimientos">
                             {% if logs %}
                                 {% for log in logs %}
-                                <div class="list-group-item p-3 border-light log-item">
+                                <!-- AQUÍ APLICAMOS LA MAGIA DE LA PAGINACIÓN: AGREGAR CLASE transaction-item Y OCULTAR SI > 10 -->
+                                <div class="list-group-item p-3 border-light log-item transaction-item" {% if loop.index > 10 %}style="display: none;"{% endif %}>
                                     <div class="d-flex justify-content-between align-items-center">
                                         <div class="d-flex align-items-center">
                                             <div class="me-3">
@@ -499,6 +500,15 @@
                                 </div>
                             {% endif %}
                         </div>
+
+                        <!-- BOTÓN "VER MÁS" SOLO SI HAY MÁS DE 10 REGISTROS -->
+                        {% if logs|length > 10 %}
+                        <div class="card-footer bg-white border-0 text-center py-3" id="loadMoreContainer">
+                            <button class="btn btn-outline-secondary rounded-pill px-4 fw-bold small" onclick="showMoreTransactions()">
+                                Ver más movimientos <i class="bi bi-chevron-down ms-1"></i>
+                            </button>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -545,9 +555,43 @@
 </script>
 
 <!-- ============================================================== -->
-<!-- SCRIPTS DE EXPORTACIÓN (TXT Y WHATSAPP) -->
+<!-- SCRIPTS DE EXPORTACIÓN (TXT Y WHATSAPP) Y PAGINACIÓN -->
 <!-- ============================================================== -->
 <script>
+    /**
+     * FUNCIÓN: Ver más movimientos de 10 en 10
+     * Mantiene el diseño limpio y carga progresiva
+     */
+    function showMoreTransactions() {
+        // Seleccionamos todos los items que están ocultos actualmente
+        const hiddenItems = document.querySelectorAll('.transaction-item[style*="display: none"]');
+        
+        // Configuramos contador para mostrar solo 10
+        let count = 0;
+        const itemsToShow = 10;
+
+        hiddenItems.forEach(item => {
+            if (count < itemsToShow) {
+                // Quitamos el display:none para que retome su layout original
+                item.style.display = ''; 
+                // Opcional: Agregar clase de animación si no la tiene
+                item.classList.add('animate__fadeIn');
+                count++;
+            }
+        });
+
+        // Verificamos si quedan más items ocultos después de esta acción
+        const remainingHidden = document.querySelectorAll('.transaction-item[style*="display: none"]');
+        
+        // Si ya no queda nada oculto, desaparecemos el botón "Ver más"
+        if (remainingHidden.length === 0) {
+            const btnContainer = document.getElementById('loadMoreContainer');
+            if (btnContainer) {
+                btnContainer.style.display = 'none';
+            }
+        }
+    }
+
     /**
      * Generar Archivo TXT con tabla formateada
      */
