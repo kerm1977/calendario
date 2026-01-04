@@ -149,7 +149,7 @@
                             </div>
                         </div>
                         <p class="mt-5 x-small text-muted fst-italic">
-                            * Al hacer clic en "Reservar Ahora", aceptas nuestras condiciones de senderismo y confirmas tu estado de salud apto para la actividad.
+                            * Al inscribirte, aceptas nuestras condiciones de senderismo y confirmas tu estado de salud apto para la actividad.
                         </p>
                     </div>
                 </div>
@@ -178,7 +178,8 @@
                         </div>
                         <div id="pinEntrySection{{ event.id }}" class="d-none mt-3 animate__animated animate__fadeIn">
                             <div class="input-group input-group-lg">
-                                <input type="text" id="lookupPin{{ event.id }}" class="form-control border-warning text-center fw-bold text-primary" placeholder="000000" maxlength="6" oninput="checkInputs({{ event.id }})">
+                                <!-- AQUÍ ESTÁ EL CAMBIO LÓGICO: oninput dispara la automatización -->
+                                <input type="text" id="lookupPin{{ event.id }}" class="form-control border-warning text-center fw-bold text-primary" placeholder="000000" maxlength="6" oninput="handleAutoPin(this, {{ event.id }})">
                                 <button class="btn btn-warning text-dark fw-bold px-4 disabled" id="btnValidatePin{{ event.id }}" type="button" onclick="lookupUserByPin({{ event.id }})">CARGAR</button>
                             </div>
                             <div id="pinError{{ event.id }}" class="text-danger x-small fw-bold d-none mt-2 text-center animate__animated animate__shakeX">
@@ -256,8 +257,6 @@
                                     <div class="col-4">
                                         <select id="selYear{{ event.id }}" class="form-select border-warning bg-body py-2 text-center rounded-3" onchange="updateBirthDate({{ event.id }}); checkInputs({{ event.id }})">
                                             <option value="" disabled selected>Año</option>
-                                            {# Usamos una variable auxiliar para el año actual en el bucle #}
-                                            {# Jinja2 scope fix: #}
                                             {% for y in range(now.year - 5, 1940, -1) %}
                                                 <option value="{{ y }}">{{ y }}</option>
                                             {% endfor %}
@@ -325,6 +324,95 @@
             hiddenInput.value = `${y}-${m}-${d}`;
         } else {
             hiddenInput.value = '';
+        }
+    }
+
+    /**
+     * TOGGLE: Mostrar/Ocultar sección de PIN
+     */
+    function togglePinSection(eventId) {
+        const section = document.getElementById('pinEntrySection' + eventId);
+        const btn = document.getElementById('btnTogglePin' + eventId);
+        
+        if (section.classList.contains('d-none')) {
+            section.classList.remove('d-none');
+            btn.classList.remove('btn-outline-dark');
+            btn.classList.add('btn-dark');
+            document.getElementById('lookupPin' + eventId).focus();
+        } else {
+            section.classList.add('d-none');
+            btn.classList.add('btn-outline-dark');
+            btn.classList.remove('btn-dark');
+        }
+    }
+
+    /**
+     * LÓGICA AUTOMÁTICA: Detecta 6 dígitos en el input existente
+     */
+    async function handleAutoPin(input, eventId) {
+        // Limpiar todo lo que no sea números
+        input.value = input.value.replace(/[^0-9]/g, '');
+        
+        // Si llega a 6 dígitos, disparar inscripción automática
+        if (input.value.length === 6) {
+            input.blur(); // Quitar foco para evitar doble envío
+            input.disabled = true; // Bloquear input momentáneamente
+
+            const pin = input.value;
+            const feedback = document.getElementById('pinError' + eventId);
+            const btn = document.getElementById('btnValidatePin' + eventId);
+            const originalBtnText = btn.innerText;
+
+            // Feedback visual en el botón existente "CARGAR"
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+            try {
+                // 1. BUSCAR USUARIO
+                const lookupRes = await fetch(`/api/lookup/${pin}`);
+                const lookupData = await lookupRes.json();
+
+                if (!lookupData.success) {
+                    throw new Error("PIN no encontrado.");
+                }
+
+                // 2. RESERVAR AUTOMÁTICAMENTE (FAST TRACK)
+                const payload = {
+                    nombre: lookupData.nombre,
+                    apellido1: lookupData.apellido1 || "",
+                    apellido2: lookupData.apellido2 || "",
+                    telefono: lookupData.telefono,
+                    birth_date: lookupData.birth_date, 
+                    event_id: eventId,
+                    pin: pin
+                };
+
+                const reserveRes = await fetch('/api/reserve', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+
+                const reserveData = await reserveRes.json();
+
+                if (reserveData.success) {
+                    // ÉXITO: Ocultar formulario y mostrar confirmación
+                    document.getElementById('reserveFormContainer' + eventId).classList.add('d-none');
+                    document.getElementById('reserveSuccessContainer' + eventId).classList.remove('d-none');
+                    document.getElementById('pinDisplay' + eventId).innerText = pin;
+                } else {
+                    throw new Error(reserveData.error || "Error al reservar.");
+                }
+
+            } catch (error) {
+                // ERROR
+                input.disabled = false;
+                input.focus();
+                btn.innerText = originalBtnText; // Restaurar botón
+                
+                feedback.classList.remove('d-none');
+                feedback.innerHTML = `<i class="bi bi-x-circle-fill me-1"></i> ${error.message}`;
+                setTimeout(() => feedback.classList.add('d-none'), 3000);
+            }
         }
     }
 </script>
