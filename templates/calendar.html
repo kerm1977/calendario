@@ -1,4 +1,3 @@
-<!-- templates/calendar.html -->
 {% extends "base.html" %}
 
 {% block title %}Panel Admin - Calendario{% endblock %}
@@ -40,7 +39,7 @@
         {% for week in weeks %}
             {% for day in week %}
                 <div class="calendar-cell {% if day == 0 %}empty bg-light bg-opacity-50{% else %}clickable-cell{% endif %}" 
-                     {% if day != 0 %}onclick="openAddModal({{ day }})"{% endif %}>
+                     {% if day != 0 %}onclick="if(!event.target.closest('.event-actions') && !event.target.closest('.modal')) openAddModal({{ day }})"{% endif %}>
                     
                     {% if day != 0 %}
                         <div class="d-flex justify-content-between align-items-start mb-2">
@@ -64,11 +63,201 @@
                         <div class="event-stack">
                             {% for event in events %}
                                 {% if event.event_date.day == day and event.event_date.month == month and event.event_date.year == year %}
-                                    <div class="event-pill {{ 'bg-warning text-dark border-warning' if event.status == 'Se Traslado' else 'bg-warning bg-opacity-10 text-warning-emphasis border-warning' }}" 
-                                         title="{{ event.title }}">
-                                        {% if event.status == 'Se Traslado' %}<i class="bi bi-arrow-right-circle me-1"></i>{% endif %}
-                                        <span class="text-truncate">{{ event.title }}</span>
+                                    <!-- ITEM DE EVENTO -->
+                                    <div class="event-item-wrapper mb-1 position-relative group-hover">
+                                        <div class="event-pill d-flex justify-content-between align-items-center {{ 'bg-warning text-dark border-warning' if event.status == 'Se Traslado' else 'bg-warning bg-opacity-10 text-warning-emphasis border-warning' }}" 
+                                             title="{{ event.title }}">
+                                            <div class="text-truncate" style="max-width: 65%;">
+                                                {% if event.status == 'Se Traslado' %}<i class="bi bi-arrow-right-circle me-1"></i>{% endif %}
+                                                {{ event.title }}
+                                            </div>
+                                            
+                                            <!-- BOTONES DE ACCIÓN (Editar y Borrar) -->
+                                            <div class="event-actions d-flex gap-1">
+                                                <!-- Botón Logística (CSV) -->
+                                                <a href="{{ url_for('main.export_participants', event_id=event.id) }}" class="btn btn-xs btn-light border p-0 px-1" title="Lista CSV" onclick="event.stopPropagation();">
+                                                    <i class="bi bi-file-earmark-spreadsheet text-success"></i>
+                                                </a>
+                                                <!-- Botón Editar -->
+                                                <button type="button" class="btn btn-xs btn-light border p-0 px-1" data-bs-toggle="modal" data-bs-target="#editEventModal{{ event.id }}" onclick="event.stopPropagation();">
+                                                    <i class="bi bi-pencil-fill text-primary"></i>
+                                                </button>
+                                                <!-- Botón Borrar (Abre Modal Radical) -->
+                                                <button type="button" class="btn btn-xs btn-light border p-0 px-1" data-bs-toggle="modal" data-bs-target="#deleteEventModal{{ event.id }}" onclick="event.stopPropagation();">
+                                                    <i class="bi bi-trash-fill text-danger"></i>
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
+
+                                    <!-- ========================================== -->
+                                    <!-- MODAL 1: EDITAR EVENTO (Completo) -->
+                                    <!-- ========================================== -->
+                                    <div class="modal fade" id="editEventModal{{ event.id }}" tabindex="-1" onclick="event.stopPropagation();">
+                                        <div class="modal-dialog modal-lg modal-dialog-centered">
+                                            <div class="modal-content border-0 shadow-lg rounded-4">
+                                                <div class="modal-header bg-primary text-white border-0">
+                                                    <h5 class="modal-title fw-bold"><i class="bi bi-pencil-square me-2"></i>Editar Expedición: {{ event.title }}</h5>
+                                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                                </div>
+                                                <form action="{{ url_for('calendar_view.edit_event', event_id=event.id) }}" method="POST" enctype="multipart/form-data">
+                                                    <div class="modal-body p-4 bg-body text-start">
+                                                        <div class="row g-3">
+                                                            <div class="col-md-12"><h6 class="border-bottom pb-2 fw-bold text-primary">Información General</h6></div>
+                                                            
+                                                            <div class="col-md-6">
+                                                                <label class="form-label small fw-bold">Actualizar Imagen (Flyer)</label>
+                                                                <input type="file" name="flyer" class="form-control border-primary" accept="image/*">
+                                                            </div>
+                                                            <div class="col-md-6">
+                                                                <label class="form-label small fw-bold">Nombre del Evento</label>
+                                                                <input type="text" name="title" class="form-control border-primary" value="{{ event.title }}" required>
+                                                            </div>
+
+                                                            <div class="col-md-3">
+                                                                <label class="form-label small fw-bold">Moneda</label>
+                                                                <select name="currency" class="form-select border-primary">
+                                                                    <option value="¢" {% if event.currency == '¢' %}selected{% endif %}>Colones (¢)</option>
+                                                                    <option value="$" {% if event.currency == '$' %}selected{% endif %}>Dólares ($)</option>
+                                                                </select>
+                                                            </div>
+                                                            <div class="col-md-3">
+                                                                <label class="form-label small fw-bold">Precio</label>
+                                                                <input type="number" step="0.01" name="price" class="form-control border-primary" value="{{ event.price }}">
+                                                            </div>
+                                                            <div class="col-md-3">
+                                                                <label class="form-label small fw-bold">Puntos</label>
+                                                                <input type="number" name="points_reward" class="form-control border-primary" value="{{ event.points_reward }}">
+                                                            </div>
+                                                            <div class="col-md-3">
+                                                                <label class="form-label small fw-bold">Actividad</label>
+                                                                <select name="activity_type" class="form-select border-primary">
+                                                                    {% for opt in ["Caminata", "El Camino de Costa Rica", "Parque Nacional", "Internacional", "Convivio", "Fiesta de Fin de Año", "Taller"] %}
+                                                                    <option value="{{ opt }}" {% if event.activity_type == opt %}selected{% endif %}>{{ opt }}</option>
+                                                                    {% endfor %}
+                                                                </select>
+                                                            </div>
+
+                                                            <div class="col-md-12"><h6 class="border-bottom pb-2 fw-bold text-primary">Duración y Fechas</h6></div>
+                                                            <div class="col-md-4">
+                                                                <label class="form-label small fw-bold">Días</label>
+                                                                <input type="number" name="duration_days" class="form-control border-primary" value="{{ event.duration_days }}" min="1" max="10">
+                                                            </div>
+                                                            <div class="col-md-4">
+                                                                <label class="form-label small fw-bold">Fecha Inicio</label>
+                                                                <input type="date" name="event_date" class="form-control border-primary" value="{{ event.event_date }}">
+                                                            </div>
+                                                            <div class="col-md-4">
+                                                                <label class="form-label small fw-bold">Fecha Fin</label>
+                                                                <input type="date" name="end_date" class="form-control border-primary" value="{{ event.end_date }}">
+                                                            </div>
+
+                                                            <div class="col-md-12"><h6 class="border-bottom pb-2 fw-bold text-primary">Detalle Logístico</h6></div>
+                                                            <div class="col-md-6">
+                                                                <label class="form-label small fw-bold">Salida de</label>
+                                                                <input type="text" name="departure_point" class="form-control border-primary" value="{{ event.departure_point }}">
+                                                            </div>
+                                                            <div class="col-md-3">
+                                                                <label class="form-label small fw-bold">Hora Salida</label>
+                                                                <input type="time" name="departure_time" class="form-control border-primary" value="{{ event.departure_time }}">
+                                                            </div>
+                                                            <div class="col-md-3">
+                                                                <label class="form-label small fw-bold">Dificultad</label>
+                                                                <select name="difficulty" class="form-select border-primary">
+                                                                    {% for diff in ["Básica", "Paseo", "Intermedio", "Intermedio - Dificil", "Dificil", "Avanzado"] %}
+                                                                    <option value="{{ diff }}" {% if event.difficulty == diff %}selected{% endif %}>{{ diff }}</option>
+                                                                    {% endfor %}
+                                                                </select>
+                                                            </div>
+                                                            
+                                                            <div class="col-md-12">
+                                                                <label class="form-label small fw-bold">Descripción</label>
+                                                                <textarea name="description" class="form-control border-primary" rows="3">{{ event.description }}</textarea>
+                                                            </div>
+
+                                                            <div class="col-md-12"><h6 class="border-bottom pb-2 fw-bold text-primary">Estado y Traslados</h6></div>
+                                                            <div class="col-md-6">
+                                                                <label class="form-label small fw-bold">Estado</label>
+                                                                <select name="status" class="form-select border-primary">
+                                                                    <option value="Activa" {% if event.status == 'Activa' %}selected{% endif %}>Activa</option>
+                                                                    <option value="Pendiente" {% if event.status == 'Pendiente' %}selected{% endif %}>Pendiente</option>
+                                                                    <option value="Suspendido" {% if event.status == 'Suspendido' %}selected{% endif %}>Suspendido</option>
+                                                                    <option value="Se Traslado" {% if event.status == 'Se Traslado' %}selected{% endif %}>Se Traslado</option>
+                                                                    <option value="Concluida" {% if event.status == 'Concluida' %}selected{% endif %}>Concluida</option>
+                                                                </select>
+                                                            </div>
+                                                            <div class="col-md-6">
+                                                                <label class="form-label small fw-bold">Fecha de Traslado</label>
+                                                                <input type="date" name="moved_date" class="form-control border-primary" value="{{ event.moved_date }}">
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="modal-footer bg-light border-0">
+                                                        <a href="{{ url_for('calendar_view.conclude_event', event_id=event.id) }}" class="btn btn-outline-secondary me-auto btn-sm" onclick="return confirm('¿Concluir evento? Los puntos de los usuarios se mantendrán.')">
+                                                            <i class="bi bi-archive-fill me-1"></i>Concluir
+                                                        </a>
+                                                        <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+                                                        <button type="submit" class="btn btn-primary fw-bold rounded-pill px-4">Actualizar Actividad</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- ========================================== -->
+                                    <!-- MODAL 2: BORRADO RADICAL (3 CONFIRMACIONES) -->
+                                    <!-- ========================================== -->
+                                    <div class="modal fade" id="deleteEventModal{{ event.id }}" tabindex="-1" onclick="event.stopPropagation();">
+                                        <div class="modal-dialog modal-dialog-centered">
+                                            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                                                <div class="modal-header bg-danger text-white border-0">
+                                                    <h5 class="modal-title fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i>Eliminación Radical</h5>
+                                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                                </div>
+                                                <div class="modal-body p-4 bg-body text-start">
+                                                    <div class="alert alert-danger border-0 d-flex align-items-center mb-4">
+                                                        <i class="bi bi-radioactive fs-1 me-3"></i>
+                                                        <div>
+                                                            <strong>¡ADVERTENCIA CRÍTICA!</strong><br>
+                                                            Se borrará el evento, todas las reservas y se <u>restarán automáticamente</u> los puntos a todos los participantes.
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <p class="fw-bold mb-3">Confirme los 3 puntos de seguridad para habilitar el botón:</p>
+                                                    
+                                                    <div class="form-check mb-2 bg-light p-3 rounded border">
+                                                        <input class="form-check-input" type="checkbox" id="checkDel1_{{ event.id }}" onchange="verifyDelete('{{ event.id }}')">
+                                                        <label class="form-check-label small" for="checkDel1_{{ event.id }}">
+                                                            Entiendo que el evento "{{ event.title }}" se borrará permanentemente.
+                                                        </label>
+                                                    </div>
+
+                                                    <div class="form-check mb-2 bg-light p-3 rounded border">
+                                                        <input class="form-check-input" type="checkbox" id="checkDel2_{{ event.id }}" onchange="verifyDelete('{{ event.id }}')">
+                                                        <label class="form-check-label small text-danger fw-bold" for="checkDel2_{{ event.id }}">
+                                                            Entiendo que se le RESTARÁN {{ event.points_reward }} puntos a cada participante.
+                                                        </label>
+                                                    </div>
+
+                                                    <div class="form-check mb-4 bg-light p-3 rounded border">
+                                                        <input class="form-check-input" type="checkbox" id="checkDel3_{{ event.id }}" onchange="verifyDelete('{{ event.id }}')">
+                                                        <label class="form-check-label small" for="checkDel3_{{ event.id }}">
+                                                            Asumo la responsabilidad total de esta acción administrativa.
+                                                        </label>
+                                                    </div>
+
+                                                    <div class="d-grid">
+                                                        <a href="{{ url_for('calendar_view.delete_event', event_id=event.id) }}" 
+                                                           id="btnDeleteRadical_{{ event.id }}" 
+                                                           class="btn btn-danger fw-bold py-3 rounded-pill disabled pointer-events-none opacity-50 shadow-sm transition-all">
+                                                            <i class="bi bi-trash-fill me-2"></i>EJECUTAR ELIMINACIÓN RADICAL
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                 {% endif %}
                             {% endfor %}
                             
@@ -232,7 +421,7 @@
 </div>
 
 <style>
-    /* RECONSTRUCCIÓN DEL CALENDARIO VISUAL */
+    /* Estilos originales del usuario respetados */
     .calendar-header-grid {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
@@ -282,6 +471,14 @@
         overflow: hidden;
         text-overflow: ellipsis;
         font-weight: 600;
+        cursor: pointer; /* Indicar que es clickeable para ver acciones */
+    }
+
+    /* Clase auxiliar para botones pequeños */
+    .btn-xs {
+        padding: 0.1rem 0.3rem;
+        font-size: 0.7rem;
+        line-height: 1;
     }
 
     .x-small { font-size: 0.7rem; }
@@ -311,6 +508,33 @@
 </style>
 
 <script>
+/**
+ * Lógica mejorada para el botón de borrado de 3 pasos
+ * Asegura la remoción de clases de bloqueo de Bootstrap
+ */
+function verifyDelete(eventId) {
+    // Convertir eventId a string para asegurar consistencia en el selector
+    const id = String(eventId);
+    const check1 = document.getElementById('checkDel1_' + id);
+    const check2 = document.getElementById('checkDel2_' + id);
+    const check3 = document.getElementById('checkDel3_' + id);
+    const btnDelete = document.getElementById('btnDeleteRadical_' + id);
+
+    if (check1 && check2 && check3 && btnDelete) {
+        if (check1.checked && check2.checked && check3.checked) {
+            // Habilitar clics y visibilidad removiendo clases de Bootstrap de forma agresiva
+            btnDelete.classList.remove('disabled', 'pointer-events-none', 'opacity-50');
+            btnDelete.style.pointerEvents = 'auto'; // Refuerzo manual
+            btnDelete.classList.add('animate__animated', 'animate__pulse', 'animate__infinite');
+        } else {
+            // Deshabilitar clics y visibilidad
+            btnDelete.classList.add('disabled', 'pointer-events-none', 'opacity-50');
+            btnDelete.style.pointerEvents = 'none'; // Refuerzo manual
+            btnDelete.classList.remove('animate__animated', 'animate__pulse', 'animate__infinite');
+        }
+    }
+}
+
 function openAddModal(day) {
     const year = {{ year }};
     const month = String({{ month }}).padStart(2, '0');

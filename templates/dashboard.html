@@ -7,7 +7,7 @@
 <div class="container py-4">
     
     <!-- NOTA: Se eliminó la sección de "Alerta de Cumpleaños" de aquí porque ya se muestra 
-         automáticamente desde base.html con el botón de cerrar. -->
+          automáticamente desde base.html con el botón de cerrar. -->
 
     <!-- Encabezado -->
     <div class="row mb-5 align-items-end">
@@ -167,7 +167,7 @@
     <!-- ========================================== -->
     <div class="row g-4">
         
-        <!-- SIDEBAR: RANKING DE LÍDERES -->
+        <!-- SIDEBAR: RANKING DE LÍDERES (CON PAGINACIÓN) -->
         <div class="col-lg-4">
             <div class="card border-0 shadow-sm rounded-5 bg-body mb-4 h-100 border border-warning border-opacity-10">
                 <div class="card-body p-4">
@@ -180,7 +180,10 @@
                     {% if ranking %}
                         <div class="ranking-list">
                         {% for member in ranking %}
-                        <div class="d-flex align-items-center mb-4 animate__animated animate__fadeInLeft" style="animation-delay: {{ loop.index0 * 0.05 }}s">
+                        <!-- CAMBIO AQUÍ: Clase ranking-row y ocultar si loop.index > 10 -->
+                        <div class="d-flex align-items-center mb-4 ranking-row animate__animated animate__fadeInLeft" 
+                             style="animation-delay: {{ loop.index0 * 0.05 }}s; {% if loop.index > 10 %}display: none;{% endif %}">
+                            
                             <div class="flex-shrink-0 position-relative">
                                 <div class="rounded-circle bg-light border fw-bold d-flex align-items-center justify-content-center text-dark shadow-sm" style="width: 42px; height: 42px; font-size: 0.9rem;">
                                     {{ loop.index }}
@@ -201,6 +204,15 @@
                             </div>
                         </div>
                         {% endfor %}
+                        
+                        <!-- BOTÓN VER MÁS LÍDERES -->
+                        {% if ranking|length > 10 %}
+                        <div class="text-center pt-2" id="loadMoreRankingContainer">
+                            <button class="btn btn-sm btn-light border rounded-pill px-3 fw-bold text-muted small transition-all hover-scale" onclick="showMoreRanking()">
+                                <i class="bi bi-chevron-down me-1"></i>Ver más líderes
+                            </button>
+                        </div>
+                        {% endif %}
                         </div>
                     {% else %}
                         <div class="text-center py-5">
@@ -209,9 +221,10 @@
                         </div>
                     {% endif %}
                 </div>
+                
                 {% if ranking %}
                 <div class="card-footer bg-transparent border-0 p-4 pt-0">
-                    <a href="{{ url_for('puntos.historial_global') }}" class="btn btn-light w-100 rounded-pill fw-bold text-muted small border">VER LISTA COMPLETA</a>
+                    <a href="{{ url_for('puntos.historial_global') }}" class="btn btn-light w-100 rounded-pill fw-bold text-muted small border">VER TABLA COMPLETA</a>
                 </div>
                 {% endif %}
             </div>
@@ -438,12 +451,34 @@ function toggleWithdrawBtn(id) {
 }
 
 /**
- * Función para mostrar 10 actividades más en el Dashboard
+ * Función para marcar todas las notificaciones como leídas
+ */
+function markAllRead() {
+    fetch("{{ url_for('main.mark_notifications_read') }}", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Recargar la página para reflejar los cambios
+            window.location.reload();
+        } else {
+            console.error("Error al marcar notificaciones: ", data.error);
+        }
+    })
+    .catch(error => {
+        console.error("Error en la petición:", error);
+    });
+}
+
+/**
+ * Función para mostrar 10 actividades más en el Dashboard (TABLA CENTRAL)
  */
 function showMoreActivity() {
-    // Selecciona solo las filas ocultas que tienen la clase activity-row
     const hiddenRows = document.querySelectorAll('.activity-row[style*="display: none"]');
-    
     let count = 0;
     const itemsToShow = 10;
 
@@ -455,13 +490,33 @@ function showMoreActivity() {
         }
     });
 
-    // Si ya no quedan filas ocultas, escondemos el botón
     const remainingHidden = document.querySelectorAll('.activity-row[style*="display: none"]');
     if (remainingHidden.length === 0) {
         const btnContainer = document.getElementById('loadMoreActivityContainer');
-        if (btnContainer) {
-            btnContainer.style.display = 'none';
+        if (btnContainer) btnContainer.style.display = 'none';
+    }
+}
+
+/**
+ * Función para mostrar 10 líderes más en el Ranking (SIDEBAR)
+ */
+function showMoreRanking() {
+    const hiddenRows = document.querySelectorAll('.ranking-row[style*="display: none"]');
+    let count = 0;
+    const itemsToShow = 10;
+
+    hiddenRows.forEach(row => {
+        if (count < itemsToShow) {
+            row.style.display = ''; // Quita el display: none
+            row.classList.add('animate__fadeInLeft'); // Reinicia animación
+            count++;
         }
+    });
+
+    const remainingHidden = document.querySelectorAll('.ranking-row[style*="display: none"]');
+    if (remainingHidden.length === 0) {
+        const btnContainer = document.getElementById('loadMoreRankingContainer');
+        if (btnContainer) btnContainer.style.display = 'none';
     }
 }
 
@@ -478,15 +533,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (nameCell && pinCell) {
                     const name = nameCell.textContent.toLowerCase();
                     const pin = pinCell.textContent.toLowerCase();
-                    
-                    // Si hay búsqueda, mostramos todo lo que coincida (ignorando paginación)
-                    // Si está vacío, deberíamos respetar la paginación inicial, pero por simplicidad
-                    // en búsqueda mostramos todo lo que coincida.
-                    if (term === '') {
-                         // Al limpiar, idealmente recargaríamos o resetearíamos, 
-                         // pero aquí simplemente mostramos todo lo que ya estaba visible.
-                         // Para una experiencia perfecta, recargar la página es mejor opción.
-                    }
                     
                     const isVisible = name.includes(term) || pin.includes(term);
                     

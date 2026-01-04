@@ -4,7 +4,7 @@
 # Este archivo centraliza la lógica de negocio, el sistema de fidelidad "Brutal"
 # y la gestión logística integral. Está diseñado para una trazabilidad total
 # mediante el uso de cronogramas transaccionales (PointLog).
-# VERSIÓN: 7.1 COMPLETE (LIFECYCLE + SECURITY + EXPORT TOOLS)
+# VERSIÓN: 7.2 COMPLETE (RANKING EXTENDIDO + TXT EXPORT)
 # ==============================================================================
 
 import os
@@ -296,13 +296,25 @@ def dashboard():
         'birthdays_count': Member.query.filter(
             extract('month', Member.birth_date) == (datetime.utcnow() - timedelta(hours=6)).month,
             extract('day', Member.birth_date) == (datetime.utcnow() - timedelta(hours=6)).day
-        ).count()
+        ).count(),
+        # --- NUEVO: Total real de reservas activas para controlar la visibilidad del botón "Ver más" ---
+        'total_bookings': Booking.query.filter_by(status='Activo').count()
     }
     
     # ACTIVIDAD RECIENTE: Obtenemos reservas activas para monitorear ingresos.
-    bookings = Booking.query.filter_by(status='Activo').order_by(Booking.created_at.desc()).limit(50).all()
-    # TOP 10 Aventureros según su fidelidad acumulada.
-    ranking = Member.query.order_by(Member.puntos_totales.desc()).limit(10).all()
+    # --- MODIFICADO: Implementación de límite dinámico para paginación ---
+    # Por defecto muestra 10. Si el usuario pide más, se usa el parámetro 'limit'.
+    default_limit = 10
+    limit_val = request.args.get('limit', default_limit, type=int)
+
+    # Obtenemos las reservas con el límite dinámico
+    bookings = Booking.query.filter_by(status='Activo')\
+        .order_by(Booking.created_at.desc())\
+        .limit(limit_val)\
+        .all()
+    
+    # --- CAMBIO AQUÍ: AUMENTAMOS EL LÍMITE DE RANKING A 50 PARA PAGINACIÓN ---
+    ranking = Member.query.order_by(Member.puntos_totales.desc()).limit(50).all()
     
     # --- NUEVO: OBTENER TODAS LAS NOTIFICACIONES PARA EL CENTRO DE MENSAJES ---
     # Traemos las 50 más recientes para el dashboard completo
@@ -311,7 +323,13 @@ def dashboard():
         AdminNotification.created_at.desc()
     ).limit(50).all()
     
-    return render_template('dashboard.html', stats=stats, bookings=bookings, ranking=ranking, notifications=notifications)
+    # Pasamos 'current_limit' a la plantilla para que el botón sepa cuánto pedir después
+    return render_template('dashboard.html', 
+                         stats=stats, 
+                         bookings=bookings, 
+                         ranking=ranking, 
+                         notifications=notifications,
+                         current_limit=limit_val)
 
 # --- NUEVA RUTA API PARA MARCAR NOTIFICACIONES COMO LEÍDAS ---
 @main_bp.route('/admin/notifications/mark-read', methods=['POST'])

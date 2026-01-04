@@ -149,12 +149,11 @@
                     <button type="button" class="btn btn-secondary rounded-pill px-4 fw-bold" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn btn-warning fw-bold text-dark rounded-pill px-5 shadow">Guardar Cambios</button>
                 </div>
-             </form>
+            </form>
         </div>
     </div>
 
     <!-- B. MODAL DE CONCLUSIÓN (ELIMINACIÓN SEGURA - 2 PASOS) -->
-    <!-- ESTE PROCESO NO ELIMINA PUNTOS DE LOS USUARIOS -->
     <div class="modal fade" id="concludeModal{{ event.id }}" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg rounded-5 overflow-hidden">
@@ -171,22 +170,19 @@
                         <strong class="text-success text-uppercase">¡LOS PUNTOS DE LOS USUARIOS SE MANTIENEN!</strong>
                     </p>
                     
-                    <!-- Confirmación de 2 Pasos -->
-                    <!-- CAMBIO: text-body asegura visibilidad en modo dark (blanco) y light (negro) -->
                     <div class="bg-success bg-opacity-10 p-3 rounded-4 text-start small border border-success border-opacity-25 mt-3 mb-4 mx-2">
                         <div class="form-check mb-2">
-                            <input class="form-check-input border-success" type="checkbox" id="checkConclude1{{ event.id }}" onclick="validateConclude({{ event.id }})">
+                            <input class="form-check-input border-success security-check" type="checkbox" id="checkConclude1{{ event.id }}" data-event-id="{{ event.id }}" data-type="conclude">
                             <label class="form-check-label text-body fw-bold" for="checkConclude1{{ event.id }}">1. Confirmo que la actividad finalizó.</label>
                         </div>
                         <div class="form-check">
-                            <input class="form-check-input border-success" type="checkbox" id="checkConclude2{{ event.id }}" onclick="validateConclude({{ event.id }})">
+                            <input class="form-check-input border-success security-check" type="checkbox" id="checkConclude2{{ event.id }}" data-event-id="{{ event.id }}" data-type="conclude">
                             <label class="form-check-label text-body fw-bold" for="checkConclude2{{ event.id }}">2. Archivar evento (Puntos Seguros).</label>
                         </div>
                     </div>
 
                     <div class="d-grid gap-2">
-                        <!-- Enlace directo al endpoint de conclusión -->
-                        <a href="{{ url_for('calendar_view.conclude_event', event_id=event.id) }}" id="concludeBtn{{ event.id }}" class="btn btn-success py-3 fw-bold rounded-pill disabled shadow-sm fs-6">
+                        <a href="{{ url_for('calendar_view.conclude_event', event_id=event.id) }}" id="concludeBtn{{ event.id }}" class="btn btn-success py-3 fw-bold rounded-pill disabled shadow-sm fs-6 action-btn">
                             CONFIRMAR Y ARCHIVAR
                         </a>
                         <button type="button" class="btn btn-light py-2 fw-bold text-muted rounded-pill mt-2" data-bs-dismiss="modal">CANCELAR</button>
@@ -197,7 +193,6 @@
     </div>
 
     <!-- C. MODAL DE ELIMINACIÓN RADICAL (BASURERO - 3 PASOS) -->
-    <!-- ESTE PROCESO SÍ ELIMINA PUNTOS (REVOCACIÓN) -->
     <div class="modal fade" id="deleteModal{{ event.id }}" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg rounded-5 overflow-hidden border border-danger">
@@ -215,25 +210,23 @@
                         <i class="bi bi-radioactive me-2"></i>¡ALERTA! SE ELIMINARÁN LOS PUNTOS GANADOS POR LOS PARTICIPANTES.
                     </div>
                     
-                    <!-- Confirmación de 3 Pasos -->
-                    <!-- CAMBIO: text-body asegura visibilidad en modo dark -->
                     <div class="bg-white p-4 rounded-4 text-start small border border-danger mt-4 mb-4">
                         <div class="form-check mb-2">
-                            <input class="form-check-input border-danger" type="checkbox" id="checkDel1{{ event.id }}" onclick="validateDelete({{ event.id }})">
+                            <input class="form-check-input border-danger security-check" type="checkbox" id="checkDel1{{ event.id }}" data-event-id="{{ event.id }}" data-type="delete">
                             <label class="form-check-label text-body fw-bold" for="checkDel1{{ event.id }}">1. Entiendo que es irreversible.</label>
                         </div>
                         <div class="form-check mb-2">
-                            <input class="form-check-input border-danger" type="checkbox" id="checkDel2{{ event.id }}" onclick="validateDelete({{ event.id }})">
+                            <input class="form-check-input border-danger security-check" type="checkbox" id="checkDel2{{ event.id }}" data-event-id="{{ event.id }}" data-type="delete">
                             <label class="form-check-label text-body fw-bold" for="checkDel2{{ event.id }}">2. Se borrarán todas las reservas.</label>
                         </div>
                         <div class="form-check">
-                            <input class="form-check-input border-danger" type="checkbox" id="checkDel3{{ event.id }}" onclick="validateDelete({{ event.id }})">
+                            <input class="form-check-input border-danger security-check" type="checkbox" id="checkDel3{{ event.id }}" data-event-id="{{ event.id }}" data-type="delete">
                             <label class="form-check-label text-danger fw-bold text-uppercase" for="checkDel3{{ event.id }}">3. SÍ, ELIMINAR PUNTOS Y EVENTO.</label>
                         </div>
                     </div>
 
                     <div class="d-grid gap-2">
-                        <a href="{{ url_for('calendar_view.delete_event', event_id=event.id) }}" id="deleteBtn{{ event.id }}" class="btn btn-danger py-3 fw-bold rounded-pill disabled shadow-sm fs-5">
+                        <a href="{{ url_for('calendar_view.delete_event', event_id=event.id) }}" id="deleteBtn{{ event.id }}" class="btn btn-danger py-3 fw-bold rounded-pill disabled shadow-sm fs-5 action-btn">
                             ELIMINAR AHORA
                         </a>
                         <button type="button" class="btn btn-light py-2 fw-bold text-muted rounded-pill mt-2" data-bs-dismiss="modal">CANCELAR</button>
@@ -244,3 +237,62 @@
     </div>
 
 {% endif %}
+
+<!-- SCRIPT DE VALIDACIÓN GLOBAL (Se define una sola vez al final del archivo) -->
+<script>
+    if (typeof initSecurityChecks === 'undefined') {
+        window.initSecurityChecks = true;
+
+        /**
+         * Función única para validar estados de seguridad
+         */
+        function updateSecurityStatus(eventId, type) {
+            if (type === 'conclude') {
+                const c1 = document.getElementById('checkConclude1' + eventId);
+                const c2 = document.getElementById('checkConclude2' + eventId);
+                const btn = document.getElementById('concludeBtn' + eventId);
+                if (c1 && c2 && btn) {
+                    if (c1.checked && c2.checked) {
+                        btn.classList.remove('disabled');
+                        btn.style.pointerEvents = 'auto';
+                    } else {
+                        btn.classList.add('disabled');
+                        btn.style.pointerEvents = 'none';
+                    }
+                }
+            } else if (type === 'delete') {
+                const c1 = document.getElementById('checkDel1' + eventId);
+                const c2 = document.getElementById('checkDel2' + eventId);
+                const c3 = document.getElementById('checkDel3' + eventId);
+                const btn = document.getElementById('deleteBtn' + eventId);
+                if (c1 && c2 && c3 && btn) {
+                    if (c1.checked && c2.checked && c3.checked) {
+                        btn.classList.remove('disabled');
+                        btn.style.pointerEvents = 'auto';
+                    } else {
+                        btn.classList.add('disabled');
+                        btn.style.pointerEvents = 'none';
+                    }
+                }
+            }
+        }
+
+        // Delegación de eventos para manejar clics en cualquier checkbox de seguridad
+        document.addEventListener('change', function(e) {
+            if (e.target && e.target.classList.contains('security-check')) {
+                const eventId = e.target.getAttribute('data-event-id');
+                const type = e.target.getAttribute('data-type');
+                updateSecurityStatus(eventId, type);
+            }
+        });
+
+        // Prevenir clics accidentales en botones deshabilitados (refuerzo de seguridad)
+        document.addEventListener('click', function(e) {
+            const btn = e.target.closest('.action-btn');
+            if (btn && btn.classList.contains('disabled')) {
+                e.preventDefault();
+                return false;
+            }
+        });
+    }
+</script>
