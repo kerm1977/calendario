@@ -11,6 +11,7 @@ import csv
 import random
 import logging
 import io
+import re
 from datetime import datetime, date, timedelta, timezone
 
 from flask import (
@@ -74,6 +75,18 @@ def to_date(date_str):
     except (ValueError, TypeError):
         # En caso de error, retorna None para evitar caídas del servidor.
         return None
+
+def clean_name_string(text):
+    """
+    Limpia el texto estrictamente: 
+    1. Elimina números, espacios, tabulaciones y caracteres especiales.
+    2. Solo deja letras (incluyendo tildes y ñ).
+    3. Aplica formato Title (Primera mayúscula, resto minúscula).
+    """
+    if not text: return ""
+    # Regex: Elimina todo lo que no sea una letra (No incluye \s para quitar espacios)
+    cleaned = re.sub(r'[^a-zA-ZáéíóúÁÉÍÓÚñÑ]', '', text)
+    return cleaned.strip().title()
 
 # ==============================================================================
 # SECCIÓN 1: GESTIÓN DE ACCESO (BLUEPRINT: AUTH)
@@ -427,7 +440,6 @@ def api_reserve():
         existing_booking = None 
         es_nuevo = False
         val_pts = event.points_reward or 10
-        puntos_ganados_hoy = 0
 
         provided_pin = data.get('pin')
         if provided_pin:
@@ -436,6 +448,15 @@ def api_reserve():
         # --- FASE 1: OBTENCIÓN O CREACIÓN DE MIEMBRO ---
         if not member:
             # FLUJO: NUEVO AVENTURERO
+            
+            # LIMPIEZA DE NOMBRES SEGÚN REQUERIMIENTO (Title case, no números, no símbolos, no espacios)
+            nombre_limpio = clean_name_string(data.get('nombre', ''))
+            apellido1_limpio = clean_name_string(data.get('apellido1', ''))
+            apellido2_limpio = clean_name_string(data.get('apellido2', ''))
+            
+            if not nombre_limpio or not apellido1_limpio:
+                return jsonify({'success': False, 'error': 'Nombre y Apellidos son obligatorios y solo deben contener letras.'})
+
             raw_tel = data.get('telefono', '').strip()
             telefono = ''.join(filter(str.isdigit, raw_tel))
             if Member.query.filter_by(telefono=telefono).first():
@@ -447,17 +468,19 @@ def api_reserve():
             
             b_date = to_date(data.get('birth_date'))
             WELCOME_BONUS = 500
-            puntos_ganados_hoy = val_pts + WELCOME_BONUS
+            
+            # El saldo real sí incluye el bono de regalo
+            puntos_totales_db = val_pts + WELCOME_BONUS
             reg_year_bono = 0
             
             if b_date and b_date.month == today.month and b_date.day == today.day:
-                puntos_ganados_hoy += 500
+                puntos_totales_db += 500
                 reg_year_bono = today.year
 
             member = Member(
-                pin=new_pin, nombre=data['nombre'], apellido1=data['apellido1'], 
-                apellido2=data.get('apellido2', ''), telefono=telefono,
-                birth_date=b_date, puntos_totales=puntos_ganados_hoy, ultimo_regalo_bday=reg_year_bono
+                pin=new_pin, nombre=nombre_limpio, apellido1=apellido1_limpio, 
+                apellido2=apellido2_limpio, telefono=telefono,
+                birth_date=b_date, puntos_totales=puntos_totales_db, ultimo_regalo_bday=reg_year_bono
             )
             db.session.add(member)
             db.session.flush() 
@@ -472,7 +495,6 @@ def api_reserve():
         else:
             # FLUJO: MIEMBRO EXISTENTE (USO DE PIN)
             existing_booking = Booking.query.filter_by(member_id=member.id, event_id=event.id).first()
-            puntos_ganados_hoy = val_pts
             
             if existing_booking:
                 if existing_booking.status != 'Activo':
@@ -497,7 +519,6 @@ def api_reserve():
                 if member.ultimo_regalo_bday != today.year:
                     bonus = 500
                     member.puntos_totales += bonus
-                    puntos_ganados_hoy += bonus
                     member.ultimo_regalo_bday = today.year
                     db.session.add(PointLog(member_id=member.id, transaction_type='Bono Cumpleaños', description=f'Bono natalicio ({today.year})', amount=bonus))
 
@@ -523,11 +544,12 @@ def api_reserve():
 
         db.session.commit()
         
+        # RESPUESTA JSON CORREGIDA: puntos_ganados solo muestra los de la caminata (val_pts)
         return jsonify({
             'success': True, 
             'pin': member.pin, 
             'puntos': member.puntos_totales, 
-            'puntos_ganados': puntos_ganados_hoy, 
+            'puntos_ganados': val_pts, # Únicamente los puntos ganados por esta caminata
             'es_nuevo': es_nuevo,
             'message': f'Te has registrado satisfactoriamente a esta caminata que tiene un valor de {val_pts}pts'
         })

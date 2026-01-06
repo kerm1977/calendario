@@ -10,13 +10,13 @@
             
             <div class="modal-header border-0 pb-0 pt-4 px-4 px-md-5">
                 <div class="w-100">
-                        <div class="d-flex justify-content-between align-items-start">
+                    <div class="d-flex justify-content-between align-items-start">
                         <div>
                             <span class="badge bg-warning text-dark px-3 py-2 fw-bold text-uppercase mb-2 shadow-sm rounded-pill">{{ event.activity_type }}</span>
                             <h2 class="fw-bold mb-0 text-body">{{ event.title }}</h2>
                         </div>
                         <button type="button" class="btn-close shadow-none p-2 bg-light rounded-circle" data-bs-dismiss="modal"></button>
-                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -195,21 +195,25 @@
                         <div class="row g-3">
                             <div class="col-12">
                                 <label class="form-label small fw-bold text-secondary text-uppercase" style="font-size: 0.65rem;">Nombre</label>
-                                <input type="text" id="resNombre{{ event.id }}" class="form-control border-warning bg-body py-2 rounded-3" placeholder="Tu nombre" oninput="checkInputsReserva({{ event.id }})">
+                                <input type="text" id="resNombre{{ event.id }}" class="form-control border-warning bg-body py-2 rounded-3" placeholder="Tu nombre" 
+                                    oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ]/g, ''); if(this.value.length > 0) { this.value = this.value.charAt(0).toUpperCase() + this.value.slice(1).toLowerCase(); } checkInputsReserva({{ event.id }})">
                             </div>
                             <div class="col-6">
                                 <label class="form-label small fw-bold text-secondary text-uppercase" style="font-size: 0.65rem;">Primer Apellido</label>
-                                <input type="text" id="resApellido1{{ event.id }}" class="form-control border-warning bg-body py-2 rounded-3" placeholder="Apellido 1" oninput="checkInputsReserva({{ event.id }})">
+                                <input type="text" id="resApellido1{{ event.id }}" class="form-control border-warning bg-body py-2 rounded-3" placeholder="Apellido 1" 
+                                    oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ]/g, ''); if(this.value.length > 0) { this.value = this.value.charAt(0).toUpperCase() + this.value.slice(1).toLowerCase(); } checkInputsReserva({{ event.id }})">
                             </div>
                             <div class="col-6">
                                 <label class="form-label small fw-bold text-secondary text-uppercase" style="font-size: 0.65rem;">Segundo Apellido</label>
-                                <input type="text" id="resApellido2{{ event.id }}" class="form-control border-warning bg-body py-2 rounded-3" placeholder="Apellido 2" oninput="checkInputsReserva({{ event.id }})">
+                                <input type="text" id="resApellido2{{ event.id }}" class="form-control border-warning bg-body py-2 rounded-3" placeholder="Apellido 2" 
+                                    oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ]/g, ''); if(this.value.length > 0) { this.value = this.value.charAt(0).toUpperCase() + this.value.slice(1).toLowerCase(); } checkInputsReserva({{ event.id }})">
                             </div>
                             <div class="col-12">
                                 <label class="form-label small fw-bold text-secondary text-uppercase" style="font-size: 0.65rem;">Número de Celular</label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-light border-warning text-muted fw-bold">+506</span>
-                                    <input type="tel" id="resTel{{ event.id }}" class="form-control border-warning bg-body py-2 rounded-end-3" placeholder="88888888" maxlength="8" oninput="checkPhoneExistence({{ event.id }}); checkInputsReserva({{ event.id }})">
+                                    <input type="tel" id="resTel{{ event.id }}" class="form-control border-warning bg-body py-2 rounded-end-3" placeholder="88888888" maxlength="8" 
+                                           oninput="handlePhoneInput(this, {{ event.id }})">
                                 </div>
                                 <div id="phoneDuplicateError{{ event.id }}" class="text-danger x-small mt-2 d-none fw-bold bg-danger bg-opacity-10 p-2 rounded-3 border border-danger border-opacity-25 animate__animated animate__fadeIn">
                                     <i class="bi bi-x-octagon-fill me-1"></i> Ya este número existe.
@@ -218,8 +222,8 @@
                                         <br>Movil - <a href="https://wa.me/50686227500" target="_blank" class="fw-bold text-danger text-decoration-underline">86227500</a>
                                     </div>
                                 </div>
-                                <div id="phoneWarning{{ event.id }}" class="text-danger x-small mt-2 d-none fw-bold bg-danger bg-opacity-10 p-2 rounded-3 border border-danger border-opacity-25">
-                                    <i class="bi bi-exclamation-triangle-fill me-1"></i> Use 8 dígitos (empezando con 6, 7 u 8).
+                                <div id="phoneWarning{{ event.id }}" class="text-danger x-small mt-2 d-none fw-bold bg-danger bg-opacity-10 p-2 rounded-3 border border-danger border-opacity-25 animate__animated animate__shakeX">
+                                    <i class="bi bi-exclamation-triangle-fill me-1"></i> <span id="phoneWarningMsg{{ event.id }}">Use 8 dígitos (empezando con 7 u 8).</span>
                                 </div>
                             </div>
 
@@ -264,7 +268,7 @@
                                 </div>
 
                                 <div class="x-small text-muted mt-2 text-center">
-                                    <i class="bi bi-gift-fill text-warning me-1"></i> ¡Registra por primer Vez y Gana 500 puntos!
+                                    <i class="bi bi-gift-fill text-warning me-1"></i> ¡Registra por primera vez y recibe un REGALO INICIAL de 500 puntos!
                                 </div>
                             </div>
                         </div>
@@ -278,7 +282,7 @@
                 </div>
             </div>
 
-            <!-- PANTALLA DE EXITO -->
+            <!-- PANTALLA DE ÉXITO -->
             <div id="reserveSuccessContainer{{ event.id }}" class="d-none">
                 <div class="modal-body p-5 text-center bg-body">
                     <div class="bg-success bg-opacity-10 d-inline-block p-4 rounded-circle mb-4 text-success animate__animated animate__bounceIn">
@@ -311,7 +315,7 @@
                         </p>
                     </div>
 
-                    <p class="text-secondary mt-4 fs-6">Guarde su <strong>PIN ÚNICO</strong> de miembro:</p>
+                    <p class="text-secondary mt-4 fs-6">Guarda tu <strong>PIN ÚNICO</strong> de miembro:</p>
                     <div class="bg-primary p-4 rounded-5 border-2 border border-white border-opacity-25 mb-4 shadow-sm">
                         <h2 class="display-3 fw-bold text-white mb-0" id="pinDisplay{{ event.id }}" style="letter-spacing: 12px; margin-left: 12px;">XXXX</h2>
                     </div>
@@ -340,6 +344,32 @@
         if (d && m && y) {
             hiddenInput.value = `${y}-${m}-${d}`;
         }
+    }
+
+    /**
+     * Manejo estricto del Teléfono
+     */
+    function handlePhoneInput(input, eventId) {
+        // 1. Solo números
+        input.value = input.value.replace(/[^0-9]/g, '');
+        
+        const firstDigit = input.value.charAt(0);
+        const warning = document.getElementById('phoneWarning' + eventId);
+        const warningMsg = document.getElementById('phoneWarningMsg' + eventId);
+        
+        // 2. Bloqueo de inicios no permitidos (0,1,2,3,4,5,6,9)
+        const invalidStarts = ['0', '1', '2', '3', '4', '5', '6', '9'];
+        
+        if (input.value.length > 0 && invalidStarts.includes(firstDigit)) {
+            warning.classList.remove('d-none');
+            warningMsg.innerText = "Este teléfono no se permite (debe ser Móvil e iniciar con 7 u 8).";
+        } else {
+            warning.classList.add('d-none');
+            warningMsg.innerText = "Use 8 dígitos (empezando con 7 u 8).";
+        }
+        
+        checkPhoneExistence(eventId);
+        checkInputsReserva(eventId);
     }
 
     /**
@@ -380,10 +410,16 @@
     function checkInputsReserva(eventId) {
         const nombre = document.getElementById('resNombre' + eventId).value.trim();
         const apellido1 = document.getElementById('resApellido1' + eventId).value.trim();
-        const tel = document.getElementById('resTel' + eventId).value.trim();
+        const telInput = document.getElementById('resTel' + eventId);
+        const tel = telInput.value.trim();
         const bday = document.getElementById('resBirthDate' + eventId).value;
         const btn = document.getElementById('btnSubmitRes' + eventId);
-        if (nombre && apellido1 && tel.length === 8 && bday) {
+        
+        // El teléfono debe tener 8 dígitos y empezar con 7 u 8
+        const firstDigit = tel.charAt(0);
+        const isValidPhone = tel.length === 8 && (firstDigit === '7' || firstDigit === '8');
+        
+        if (nombre && apellido1 && isValidPhone && bday) {
             btn.classList.remove('disabled');
         } else {
             btn.classList.add('disabled');
@@ -488,19 +524,13 @@
 
     /**
      * Función unificada para mostrar el éxito y los PUNTOS
-     * CORRECCIÓN: Ahora separa los puntos de la caminata del bono restándolo si el servidor envía la suma.
      */
     function showSuccessStepReserva(eventId, data, title, eventDate) {
         document.getElementById('reserveFormContainer' + eventId).classList.add('d-none');
         document.getElementById('reserveSuccessContainer' + eventId).classList.remove('d-none');
         
-        // El servidor parece estar enviando puntos_ganados = (caminata + bono).
-        // Si es nuevo, restamos el bono (500) para mostrar ÚNICAMENTE los puntos de la caminata.
-        let hikePoints = data.puntos_ganados || 0;
-        if (data.es_nuevo && hikePoints >= 500) {
-            hikePoints = hikePoints - 500;
-        }
-
+        // Puntos de la caminata (vienen limpios del servidor según el nuevo cambio)
+        const hikePoints = data.puntos_ganados || 0;
         const totalPoints = data.puntos || 0;
 
         const detailMsg = document.getElementById('successDetailMsg' + eventId);
@@ -511,7 +541,7 @@
         document.getElementById('pinDisplay' + eventId).innerText = data.pin;
         
         if (data.es_nuevo) {
-            // Cambio de Registro Inicial a REGALO INICIAL en la vista
+            // "Registro Inicial" ha sido eliminado por completo. Se usa REGALO INICIAL.
             document.getElementById('welcomeMsgDisplay' + eventId).innerText = "¡HAS RECIBIDO UN REGALO INICIAL DE 500 PUNTOS!";
         } else {
             document.getElementById('welcomeMsgDisplay' + eventId).innerText = "";
