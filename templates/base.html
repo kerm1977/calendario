@@ -163,6 +163,12 @@
                             <i class="bi bi-calendar3 me-1"></i> Calendario Admin
                         </a>
                     </li>
+                    <!-- BOTÓN INTEGRADO: EXPORTACIÓN TXT LOGÍSTICA -->
+                    <li class="nav-item">
+                        <a class="nav-link fw-bold text-info" href="{{ url_for('calendar_view.export_active_txt') }}">
+                            <i class="bi bi-file-earmark-text-fill me-1"></i> TXT Logística
+                        </a>
+                    </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('puntos.historial_global') }}">
                             <i class="bi bi-clock-history me-1"></i> Portal de Fidelidad
@@ -185,7 +191,6 @@
                             </span>
                             {% endif %}
                         </button>
-                        <!-- CORRECCIÓN AQUÍ: dropdown-menu-lg-end en lugar de dropdown-menu-end -->
                         <ul class="dropdown-menu dropdown-menu-lg-end shadow-lg border-0 mt-3 animate__animated animate__fadeIn p-0 dropdown-menu-notifications">
                             <li class="p-3 bg-warning bg-opacity-10 border-bottom d-flex justify-content-between align-items-center">
                                 <span class="fw-bold small text-uppercase text-dark">Actividad Reciente</span>
@@ -553,4 +558,4 @@
         }
     </script>
 </body>
-</html>
+</html> 

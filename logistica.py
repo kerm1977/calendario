@@ -69,6 +69,65 @@ def export_participants(event_id):
     return response
 
 # ==============================================================================
+# SECCIÓN 4: EXPORTACIÓN LOGÍSTICA GLOBAL (TXT) - NUEVO REQUERIMIENTO
+# ==============================================================================
+
+@calendar_bp.route('/admin/export-active-txt')
+@login_required
+def export_active_txt():
+    """
+    Genera un archivo .txt con el estado de las caminatas activas.
+    Incluye: Fecha, precio, puntos y lista numerada 1..Capacidad con PIN y Tel.
+    Visible para el botón en base.html (calendar_view.export_active_txt).
+    """
+    if not current_user.is_superuser:
+        abort(403)
+        
+    # Obtener eventos activos (hoy o futuro) ordenados por fecha
+    active_events = Event.query.filter(Event.event_date >= date.today()).order_by(Event.event_date).all()
+    
+    output = io.StringIO()
+    output.write("==========================================================\n")
+    output.write("        ESTADO DE EXPEDICIONES ACTIVAS - LA TRIBU        \n")
+    output.write(f"        Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}        \n")
+    output.write("==========================================================\n\n")
+    
+    if not active_events:
+        output.write("No hay caminatas activas programadas en este momento.\n")
+    
+    for ev in active_events:
+        output.write(f"📍 AVENTURA: {ev.title.upper()}\n")
+        output.write(f"📅 FECHA: {ev.event_date.strftime('%d/%m/%Y')} | HORA: {ev.departure_time}\n")
+        output.write(f"💰 PRECIO: {ev.currency}{ev.price:,.0f} | ⭐ PUNTOS: +{ev.points_reward or 10} pts\n")
+        output.write(f"👥 CAPACIDAD GRUPO: {ev.capacity} personas\n")
+        output.write("-" * 58 + "\n")
+        output.write("LISTA DE ASISTENCIA (NOMBRE, PIN, TELÉFONO):\n")
+        
+        # Filtrar bookings activos
+        active_bookings = [b for b in ev.bookings if b.status == 'Activo']
+        
+        # Generar lista numerada del 1 al Límite de Capacidad (ej. 1 al 17)
+        for i in range(1, ev.capacity + 1):
+            if i <= len(active_bookings):
+                b = active_bookings[i-1]
+                m = b.member
+                nombre_completo = f"{m.nombre} {m.apellido1} {m.apellido2 or ''}".strip()
+                # Formato: 01. Nombre Completo - PIN: ABC123 - Tel: 88888888
+                output.write(f"{i:02d}. {nombre_completo:<30} | PIN: {m.pin} | Tel: {m.telefono}\n")
+            else:
+                # Espacio disponible numerado hasta el límite de capacidad solicitado
+                output.write(f"{i:02d}. [ ESPACIO DISPONIBLE ]\n")
+        
+        output.write("\n" + "="*58 + "\n\n")
+
+    response = make_response(output.getvalue())
+    file_name = f"Logistica_LaTribu_{date.today().strftime('%d_%m_%Y')}.txt"
+    response.headers["Content-Disposition"] = f"attachment; filename={file_name}"
+    response.headers["Content-type"] = "text/plain; charset=utf-8"
+    
+    return response
+
+# ==============================================================================
 # SECCIÓN 5: GESTIÓN LOGÍSTICA DE CALENDARIO Y EVENTOS (BLUEPRINT: CALENDAR)
 # ==============================================================================
 
@@ -90,10 +149,10 @@ def view():
     monthly_birthdays = Member.query.filter(extract('month', Member.birth_date) == month).all()
     
     return render_template('calendar.html', 
-                           weeks=weeks, year=year, month=month, 
-                           month_name=MESES_ES[month],
-                           events=events,
-                           monthly_birthdays=monthly_birthdays)
+                            weeks=weeks, year=year, month=month, 
+                            month_name=MESES_ES[month],
+                            events=events,
+                            monthly_birthdays=monthly_birthdays)
 
 @calendar_bp.route('/admin/event/add', methods=['POST'])
 @login_required
