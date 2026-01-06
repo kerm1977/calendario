@@ -485,8 +485,9 @@ def api_reserve():
             db.session.add(member)
             db.session.flush() 
             
-            db.session.add(PointLog(member_id=member.id, transaction_type='Bienvenida', description='Registro Inicial', amount=0))
-            db.session.add(PointLog(member_id=member.id, transaction_type='Bono Bienvenida', description='Regalo inicial', amount=WELCOME_BONUS))
+            # UNIFICADO: Solo se registra el bono como "Regalo Inicial" para evitar duplicados en el historial
+            db.session.add(PointLog(member_id=member.id, transaction_type='Bono Bienvenida', description='Regalo Inicial', amount=WELCOME_BONUS))
+            
             if reg_year_bono > 0:
                 db.session.add(PointLog(member_id=member.id, transaction_type='Bono Cumpleaños', description='Bono natalicio inicial', amount=500))
             

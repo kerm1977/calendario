@@ -1,0 +1,50 @@
+<!-- ============================================================== -->
+<!-- MODAL INCRUSTADO MANUALMENTE PARA CAMBIAR PIN (SEGURIDAD TOTAL) -->
+<!-- ============================================================== -->
+<div class="modal fade" id="changePinModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-success bg-opacity-10 border-0">
+                <h6 class="modal-title fw-bold text-success"><i class="bi bi-shield-lock-fill me-2"></i>Nuevo PIN</h6>
+                <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <p class="small text-muted mb-3">
+                    Crea una clave de <strong>6 caracteres</strong>.<br>
+                    <span class="x-small text-secondary">(Letras, números y símbolos permitidos)</span>
+                </p>
+                <!-- ACCIÓN ACTUALIZADA: Apunta a la ruta 'cambiar_pin' (global) -->
+                <form action="{{ url_for('perfil.cambiar_pin') }}" method="POST">
+                    
+                    <!-- CAMPO OCULTO VITAL PARA EVITAR ERROR DE IDENTIFICACIÓN -->
+                    <input type="hidden" name="member_id" value="{{ member.id }}">
+
+                    <div class="mb-3">
+                        <!-- INPUT DE TEXTO CONFIGURADO PARA ACEPTAR TODO -->
+                        <!-- Nombre del campo cambiado a 'nuevo_pin' para coincidir con python -->
+                        <input type="text" name="nuevo_pin" id="newPinInput" 
+                               class="form-control form-control-lg text-center fw-bold text-success border-success" 
+                               placeholder="Ej: Ab1@Cd" 
+                               maxlength="6" 
+                               autocomplete="off" 
+                               autocapitalize="off" 
+                               autocorrect="off"
+                               spellcheck="false" 
+                               required>
+                    </div>
+                    
+                    <!-- ADVERTENCIA DE SEGURIDAD -->
+                    <div id="pinWeakWarning" class="text-danger x-small fw-bold mb-3 d-none animate__animated animate__fadeIn">
+                        <i class="bi bi-shield-exclamation me-1"></i>PIN inseguro: Fácil de descifrar.
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" id="btnSavePin" class="btn btn-secondary fw-bold rounded-pill disabled" disabled>
+                            Guardar PIN
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

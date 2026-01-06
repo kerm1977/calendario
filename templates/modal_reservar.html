@@ -268,7 +268,7 @@
                                 </div>
 
                                 <div class="x-small text-muted mt-2 text-center">
-                                    <i class="bi bi-gift-fill text-warning me-1"></i> ¡Registra por primera vez y recibe un REGALO INICIAL de 500 puntos!
+                                    <i class="bi bi-gift-fill text-warning me-1"></i> ¡Únete por primera vez y recibe un REGALO INICIAL de 500 puntos!
                                 </div>
                             </div>
                         </div>
@@ -276,7 +276,7 @@
 
                     <div class="d-grid mt-5">
                         <button type="button" id="btnSubmitRes{{ event.id }}" class="btn btn-warning py-3 fw-bold rounded-pill text-dark disabled shadow-sm transition-all fs-5" onclick="processReservationReserva({{ event.id }}, '{{ event.title|e }}', '{{ event.event_date }}', '{{ event.currency }}{{ event.price }}')">
-                            ¡CONFIRMAR MI REGISTRO!
+                            ¡CONFIRMAR MI RESERVA!
                         </button>
                     </div>
                 </div>
@@ -288,12 +288,12 @@
                     <div class="bg-success bg-opacity-10 d-inline-block p-4 rounded-circle mb-4 text-success animate__animated animate__bounceIn">
                         <i class="bi bi-check-circle-fill display-1"></i>
                     </div>
-                    <h3 class="fw-bold text-body" id="successMainTitle{{ event.id }}">¡REGISTRO SATISFACTORIO!</h3>
+                    <h3 class="fw-bold text-body" id="successMainTitle{{ event.id }}">¡RESERVA SATISFACTORIA!</h3>
                     
                     <!-- MENSAJE DE RECOMPENSA Y PUNTOS -->
                     <div class="bg-light rounded-4 p-4 mb-4 border border-success border-opacity-25 animate__animated animate__fadeInUp" style="animation-delay: 0.3s;">
                         <p class="lead fw-bold text-uppercase mb-2 text-success" style="font-size: 1.1rem;" id="successDetailMsg{{ event.id }}">
-                            TE HAS REGISTRADO CORRECTAMENTE.
+                            TU RESERVA SE HA REALIZADO CORRECTAMENTE.
                         </p>
                         <div class="py-3 px-2 rounded-4 mb-3 border bg-white shadow-sm border-warning border-opacity-25">
                             <span class="d-block text-muted small text-uppercase fw-bold mb-1">Puntos Ganados en esta Caminata</span>
@@ -304,7 +304,8 @@
                             <br>
                             <span class="fs-6 text-dark fw-bold text-uppercase mt-2 d-inline-block">TOTAL ACTUAL EN CUENTA: <span id="totalPointsDisplay{{ event.id }}" class="text-primary">0</span> PUNTOS.</span>
                         </p>
-                        <!-- Etiqueta del bono de bienvenida corregida a REGALO INICIAL -->
+                        
+                        <!-- Etiqueta del bono de bienvenida unificada a REGALO INICIAL -->
                         <div id="welcomeMsgDisplay{{ event.id }}" class="mt-2 fw-bold text-warning small animate__animated animate__flash animate__infinite"></div>
                     </div>
 
@@ -514,7 +515,7 @@
             } else {
                 alert("Error: " + data.error);
                 btn.disabled = false;
-                btn.innerHTML = '¡CONFIRMAR MI REGISTRO!';
+                btn.innerHTML = '¡CONFIRMAR MI RESERVA!';
             }
         } catch (error) {
             alert("Error de conexión.");
@@ -534,14 +535,13 @@
         const totalPoints = data.puntos || 0;
 
         const detailMsg = document.getElementById('successDetailMsg' + eventId);
-        detailMsg.innerHTML = `TE HAS REGISTRADO CORRECTAMENTE A LA CAMINATA <strong>${title.toUpperCase()}</strong> Y HAS ACUMULADO <strong>${hikePoints}</strong> PUNTOS.`;
+        detailMsg.innerHTML = `TU RESERVA SE HA REALIZADO CORRECTAMENTE PARA LA CAMINATA <strong>${title.toUpperCase()}</strong> Y HAS ACUMULADO <strong>${hikePoints}</strong> PUNTOS.`;
 
         document.getElementById('earnedPointsDisplay' + eventId).innerText = hikePoints;
         document.getElementById('totalPointsDisplay' + eventId).innerText = totalPoints.toLocaleString();
         document.getElementById('pinDisplay' + eventId).innerText = data.pin;
         
         if (data.es_nuevo) {
-            // "Registro Inicial" ha sido eliminado por completo. Se usa REGALO INICIAL.
             document.getElementById('welcomeMsgDisplay' + eventId).innerText = "¡HAS RECIBIDO UN REGALO INICIAL DE 500 PUNTOS!";
         } else {
             document.getElementById('welcomeMsgDisplay' + eventId).innerText = "";

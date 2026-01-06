@@ -1,0 +1,322 @@
+!-- IMPORTAR OTROS MODALES EXTERNOS (Menos el de PIN que ya incrustamos) -->
+{% include "modales_perfil.html" %}
+
+<!-- ============================================================== -->
+<!-- SCRIPT: VALIDACIÓN DE PIN (ALFANUMÉRICO 6 DÍGITOS - CASE SENSITIVE + SEGURIDAD) -->
+<!-- ============================================================== -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const pinInput = document.getElementById('newPinInput');
+        const saveBtn = document.getElementById('btnSavePin');
+        const warningMsg = document.getElementById('pinWeakWarning');
+
+        if (pinInput && saveBtn) {
+            
+            // Forzar estilos por si el CSS base interfiere
+            pinInput.style.setProperty('text-transform', 'none', 'important');
+            pinInput.classList.remove('text-uppercase');
+
+            // Lista negra de PINs inseguros
+            const weakPins = [
+                '123456', '654321', 'abc123', '321cba', 
+                '987654', '456789', 'abcdef', 'ABCDEF', 
+                'passwd', 'secret', 'qwerty', 'admin1'
+            ];
+
+            // Evento de entrada
+            pinInput.addEventListener('input', function(e) {
+                // 1. Limpieza: Permitir Letras (a-z, A-Z), Números (0-9) y Símbolos comunes
+                // Regex: [^a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?] elimina caracteres extraños no imprimibles
+                let val = this.value.replace(/[^a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/g, '');
+                
+                if (this.value !== val) {
+                    this.value = val;
+                }
+
+                // 2. Validación de Seguridad
+                const isLengthOk = val.length === 6;
+                const isWeak = weakPins.includes(val);
+
+                if (isLengthOk) {
+                    if (isWeak) {
+                        // PIN Inseguro
+                        saveBtn.disabled = true;
+                        saveBtn.classList.add('disabled', 'btn-secondary');
+                        saveBtn.classList.remove('btn-success', 'animate__animated', 'animate__pulse');
+                        
+                        warningMsg.classList.remove('d-none');
+                    } else {
+                        // PIN Válido
+                        saveBtn.disabled = false;
+                        saveBtn.classList.remove('disabled', 'btn-secondary');
+                        saveBtn.classList.add('btn-success', 'animate__animated', 'animate__pulse');
+                        warningMsg.classList.add('d-none');
+                    }
+                } else {
+                    // Longitud incompleta
+                    saveBtn.disabled = true;
+                    saveBtn.classList.add('disabled', 'btn-secondary');
+                    saveBtn.classList.remove('btn-success', 'animate__animated', 'animate__pulse');
+                    warningMsg.classList.add('d-none');
+                }
+            });
+        }
+    });
+</script>
+
+<!-- ============================================================== -->
+<!-- SCRIPT PARA GESTIÓN DE DEUDA (AJAX BRUTAL) -->
+<!-- ============================================================== -->
+<script>
+    async function toggleDebt(memberId) {
+        if (!confirm("¿Seguro que deseas cambiar el estado de deuda?")) return;
+        
+        try {
+            const response = await fetch(`/admin/toggle_debt/${memberId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                // Recargar para actualizar la interfaz
+                location.reload(); 
+            } else {
+                alert("Error: " + (data.message || "No autorizado"));
+            }
+        } catch (error) {
+            console.error("Error toggling debt:", error);
+            alert("Error de conexión con el servidor.");
+        }
+    }
+</script>
+
+<!-- ============================================================== -->
+<!-- SCRIPTS DE EXPORTACIÓN (TXT Y WHATSAPP) Y PAGINACIÓN -->
+<!-- ============================================================== -->
+<script>
+    /**
+     * FUNCIÓN: Ver más movimientos de 10 en 10
+     * Mantiene el diseño limpio y carga progresiva
+     */
+    function showMoreTransactions() {
+        // Seleccionamos todos los items que están ocultos actualmente
+        const hiddenItems = document.querySelectorAll('.transaction-item[style*="display: none"]');
+        
+        // Configuramos contador para mostrar solo 10
+        let count = 0;
+        const itemsToShow = 10;
+
+        hiddenItems.forEach(item => {
+            if (count < itemsToShow) {
+                // Quitamos el display:none para que retome su layout original
+                item.style.display = ''; 
+                // Opcional: Agregar clase de animación si no la tiene
+                item.classList.add('animate__fadeIn');
+                count++;
+            }
+        });
+
+        // Verificamos si quedan más items ocultos después de esta acción
+        const remainingHidden = document.querySelectorAll('.transaction-item[style*="display: none"]');
+        
+        // Si ya no queda nada oculto, desaparecemos el botón "Ver más"
+        if (remainingHidden.length === 0) {
+            const btnContainer = document.getElementById('loadMoreContainer');
+            if (btnContainer) {
+                btnContainer.style.display = 'none';
+            }
+        }
+    }
+
+    /**
+     * Generar Archivo TXT con tabla formateada
+     */
+    function descargarTXT() {
+        const nombre = "{{ member.nombre }} {{ member.apellido1 }}";
+        const pin = "{{ member.pin }}";
+        const saldo = "{{ member.puntos_totales }}";
+        const fecha = new Date().toLocaleDateString();
+        
+        let contenido = `
+LA TRIBU DE LOS LIBRES
+Estado de Cuenta Oficial
+==================================================
+Miembro: ${nombre}
+PIN:     ${pin}
+Fecha:   ${fecha}
+SALDO:   ${saldo} pts
+==================================================
+
+DETALLE DE MOVIMIENTOS
+--------------------------------------------------
+FECHA       | TIPO             | DESCRIPCION                  | MONTO
+--------------------------------------------------
+`;
+
+        // Recopilar datos del DOM para la tabla
+        const items = document.querySelectorAll('.log-item');
+        
+        if(items.length === 0) {
+            contenido += "Sin movimientos registrados.\n";
+        } else {
+            items.forEach((item) => {
+                // Extraer texto limpio
+                let fechaMov = item.querySelector('.log-date').innerText.split(' ')[0].trim();
+                let tipoRaw = item.querySelector('.log-date span').innerText.trim();
+                let descRaw = item.querySelector('.log-desc').innerText.trim();
+                let montoRaw = item.querySelector('.log-amount').innerText.trim();
+
+                // Truncar textos largos para que cuadren en columnas
+                let tipo = tipoRaw.substring(0, 15).padEnd(16, ' ');
+                let desc = descRaw.substring(0, 28).padEnd(28, ' ');
+                let fechaCol = fechaMov.padEnd(11, ' ');
+                let montoCol = montoRaw.padStart(8, ' '); // Alineado a derecha
+
+                contenido += `${fechaCol} | ${tipo} | ${desc} | ${montoCol}\n`;
+            });
+        }
+
+        contenido += `--------------------------------------------------
+Fin del reporte.
+Generado automáticamente por la plataforma.
+`;
+
+        // Crear blob y descargar
+        const blob = new Blob([contenido], { type: 'text/plain' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `EstadoCuenta_${nombre.replace(/\s+/g, '_')}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    }
+
+    /**
+     * Compartir Estado de Cuenta por WhatsApp (Texto Formateado)
+     */
+    function compartirEstadoWhatsApp() {
+        const nombre = "{{ member.nombre }} {{ member.apellido1 }}";
+        const saldo = "{{ member.puntos_totales }}";
+        const fechaHoy = new Date().toLocaleDateString();
+        
+        let mensaje = `*🏕️ ESTADO DE CUENTA - LA TRIBU*\n\n`;
+        mensaje += `*👤 Miembro:* ${nombre}\n`;
+        mensaje += `*📅 Fecha:* ${fechaHoy}\n`;
+        mensaje += `*⭐ SALDO ACTUAL:* ${saldo} pts\n\n`;
+        mensaje += `*📋 ÚLTIMOS MOVIMIENTOS:*\n`;
+
+        // Recopilamos los primeros 10 movimientos del DOM
+        const items = document.querySelectorAll('.log-item');
+        let contador = 0;
+        
+        items.forEach((item) => {
+            if (contador < 10) { // Limitamos a 10 para no saturar el link
+                const desc = item.querySelector('.log-desc').innerText.trim();
+                const fecha = item.querySelector('.log-date').innerText.split(' ')[0]; // Solo fecha
+                const monto = item.querySelector('.log-amount').innerText.trim();
+                
+                // Formato: 📅 12/10 | +100 pts - Descripción
+                mensaje += `🗓 ${fecha} | *${monto}* - ${desc}\n`;
+                contador++;
+            }
+        });
+
+        mensaje += `\n_Consulta detalles completos en tu perfil web._`;
+
+        // Codificamos y abrimos
+        const url = `https://wa.me/?text=${encodeURIComponent(mensaje)}`;
+        window.open(url, '_blank');
+    }
+
+    /**
+     * Lógica para el modal avanzado de gestión de puntos (ADMIN)
+     */
+    function checkDeleteSteps() {
+        const s1 = document.getElementById('step1_del').checked;
+        const s2 = document.getElementById('step2_del').checked;
+        const s3 = document.getElementById('step3_del').checked;
+        const btn = document.getElementById('btnConfirmDeletePoints');
+        
+        if (s1 && s2 && s3) {
+            btn.classList.remove('disabled');
+        } else {
+            btn.classList.add('disabled');
+        }
+    }
+</script>
+
+<style>
+    .shadow-2xl { box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15); }
+    .x-small { font-size: 0.7rem; }
+    .transition-hover { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+    .transition-hover:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important; }
+    .hover-scale:hover { transform: scale(1.1); transition: transform 0.2s; }
+    .cursor-pointer { cursor: pointer; }
+    .border-end-md { border-right: none; }
+    
+    @media (min-width: 768px) {
+        .border-end-md { border-right: 1px solid rgba(0,0,0,0.1); }
+    }
+    
+    /* === CORRECCIÓN FINAL MODO OSCURO === */
+    /* Estas reglas invierten automáticamente los colores cuando el navegador o sistema está en Dark Mode */
+    
+    [data-bs-theme="dark"] body {
+        background-color: #121212;
+        color: #e0e0e0;
+    }
+    
+    /* Forzar inversión de bg-white en modo oscuro */
+    [data-bs-theme="dark"] .bg-white {
+        background-color: #212529 !important;
+        color: #f8f9fa !important;
+        border-color: #373b3e !important;
+    }
+    
+    /* Forzar inversión de texto negro en modo oscuro */
+    [data-bs-theme="dark"] .text-dark {
+        color: #f8f9fa !important;
+    }
+    
+    /* Ajustes específicos para modales en modo oscuro */
+    [data-bs-theme="dark"] .modal-content {
+        background-color: #212529;
+        border-color: #495057;
+    }
+    
+    [data-bs-theme="dark"] .modal-header,
+    [data-bs-theme="dark"] .modal-footer {
+        border-color: #495057;
+    }
+    
+    /* Inputs oscuros */
+    [data-bs-theme="dark"] .form-control,
+    [data-bs-theme="dark"] .form-select {
+        background-color: #2b3035;
+        border-color: #495057;
+        color: #fff;
+    }
+    
+    /* Botón cerrar modal (X) invertido */
+    [data-bs-theme="dark"] .btn-close {
+        filter: invert(1) grayscale(100%) brightness(200%);
+    }
+    
+    /* ESTILOS PARA IMPRESIÓN (Por si acaso alguien usa Ctrl+P) */
+    @media print {
+        .no-print, .navbar, .footer-sticky-blur, .modal {
+            display: none !important;
+        }
+        #historialSection {
+            width: 100% !important; /* Historial a ancho completo */
+            flex: 0 0 100%;
+            max-width: 100%;
+        }
+        body { padding-bottom: 0; background: white; }
+    }
+</style>
