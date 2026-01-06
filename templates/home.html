@@ -38,14 +38,11 @@
                     <h5 class="fw-bold mb-0 text-dark">Área del Caminante</h5>
                 </div>
                 
-                <!-- AQUÍ ESTÁ EL TEXTO QUE MENCIONASTE -->
                 <p class="text-muted small mb-4">
                     Ingresa tu PIN para consultar tu nivel, saldo de puntos y próximas expediciones. Tu Pin Puede ser modificado en tu perfil.
                 </p>
                 
                 <div class="input-group input-group-lg shadow-sm rounded-pill overflow-hidden border border-warning bg-white">
-                    <!-- ACTUALIZADO: Se eliminó el oninput regex para permitir símbolos y letras -->
-                    <!-- Cambiado placeholder a ****** para indicar privacidad/flexibilidad -->
                     <input type="text" id="quickPinInput" class="form-control border-0 text-center fw-bold text-primary fs-4" placeholder="PIN..." maxlength="6">
                     <button class="btn btn-warning fw-bold text-dark px-4 transition-hover" type="button" onclick="goToProfileQuick()">
                         <span class="ver-text">VER </span>MI PERFIL <i class="bi bi-arrow-right-short ms-1"></i>
@@ -57,154 +54,172 @@
 </div>
 
 <!-- ========================================== -->
-<!-- GRID DE ACTIVIDADES PRÓXIMAS -->
+<!-- GRID DE ACTIVIDADES PRÓXIMAS (AGRUPADO POR MES) -->
 <!-- ========================================== -->
 <div class="row g-4">
     {% if events %}
+        {# Inicializamos la variable para rastrear el cambio de mes #}
+        {% set last_month = namespace(value=none) %}
+
         {% for event in events %}
         
-        <!-- CÁLCULO DE CUPOS EN TIEMPO REAL -->
-        {# Filtramos solo las reservas con estado 'Activo' #}
-        {% set ocupados = event.bookings | selectattr("status", "equalto", "Activo") | list | length %}
-        {% set disponibles = event.capacity - ocupados %}
-        
-        <!-- LÓGICA DE FECHA PASADA -->
-        {% set es_pasado = event.event_date < now.date() %}
-        
-        <div class="col-md-6 col-lg-4">
-            <div class="card h-100 shadow-sm border border-secondary border-opacity-25 overflow-hidden position-relative adventure-card animate__animated animate__fadeInUp" style="animation-delay: {{ loop.index0 * 0.1 }}s">
-                
-                <!-- ACCIONES DE ADMIN (VISUALIZACIÓN FLOTANTE) -->
-                {% if current_user.is_authenticated and current_user.is_superuser %}
-                <div class="position-absolute top-0 end-0 m-3 z-3 d-flex gap-2">
-                    
-                    <!-- BOTÓN ESPECIAL: CONCLUIR CAMINATA (Solo si ya pasó la fecha) -->
-                    {% if es_pasado %}
-                    <button class="btn btn-success btn-sm rounded-pill shadow fw-bold border-0 px-3 animate__animated animate__pulse animate__infinite" title="Caminata Concluida - Limpiar" data-bs-toggle="modal" data-bs-target="#concludeModal{{ event.id }}">
-                        <i class="bi bi-check-circle-fill me-1"></i>Concluir
-                    </button>
-                    {% endif %}
-
-                    <button class="btn btn-warning btn-sm rounded-circle shadow text-dark border-0 btn-admin-float" title="Editar Actividad" data-bs-toggle="modal" data-bs-target="#editModal{{ event.id }}">
-                        <i class="bi bi-pencil-fill"></i>
-                    </button>
-                    
-                    <button class="btn btn-white btn-sm rounded-circle shadow text-danger border-0 btn-admin-float" title="Eliminar Radical" data-bs-toggle="modal" data-bs-target="#deleteModal{{ event.id }}">
-                        <i class="bi bi-trash3-fill"></i>
-                    </button>
-                </div>
-                {% endif %}
-
-                <!-- BADGE DE ESTADO -->
-                {% if event.status == 'Se Traslado' %}
-                <div class="position-absolute top-0 start-0 m-3 z-3">
-                    <span class="badge bg-warning text-dark shadow-sm px-3 py-2 rounded-pill fw-bold border border-dark border-opacity-10 animate__animated animate__pulse animate__infinite">
-                        <i class="bi bi-calendar-range me-1"></i> TRASLADADO
-                    </span>
-                </div>
-                {% endif %}
-
-                <!-- CONTENEDOR DE IMAGEN (FLYER) -->
-                <div class="card-img-container" style="height: 300px; background: var(--bs-tertiary-bg); position: relative; overflow: hidden;">
-                    {% if event.flyer %}
-                        <img src="{{ url_for('static', filename='uploads/flyers/' + event.flyer) }}" 
-                             class="card-img-top w-100 h-100 flyer-zoom" 
-                             style="object-fit: cover; cursor: pointer;" 
-                             alt="{{ event.title }}"
-                             onclick="showFullImage(this.src, this.alt)">
-                    {% else %}
-                        <div class="w-100 h-100 d-flex flex-column align-items-center justify-content-center text-muted">
-                            <i class="bi bi-image display-1 opacity-10"></i>
-                            <small class="fw-bold opacity-25">Flyer pendiente</small>
-                        </div>
-                    {% endif %}
-                    
-                    <div class="price-overlay position-absolute bottom-0 start-0 w-100 p-4 d-flex justify-content-between align-items-end" style="background: linear-gradient(transparent, rgba(0,0,0,0.8)); pointer-events: none;">
-                        <span class="badge bg-dark bg-opacity-75 text-white px-3 py-2 rounded-pill small border border-white border-opacity-25">{{ event.activity_type }}</span>
-                        <div class="price-tag">
-                            <span class="h3 fw-bold mb-0 text-white shadow-text">{{ event.currency }}{{ "{:,.2f}".format(event.price) }}</span>
+            {# Lógica de Separador de Mes #}
+            {% if last_month.value != event.event_date.month %}
+                <div class="col-12 mt-5 mb-2 animate__animated animate__fadeIn">
+                    <div class="d-flex align-items-center gap-3">
+                        <h2 class="fw-bold text-warning mb-0 text-uppercase" style="letter-spacing: 2px;">
+                            <i class="bi bi-calendar-check me-2"></i>{{ meses[event.event_date.month] }}
+                        </h2>
+                        <div class="flex-grow-1">
+                            <hr class="border-warning border-2 opacity-50 my-0">
                         </div>
                     </div>
+                </div>
+                {% set last_month.value = event.event_date.month %}
+            {% endif %}
+            
+            <!-- CÁLCULO DE CUPOS EN TIEMPO REAL -->
+            {# Filtramos solo las reservas con estado 'Activo' #}
+            {% set ocupados = event.bookings | selectattr("status", "equalto", "Activo") | list | length %}
+            {% set disponibles = event.capacity - ocupados %}
+            
+            <!-- LÓGICA DE FECHA PASADA -->
+            {% set es_pasado = event.event_date < now.date() %}
+            
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 shadow-sm border border-secondary border-opacity-25 overflow-hidden position-relative adventure-card animate__animated animate__fadeInUp" style="animation-delay: {{ loop.index0 * 0.1 }}s">
+                    
+                    <!-- ACCIONES DE ADMIN (VISUALIZACIÓN FLOTANTE) -->
+                    {% if current_user.is_authenticated and current_user.is_superuser %}
+                    <div class="position-absolute top-0 end-0 m-3 z-3 d-flex gap-2">
+                        
+                        <!-- BOTÓN ESPECIAL: CONCLUIR CAMINATA (Solo si ya pasó la fecha) -->
+                        {% if es_pasado %}
+                        <button class="btn btn-success btn-sm rounded-pill shadow fw-bold border-0 px-3 animate__animated animate__pulse animate__infinite" title="Caminata Concluida - Limpiar" data-bs-toggle="modal" data-bs-target="#concludeModal{{ event.id }}">
+                            <i class="bi bi-check-circle-fill me-1"></i>Concluir
+                        </button>
+                        {% endif %}
 
-                    <!-- OVERLAY DE EVENTO PASADO -->
-                    {% if es_pasado %}
-                    <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style="background: rgba(0,0,0,0.6); pointer-events: none;">
-                        <h2 class="text-white fw-bold border-2 border-white border px-4 py-2 text-uppercase" style="transform: rotate(-15deg);">FINALIZADO</h2>
+                        <button class="btn btn-warning btn-sm rounded-circle shadow text-dark border-0 btn-admin-float" title="Editar Actividad" data-bs-toggle="modal" data-bs-target="#editModal{{ event.id }}">
+                            <i class="bi bi-pencil-fill"></i>
+                        </button>
+                        
+                        <button class="btn btn-white btn-sm rounded-circle shadow text-danger border-0 btn-admin-float" title="Eliminar Radical" data-bs-toggle="modal" data-bs-target="#deleteModal{{ event.id }}">
+                            <i class="bi bi-trash3-fill"></i>
+                        </button>
                     </div>
                     {% endif %}
-                </div>
 
-                <div class="card-body p-4">
-                    <h4 class="card-title fw-bold mb-3 text-truncate-2 title-link">{{ event.title }}</h4>
+                    <!-- BADGE DE ESTADO -->
+                    {% if event.status == 'Se Traslado' %}
+                    <div class="position-absolute top-0 start-0 m-3 z-3">
+                        <span class="badge bg-warning text-dark shadow-sm px-3 py-2 rounded-pill fw-bold border border-dark border-opacity-10 animate__animated animate__pulse animate__infinite">
+                            <i class="bi bi-calendar-range me-1"></i> TRASLADADO
+                        </span>
+                    </div>
+                    {% endif %}
 
-                    <!-- BLOQUE DE FECHA ESTILO TICKET -->
-                    <div class="mb-4 p-3 bg-body-tertiary rounded-4 small border border-warning border-opacity-10 ticket-date">
-                        <div class="d-flex align-items-center">
-                            <div class="bg-warning bg-opacity-20 p-2 rounded-3 me-3 text-warning">
-                                <i class="bi bi-calendar3 h5 mb-0"></i>
+                    <!-- CONTENEDOR DE IMAGEN (FLYER) -->
+                    <div class="card-img-container" style="height: 300px; background: var(--bs-tertiary-bg); position: relative; overflow: hidden;">
+                        {% if event.flyer %}
+                            <img src="{{ url_for('static', filename='uploads/flyers/' + event.flyer) }}" 
+                                 class="card-img-top w-100 h-100 flyer-zoom" 
+                                 style="object-fit: cover; cursor: pointer;" 
+                                 alt="{{ event.title }}"
+                                 onclick="showFullImage(this.src, this.alt)">
+                        {% else %}
+                            <div class="w-100 h-100 d-flex flex-column align-items-center justify-content-center text-muted">
+                                <i class="bi bi-image display-1 opacity-10"></i>
+                                <small class="fw-bold opacity-25">Flyer pendiente</small>
                             </div>
-                            <div>
-                                <div class="fw-bold text-body">
-                                    {% if event.duration_days > 1 %}
-                                        Del {{ event.event_date.day }} al {{ event.end_date.day }} de {{ meses[event.end_date.month] }}
+                        {% endif %}
+                        
+                        <div class="price-overlay position-absolute bottom-0 start-0 w-100 p-4 d-flex justify-content-between align-items-end" style="background: linear-gradient(transparent, rgba(0,0,0,0.8)); pointer-events: none;">
+                            <span class="badge bg-dark bg-opacity-75 text-white px-3 py-2 rounded-pill small border border-white border-opacity-25">{{ event.activity_type }}</span>
+                            <div class="price-tag">
+                                <span class="h3 fw-bold mb-0 text-white shadow-text">{{ event.currency }}{{ "{:,.2f}".format(event.price) }}</span>
+                            </div>
+                        </div>
+
+                        <!-- OVERLAY DE EVENTO PASADO -->
+                        {% if es_pasado %}
+                        <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style="background: rgba(0,0,0,0.6); pointer-events: none;">
+                            <h2 class="text-white fw-bold border-2 border-white border px-4 py-2 text-uppercase" style="transform: rotate(-15deg);">FINALIZADO</h2>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="card-body p-4">
+                        <h4 class="card-title fw-bold mb-3 text-truncate-2 title-link">{{ event.title }}</h4>
+
+                        <!-- BLOQUE DE FECHA ESTILO TICKET -->
+                        <div class="mb-4 p-3 bg-body-tertiary rounded-4 small border border-warning border-opacity-10 ticket-date">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-warning bg-opacity-20 p-2 rounded-3 me-3 text-warning">
+                                    <i class="bi bi-calendar3 h5 mb-0"></i>
+                                </div>
+                                <div>
+                                    <div class="fw-bold text-body">
+                                        {% if event.duration_days > 1 %}
+                                            Del {{ event.event_date.day }} al {{ event.end_date.day }} de {{ meses[event.end_date.month] }}
+                                        {% else %}
+                                            {{ event.event_date.day }} de {{ meses[event.event_date.month] }}, {{ event.event_date.year }}
+                                        {% endif %}
+                                    </div>
+                                    <div class="x-small text-muted text-uppercase fw-bold" style="letter-spacing: 1px;">Inicia: {{ event.departure_time }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- NUEVA DISTRIBUCIÓN: DATOS, PUNTOS Y CUPOS -->
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div class="d-flex flex-column gap-1 small text-secondary fw-medium card-meta-data">
+                                <div><i class="bi bi-signpost-split-fill me-2 text-warning"></i>{{ event.distance or 'Por definir' }}</div>
+                                <div><i class="bi bi-speedometer2 me-2 text-warning"></i>{{ event.difficulty }}</div>
+                                
+                                <!-- CONTADOR DE ESPACIOS DISPONIBLES (EN CARD) -->
+                                <div class="{{ 'text-danger fw-bold animate__animated animate__pulse animate__infinite' if disponibles <= 5 else '' }}">
+                                    <i class="bi bi-person-walking me-2 text-warning"></i>
+                                    {% if disponibles > 0 %}
+                                        {{ disponibles }} lugares disponibles
                                     {% else %}
-                                        {{ event.event_date.day }} de {{ meses[event.event_date.month] }}, {{ event.event_date.year }}
+                                        <span class="badge bg-danger">AGOTADO</span>
                                     {% endif %}
                                 </div>
-                                <div class="x-small text-muted text-uppercase fw-bold" style="letter-spacing: 1px;">Inicia: {{ event.departure_time }}</div>
                             </div>
-                        </div>
-                    </div>
-
-                    <!-- NUEVA DISTRIBUCIÓN: DATOS, PUNTOS Y CUPOS -->
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <div class="d-flex flex-column gap-1 small text-secondary fw-medium card-meta-data">
-                            <div><i class="bi bi-signpost-split-fill me-2 text-warning"></i>{{ event.distance or 'Por definir' }}</div>
-                            <div><i class="bi bi-speedometer2 me-2 text-warning"></i>{{ event.difficulty }}</div>
                             
-                            <!-- CONTADOR DE ESPACIOS DISPONIBLES (EN CARD) -->
-                            <div class="{{ 'text-danger fw-bold animate__animated animate__pulse animate__infinite' if disponibles <= 5 else '' }}">
-                                <i class="bi bi-person-walking me-2 text-warning"></i>
-                                {% if disponibles > 0 %}
-                                    {{ disponibles }} lugares disponibles
-                                {% else %}
-                                    <span class="badge bg-danger">AGOTADO</span>
-                                {% endif %}
+                            <!-- BADGE DE PUNTOS VISIBLE EN LA CARD -->
+                            <div class="text-end">
+                                <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-3 py-2 fw-bold shadow-sm points-badge" title="Recompensa por completar">
+                                    <i class="bi bi-star-fill me-1"></i> +{{ event.points_reward or 10 }} pts
+                                </span>
                             </div>
                         </div>
-                        
-                        <!-- BADGE DE PUNTOS VISIBLE EN LA CARD -->
-                        <div class="text-end">
-                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-3 py-2 fw-bold shadow-sm points-badge" title="Recompensa por completar">
-                                <i class="bi bi-star-fill me-1"></i> +{{ event.points_reward or 10 }} pts
-                            </span>
-                        </div>
                     </div>
-                </div>
 
-                <div class="card-footer bg-body border-0 p-4 pt-0">
-                    {% if es_pasado %}
-                         <button class="btn btn-secondary rounded-pill fw-bold py-3 w-100 disabled" disabled>Evento Finalizado</button>
-                    {% elif disponibles > 0 %}
-                        <button class="btn btn-warning rounded-pill fw-bold py-3 shadow-sm w-100 text-dark transition-all btn-main-reserve" data-bs-toggle="modal" data-bs-target="#detailsModal{{ event.id }}">
-                            <i class="bi bi-binoculars-fill me-2"></i>Ver Detalles y Reservar
-                        </button>
-                    {% else %}
-                        <button class="btn btn-secondary rounded-pill fw-bold py-3 w-100 disabled" disabled>Cupos Agotados</button>
-                    {% endif %}
+                    <div class="card-footer bg-body border-0 p-4 pt-0">
+                        {% if es_pasado %}
+                             <button class="btn btn-secondary rounded-pill fw-bold py-3 w-100 disabled" disabled>Evento Finalizado</button>
+                        {% elif disponibles > 0 %}
+                            <button class="btn btn-warning rounded-pill fw-bold py-3 shadow-sm w-100 text-dark transition-all btn-main-reserve" data-bs-toggle="modal" data-bs-target="#detailsModal{{ event.id }}">
+                                <i class="bi bi-binoculars-fill me-2"></i>Ver Detalles y Reservar
+                            </button>
+                        {% else %}
+                            <button class="btn btn-secondary rounded-pill fw-bold py-3 w-100 disabled" disabled>Cupos Agotados</button>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- ============================================== -->
-        <!-- IMPORTACIÓN DE COMPONENTES MODULARES -->
-        <!-- ============================================== -->
-        
-        <!-- 1. Modal de Reserva (Usuario) -->
-        {% include 'modal_reservar.html' %}
-        
-        <!-- 2. Modales de Administración (Editar y Borrar) -->
-        {% include 'modales_admin.html' %}
+            <!-- ============================================== -->
+            <!-- IMPORTACIÓN DE COMPONENTES MODULARES -->
+            <!-- ============================================== -->
+            
+            <!-- 1. Modal de Reserva (Usuario) -->
+            {% include 'modal_reservar.html' %}
+            
+            <!-- 2. Modales de Administración (Editar y Borrar) -->
+            {% include 'modales_admin.html' %}
 
         {% endfor %}
     {% else %}

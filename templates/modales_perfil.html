@@ -260,7 +260,7 @@
     </div>
 </div>
 
-<!-- 3. COMPRAR PUNTOS -->
+<!-- 3. COMPRAR PUNTOS (MODIFICADO: CON INSTRUCCIONES SINPE) -->
 <div class="modal fade" id="buyPointsModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-sm">
         <form class="modal-content border-0 shadow-lg rounded-5 overflow-hidden" data-bs-theme="light" style="background-color: #ffffff !important; color: #000000 !important;" action="{{ url_for('puntos.comprar_puntos') }}" method="POST">
@@ -273,11 +273,21 @@
                 <div class="text-success mb-3 opacity-25">
                     <i class="bi bi-coin display-3"></i>
                 </div>
-                <div class="mb-3">
+                <div class="mb-3 text-start">
                     <label class="form-label x-small fw-bold text-uppercase text-success">Cantidad a Comprar</label>
                     <input type="number" name="cantidad" class="form-control form-control-lg text-center fw-bold border-success text-success" placeholder="1000" min="1000" max="10000" step="100" required>
                     <small class="text-muted d-block mt-1 x-small" style="color: #6c757d !important;">Rango permitido: 1,000 - 10,000 pts</small>
                 </div>
+
+                <!-- INSTRUCCIÓN DE PAGO SINPE DINÁMICA -->
+                <div class="alert alert-success border-0 rounded-4 p-3 mt-3 shadow-sm text-start">
+                    <h6 class="fw-bold mb-2 text-dark small text-uppercase"><i class="bi bi-phone-vibrate me-2"></i>Pago SINPE</h6>
+                    <p class="mb-0 x-small text-dark lh-sm">
+                        Debes cancelar al Sinpe <strong class="text-dark">{{ sinpe_number }}</strong> 
+                        a nombre de <strong class="text-dark text-uppercase">{{ sinpe_name }}</strong>
+                    </p>
+                </div>
+
                 <div class="d-grid mt-4">
                     <button type="submit" class="btn btn-success fw-bold rounded-pill shadow-sm">ACREDITAR PUNTOS</button>
                 </div>
@@ -390,5 +400,21 @@
         lblCost.innerText = `${currency}${formatNum(price)}`;
         lblDiscount.innerText = `-${currency}${formatNum(points)}`;
         lblTotal.innerText = `${currency}${formatNum(pending)}`;
+    }
+
+    /**
+     * Valida los pasos de eliminación para activar el botón
+     */
+    function checkDeleteSteps() {
+        const s1 = document.getElementById('step1_del').checked;
+        const s2 = document.getElementById('step2_del').checked;
+        const s3 = document.getElementById('step3_del').checked;
+        const btn = document.getElementById('btnConfirmDeletePoints');
+        
+        if (s1 && s2 && s3) {
+            btn.classList.remove('disabled');
+        } else {
+            btn.classList.add('disabled');
+        }
     }
 </script>

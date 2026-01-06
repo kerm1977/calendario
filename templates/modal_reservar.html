@@ -174,42 +174,43 @@
                     <div class="pin-access-card p-3 rounded-4 border border-warning mb-4 shadow-sm bg-warning bg-opacity-10" style="border-style: dashed !important;">
                         <div class="d-flex justify-content-between align-items-center mb-1">
                             <h6 class="mb-0 fw-bold text-dark small"><i class="bi bi-key-fill me-2"></i>¿Ya eres socio de La Tribu?</h6>
-                            <button type="button" class="btn btn-xs btn-outline-dark rounded-pill py-1 px-3 small fw-bold" onclick="togglePinSection({{ event.id }})" id="btnTogglePin{{ event.id }}">Usar PIN</button>
+                            <button type="button" class="btn btn-xs btn-outline-dark rounded-pill py-1 px-3 small fw-bold" onclick="togglePinSectionReserva({{ event.id }})" id="btnTogglePin{{ event.id }}">Usar PIN</button>
                         </div>
                         <div id="pinEntrySection{{ event.id }}" class="d-none mt-3 animate__animated animate__fadeIn">
                             <div class="input-group input-group-lg">
-                                <!-- AQUÍ ESTÁ EL CAMBIO LÓGICO: oninput dispara la automatización -->
-                                <input type="text" id="lookupPin{{ event.id }}" class="form-control border-warning text-center fw-bold text-primary" placeholder="PIN..." maxlength="6" oninput="handleAutoPin(this, {{ event.id }})">
-                                <button class="btn btn-warning text-dark fw-bold px-4 disabled" id="btnValidatePin{{ event.id }}" type="button" onclick="lookupUserByPin({{ event.id }})">CARGAR</button>
+                                <input type="text" id="lookupPin{{ event.id }}" class="form-control border-warning text-center fw-bold text-primary" placeholder="PIN..." maxlength="6" 
+                                       autocomplete="off"
+                                       oninput="handleAutoPinReserva(this, {{ event.id }}, '{{ event.title|e }}', '{{ event.event_date }}')"
+                                       onkeydown="if(event.key === 'Enter') { event.preventDefault(); event.stopPropagation(); lookupUserByPinReserva({{ event.id }}, '{{ event.title|e }}', '{{ event.event_date }}'); }">
+                                <button class="btn btn-warning text-dark fw-bold px-4 disabled" id="btnValidatePin{{ event.id }}" type="button" onclick="event.preventDefault(); lookupUserByPinReserva({{ event.id }}, '{{ event.title|e }}', '{{ event.event_date }}')">CARGAR</button>
                             </div>
-                            <div id="pinError{{ event.id }}" class="text-danger x-small fw-bold d-none mt-2 text-center animate__animated animate__shakeX">
-                                <i class="bi bi-x-circle-fill"></i> PIN no encontrado.
+                            <div id="pinError{{ event.id }}" class="text-danger x-small fw-bold d-none mt-2 text-center animate__animated animate__shakeX bg-white p-2 rounded-3 border border-danger border-opacity-25 shadow-sm">
+                                <i class="bi bi-exclamation-triangle-fill me-1"></i> <span id="pinErrorMessage{{ event.id }}">PIN no encontrado.</span>
                             </div>
                         </div>
                     </div>
                     
-                    <!-- FORMULARIO DE REGISTRO -->
+                    <!-- FORMULARIO DE REGISTRO MANUAL -->
                     <div id="registrationFields{{ event.id }}">
                         <div class="row g-3">
                             <div class="col-12">
                                 <label class="form-label small fw-bold text-secondary text-uppercase" style="font-size: 0.65rem;">Nombre</label>
-                                <input type="text" id="resNombre{{ event.id }}" class="form-control border-warning bg-body py-2 rounded-3" placeholder="Tu nombre" oninput="checkInputs({{ event.id }})">
+                                <input type="text" id="resNombre{{ event.id }}" class="form-control border-warning bg-body py-2 rounded-3" placeholder="Tu nombre" oninput="checkInputsReserva({{ event.id }})">
                             </div>
                             <div class="col-6">
                                 <label class="form-label small fw-bold text-secondary text-uppercase" style="font-size: 0.65rem;">Primer Apellido</label>
-                                <input type="text" id="resApellido1{{ event.id }}" class="form-control border-warning bg-body py-2 rounded-3" placeholder="Apellido 1" oninput="checkInputs({{ event.id }})">
+                                <input type="text" id="resApellido1{{ event.id }}" class="form-control border-warning bg-body py-2 rounded-3" placeholder="Apellido 1" oninput="checkInputsReserva({{ event.id }})">
                             </div>
                             <div class="col-6">
                                 <label class="form-label small fw-bold text-secondary text-uppercase" style="font-size: 0.65rem;">Segundo Apellido</label>
-                                <input type="text" id="resApellido2{{ event.id }}" class="form-control border-warning bg-body py-2 rounded-3" placeholder="Apellido 2" oninput="checkInputs({{ event.id }})">
+                                <input type="text" id="resApellido2{{ event.id }}" class="form-control border-warning bg-body py-2 rounded-3" placeholder="Apellido 2" oninput="checkInputsReserva({{ event.id }})">
                             </div>
                             <div class="col-12">
                                 <label class="form-label small fw-bold text-secondary text-uppercase" style="font-size: 0.65rem;">Número de Celular</label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-light border-warning text-muted fw-bold">+506</span>
-                                    <input type="tel" id="resTel{{ event.id }}" class="form-control border-warning bg-body py-2 rounded-end-3" placeholder="88888888" maxlength="8" oninput="checkPhoneExistence({{ event.id }}); checkInputs({{ event.id }})">
+                                    <input type="tel" id="resTel{{ event.id }}" class="form-control border-warning bg-body py-2 rounded-end-3" placeholder="88888888" maxlength="8" oninput="checkPhoneExistence({{ event.id }}); checkInputsReserva({{ event.id }})">
                                 </div>
-                                <!-- MENSAJE DE DUPLICADO -->
                                 <div id="phoneDuplicateError{{ event.id }}" class="text-danger x-small mt-2 d-none fw-bold bg-danger bg-opacity-10 p-2 rounded-3 border border-danger border-opacity-25 animate__animated animate__fadeIn">
                                     <i class="bi bi-x-octagon-fill me-1"></i> Ya este número existe.
                                     <div class="mt-1 small text-dark opacity-75 fw-normal">
@@ -222,15 +223,13 @@
                                 </div>
                             </div>
 
-                            <!-- SELECTOR DE FECHA BRUTAL (3 SELECTS) -->
                             <div class="col-12">
                                 <label class="form-label small fw-bold text-secondary text-uppercase" style="font-size: 0.65rem;">Fecha de Nacimiento</label>
-                                <!-- INPUT OCULTO QUE RECIBE EL VALOR FINAL YOO-MM-DD -->
                                 <input type="hidden" id="resBirthDate{{ event.id }}">
                                 
                                 <div class="row g-1">
                                     <div class="col-3">
-                                        <select id="selDay{{ event.id }}" class="form-select border-warning bg-body py-2 text-center rounded-3" onchange="updateBirthDate({{ event.id }}); checkInputs({{ event.id }})">
+                                        <select id="selDay{{ event.id }}" class="form-select border-warning bg-body py-2 text-center rounded-3" onchange="updateBirthDate({{ event.id }}); checkInputsReserva({{ event.id }})">
                                             <option value="" disabled selected>Día</option>
                                             {% for d in range(1, 32) %}
                                                 <option value="{{ '%02d'|format(d) }}">{{ d }}</option>
@@ -238,7 +237,7 @@
                                         </select>
                                     </div>
                                     <div class="col-5">
-                                        <select id="selMonth{{ event.id }}" class="form-select border-warning bg-body py-2 text-center rounded-3" onchange="updateBirthDate({{ event.id }}); checkInputs({{ event.id }})">
+                                        <select id="selMonth{{ event.id }}" class="form-select border-warning bg-body py-2 text-center rounded-3" onchange="updateBirthDate({{ event.id }}); checkInputsReserva({{ event.id }})">
                                             <option value="" disabled selected>Mes</option>
                                             <option value="01">Enero</option>
                                             <option value="02">Febrero</option>
@@ -255,7 +254,7 @@
                                         </select>
                                     </div>
                                     <div class="col-4">
-                                        <select id="selYear{{ event.id }}" class="form-select border-warning bg-body py-2 text-center rounded-3" onchange="updateBirthDate({{ event.id }}); checkInputs({{ event.id }})">
+                                        <select id="selYear{{ event.id }}" class="form-select border-warning bg-body py-2 text-center rounded-3" onchange="updateBirthDate({{ event.id }}); checkInputsReserva({{ event.id }})">
                                             <option value="" disabled selected>Año</option>
                                             {% for y in range(now.year - 5, 1940, -1) %}
                                                 <option value="{{ y }}">{{ y }}</option>
@@ -270,34 +269,53 @@
                             </div>
                         </div>
                     </div>
-                    
-                    <div id="pinConfirmationMsg{{ event.id }}" class="d-none text-center animate__animated animate__fadeIn">
-                        <div class="alert alert-success border-0 shadow-sm">
-                            <h5 class="fw-bold mb-1">¡Hola <span id="pinUserName{{ event.id }}">Amigo</span>!</h5>
-                            <p class="small mb-0">Tus datos ya están cargados. Confirma tu cupo abajo.</p>
-                        </div>
-                    </div>
 
                     <div class="d-grid mt-5">
-                        <button type="button" id="btnSubmitRes{{ event.id }}" class="btn btn-warning py-3 fw-bold rounded-pill text-dark disabled shadow-sm transition-all fs-5" onclick="processReservation({{ event.id }}, '{{ event.title|e }}', '{{ event.event_date }}', '{{ event.currency }}{{ event.price }}')">
+                        <button type="button" id="btnSubmitRes{{ event.id }}" class="btn btn-warning py-3 fw-bold rounded-pill text-dark disabled shadow-sm transition-all fs-5" onclick="processReservationReserva({{ event.id }}, '{{ event.title|e }}', '{{ event.event_date }}', '{{ event.currency }}{{ event.price }}')">
                             ¡CONFIRMAR MI REGISTRO!
                         </button>
                     </div>
                 </div>
             </div>
 
-            <!-- EXITO -->
+            <!-- PANTALLA DE EXITO -->
             <div id="reserveSuccessContainer{{ event.id }}" class="d-none">
                 <div class="modal-body p-5 text-center bg-body">
                     <div class="bg-success bg-opacity-10 d-inline-block p-4 rounded-circle mb-4 text-success animate__animated animate__bounceIn">
                         <i class="bi bi-check-circle-fill display-1"></i>
                     </div>
-                    <h3 class="fw-bold text-body">¡Registro Exitoso!</h3>
-                    <p class="text-secondary mt-3 fs-6">Guarde su <strong>PIN único</strong> de miembro para futuras aventuras y ver sus puntos:</p>
+                    <h3 class="fw-bold text-body" id="successMainTitle{{ event.id }}">¡REGISTRO SATISFACTORIO!</h3>
+                    
+                    <!-- MENSAJE DE RECOMPENSA Y PUNTOS -->
+                    <div class="bg-light rounded-4 p-4 mb-4 border border-success border-opacity-25 animate__animated animate__fadeInUp" style="animation-delay: 0.3s;">
+                        <p class="lead fw-bold text-uppercase mb-2 text-success" style="font-size: 1.1rem;" id="successDetailMsg{{ event.id }}">
+                            TE HAS REGISTRADO CORRECTAMENTE.
+                        </p>
+                        <div class="py-3 px-2 rounded-4 mb-3 border bg-white shadow-sm border-warning border-opacity-25">
+                            <span class="d-block text-muted small text-uppercase fw-bold mb-1">Puntos Ganados en esta Caminata</span>
+                            <div class="h2 fw-bold text-warning mb-0">+<span id="earnedPointsDisplay{{ event.id }}">0</span> PUNTOS</div>
+                        </div>
+                        <p class="small text-muted mb-0">
+                            EL SISTEMA HA SUMADO ESTOS PUNTOS A TU CUENTA DE LA TRIBU.
+                            <br>
+                            <span class="fs-6 text-dark fw-bold text-uppercase mt-2 d-inline-block">TOTAL ACTUAL EN CUENTA: <span id="totalPointsDisplay{{ event.id }}" class="text-primary">0</span> PUNTOS.</span>
+                        </p>
+                        <!-- Etiqueta del bono de bienvenida corregida a REGALO INICIAL -->
+                        <div id="welcomeMsgDisplay{{ event.id }}" class="mt-2 fw-bold text-warning small animate__animated animate__flash animate__infinite"></div>
+                    </div>
+
+                    <div class="alert alert-warning border-0 rounded-4 p-3 mt-3 shadow-sm text-start">
+                        <h6 class="fw-bold mb-2 text-dark"><i class="bi bi-phone-vibrate me-2"></i>Instrucción de Pago</h6>
+                        <p class="mb-0 small text-dark">
+                            Debes cancelar al Sinpe <strong class="text-dark">{{ sinpe_number }}</strong> a nombre de <strong class="text-dark text-uppercase">{{ sinpe_name }}</strong>
+                        </p>
+                    </div>
+
+                    <p class="text-secondary mt-4 fs-6">Guarde su <strong>PIN ÚNICO</strong> de miembro:</p>
                     <div class="bg-primary p-4 rounded-5 border-2 border border-white border-opacity-25 mb-4 shadow-sm">
                         <h2 class="display-3 fw-bold text-white mb-0" id="pinDisplay{{ event.id }}" style="letter-spacing: 12px; margin-left: 12px;">XXXX</h2>
                     </div>
-                    <hr class="my-4 opacity-10">
+                    
                     <div class="d-grid gap-2 mt-3">
                         <button type="button" class="btn btn-success py-3 fw-bold rounded-pill shadow-sm" id="btnSendWa{{ event.id }}">
                             <i class="bi bi-whatsapp me-2"></i>NOTIFICAR A LA TRIBU
@@ -312,107 +330,196 @@
 
 <script>
     /**
-     * Combina los 3 selects en el input oculto YYYY-MM-DD
+     * Sincroniza la fecha de nacimiento
      */
     function updateBirthDate(id) {
         const d = document.getElementById('selDay' + id).value;
         const m = document.getElementById('selMonth' + id).value;
         const y = document.getElementById('selYear' + id).value;
         const hiddenInput = document.getElementById('resBirthDate' + id);
-        
         if (d && m && y) {
             hiddenInput.value = `${y}-${m}-${d}`;
-        } else {
-            hiddenInput.value = '';
         }
     }
 
     /**
-     * TOGGLE: Mostrar/Ocultar sección de PIN
+     * TOGGLE: Sección de PIN
      */
-    function togglePinSection(eventId) {
+    function togglePinSectionReserva(eventId) {
         const section = document.getElementById('pinEntrySection' + eventId);
         const btn = document.getElementById('btnTogglePin' + eventId);
-        
         if (section.classList.contains('d-none')) {
             section.classList.remove('d-none');
-            btn.classList.remove('btn-outline-dark');
-            btn.classList.add('btn-dark');
+            btn.innerText = "Cerrar";
             document.getElementById('lookupPin' + eventId).focus();
         } else {
             section.classList.add('d-none');
-            btn.classList.add('btn-outline-dark');
-            btn.classList.remove('btn-dark');
+            btn.innerText = "Usar PIN";
         }
     }
 
     /**
-     * LÓGICA AUTOMÁTICA: Detecta 6 caracteres en el input existente
-     * ACTUALIZADO: Permite caracteres alfanuméricos
+     * Verifica teléfono
      */
-    async function handleAutoPin(input, eventId) {
-        // Se eliminó la restricción numérica
-        
-        // Si llega a 6 caracteres, disparar inscripción automática
-        if (input.value.length === 6) {
-            input.blur(); // Quitar foco para evitar doble envío
-            input.disabled = true; // Bloquear input momentáneamente
-
-            const pin = input.value;
-            const feedback = document.getElementById('pinError' + eventId);
-            const btn = document.getElementById('btnValidatePin' + eventId);
-            const originalBtnText = btn.innerText;
-
-            // Feedback visual en el botón existente "CARGAR"
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
-
+    async function checkPhoneExistence(eventId) {
+        const phone = document.getElementById('resTel' + eventId).value;
+        const errorDiv = document.getElementById('phoneDuplicateError' + eventId);
+        if (phone.length === 8) {
             try {
-                // 1. BUSCAR USUARIO
-                const lookupRes = await fetch(`/api/lookup/${pin}`);
-                const lookupData = await lookupRes.json();
-
-                if (!lookupData.success) {
-                    throw new Error("PIN no encontrado.");
-                }
-
-                // 2. RESERVAR AUTOMÁTICAMENTE (FAST TRACK)
-                const payload = {
-                    nombre: lookupData.nombre,
-                    apellido1: lookupData.apellido1 || "",
-                    apellido2: lookupData.apellido2 || "",
-                    telefono: lookupData.telefono,
-                    birth_date: lookupData.birth_date, 
-                    event_id: eventId,
-                    pin: pin
-                };
-
-                const reserveRes = await fetch('/api/reserve', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(payload)
-                });
-
-                const reserveData = await reserveRes.json();
-
-                if (reserveData.success) {
-                    // ÉXITO: Ocultar formulario y mostrar confirmación
-                    document.getElementById('reserveFormContainer' + eventId).classList.add('d-none');
-                    document.getElementById('reserveSuccessContainer' + eventId).classList.remove('d-none');
-                    document.getElementById('pinDisplay' + eventId).innerText = pin;
-                } else {
-                    throw new Error(reserveData.error || "Error al reservar.");
-                }
-
-            } catch (error) {
-                // ERROR
-                input.disabled = false;
-                input.focus();
-                btn.innerText = originalBtnText; // Restaurar botón
-                
-                feedback.classList.remove('d-none');
-                feedback.innerHTML = `<i class="bi bi-x-circle-fill me-1"></i> ${error.message}`;
-                setTimeout(() => feedback.classList.add('d-none'), 3000);
-            }
+                const response = await fetch(`/api/check-phone/${phone}`);
+                const data = await response.json();
+                if (data.exists) errorDiv.classList.remove('d-none');
+                else errorDiv.classList.add('d-none');
+            } catch (e) { console.error(e); }
         }
+    }
+
+    /**
+     * Validación de campos
+     */
+    function checkInputsReserva(eventId) {
+        const nombre = document.getElementById('resNombre' + eventId).value.trim();
+        const apellido1 = document.getElementById('resApellido1' + eventId).value.trim();
+        const tel = document.getElementById('resTel' + eventId).value.trim();
+        const bday = document.getElementById('resBirthDate' + eventId).value;
+        const btn = document.getElementById('btnSubmitRes' + eventId);
+        if (nombre && apellido1 && tel.length === 8 && bday) {
+            btn.classList.remove('disabled');
+        } else {
+            btn.classList.add('disabled');
+        }
+    }
+
+    /**
+     * REGISTRO DIRECTO POR PIN
+     */
+    async function lookupUserByPinReserva(eventId, title, eventDate) {
+        const pinInput = document.getElementById('lookupPin' + eventId);
+        const pin = pinInput.value.trim();
+        const btn = document.getElementById('btnValidatePin' + eventId);
+        const errorDiv = document.getElementById('pinError' + eventId);
+        const errorMessage = document.getElementById('pinErrorMessage' + eventId);
+        
+        if (pin.length !== 6) return;
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+        errorDiv.classList.add('d-none');
+
+        try {
+            const response = await fetch('/api/reserve', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ event_id: eventId, pin: pin })
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                showSuccessStepReserva(eventId, data, title, eventDate);
+            } else {
+                if (data.error && data.error.toLowerCase().includes("apuntado")) {
+                    errorMessage.innerText = "YA TE HABÍAS REGISTRADO A ESTA CUENTA";
+                } else {
+                    errorMessage.innerText = data.error || "PIN no encontrado.";
+                }
+                errorDiv.classList.remove('d-none');
+                btn.disabled = false;
+                btn.innerHTML = 'CARGAR';
+            }
+        } catch (e) { 
+            console.error("Error en registro por PIN:", e);
+            errorMessage.innerText = "Fallo de conexión.";
+            errorDiv.classList.remove('d-none');
+            btn.disabled = false;
+            btn.innerHTML = 'CARGAR';
+        }
+    }
+
+    /**
+     * Auto PIN
+     */
+    function handleAutoPinReserva(input, eventId, title, eventDate) {
+        const btn = document.getElementById('btnValidatePin' + eventId);
+        if (input.value.length === 6) {
+            btn.classList.remove('disabled');
+            lookupUserByPinReserva(eventId, title, eventDate);
+        } else {
+            btn.classList.add('disabled');
+        }
+    }
+
+    /**
+     * Reserva manual
+     */
+    async function processReservationReserva(eventId, title, eventDate, formattedPrice) {
+        const btn = document.getElementById('btnSubmitRes' + eventId);
+        const payload = {
+            event_id: eventId,
+            nombre: document.getElementById('resNombre' + eventId).value.trim(),
+            apellido1: document.getElementById('resApellido1' + eventId).value.trim(),
+            apellido2: document.getElementById('resApellido2' + eventId).value.trim(),
+            telefono: document.getElementById('resTel' + eventId).value.trim(),
+            birth_date: document.getElementById('resBirthDate' + eventId).value
+        };
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>PROCESANDO...';
+
+        try {
+            const response = await fetch('/api/reserve', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                showSuccessStepReserva(eventId, data, title, eventDate);
+            } else {
+                alert("Error: " + data.error);
+                btn.disabled = false;
+                btn.innerHTML = '¡CONFIRMAR MI REGISTRO!';
+            }
+        } catch (error) {
+            alert("Error de conexión.");
+            btn.disabled = false;
+        }
+    }
+
+    /**
+     * Función unificada para mostrar el éxito y los PUNTOS
+     * CORRECCIÓN: Ahora separa los puntos de la caminata del bono restándolo si el servidor envía la suma.
+     */
+    function showSuccessStepReserva(eventId, data, title, eventDate) {
+        document.getElementById('reserveFormContainer' + eventId).classList.add('d-none');
+        document.getElementById('reserveSuccessContainer' + eventId).classList.remove('d-none');
+        
+        // El servidor parece estar enviando puntos_ganados = (caminata + bono).
+        // Si es nuevo, restamos el bono (500) para mostrar ÚNICAMENTE los puntos de la caminata.
+        let hikePoints = data.puntos_ganados || 0;
+        if (data.es_nuevo && hikePoints >= 500) {
+            hikePoints = hikePoints - 500;
+        }
+
+        const totalPoints = data.puntos || 0;
+
+        const detailMsg = document.getElementById('successDetailMsg' + eventId);
+        detailMsg.innerHTML = `TE HAS REGISTRADO CORRECTAMENTE A LA CAMINATA <strong>${title.toUpperCase()}</strong> Y HAS ACUMULADO <strong>${hikePoints}</strong> PUNTOS.`;
+
+        document.getElementById('earnedPointsDisplay' + eventId).innerText = hikePoints;
+        document.getElementById('totalPointsDisplay' + eventId).innerText = totalPoints.toLocaleString();
+        document.getElementById('pinDisplay' + eventId).innerText = data.pin;
+        
+        if (data.es_nuevo) {
+            // Cambio de Registro Inicial a REGALO INICIAL en la vista
+            document.getElementById('welcomeMsgDisplay' + eventId).innerText = "¡HAS RECIBIDO UN REGALO INICIAL DE 500 PUNTOS!";
+        } else {
+            document.getElementById('welcomeMsgDisplay' + eventId).innerText = "";
+        }
+
+        document.getElementById('btnSendWa' + eventId).onclick = () => {
+            const msg = `*¡Hola La Tribu!*%0AHe reservado mi espacio.%0A%0A*Aventura:* ${title}%0A*Fecha:* ${eventDate}%0A*Mi PIN:* ${data.pin}%0A%0A_Adjunto mi comprobante de pago._`;
+            window.open(`https://wa.me/50686227500?text=${msg}`, '_blank');
+        };
     }
 </script>

@@ -163,6 +163,42 @@
     </div>
 
     <!-- ========================================== -->
+    <!-- NUEVO: PANEL DE CONFIGURACIÓN DE PAGOS -->
+    <!-- ========================================== -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm rounded-5 overflow-hidden border border-warning border-opacity-10">
+                <div class="card-header bg-dark text-white py-3 px-4 border-0">
+                    <h6 class="mb-0 fw-bold"><i class="bi bi-gear-fill me-2 text-warning"></i>Configuración de Pagos (SINPE Móvil)</h6>
+                </div>
+                <div class="card-body p-4 bg-body">
+                    <form action="{{ url_for('main.update_settings') }}" method="POST" class="row g-3 align-items-end">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-secondary text-uppercase" style="font-size: 0.65rem;">Número de Celular</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-warning text-muted fw-bold">+506</span>
+                                <input type="text" name="sinpe_number" class="form-control border-warning bg-body shadow-none" value="{{ sinpe_number }}" required placeholder="88888888">
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label small fw-bold text-secondary text-uppercase" style="font-size: 0.65rem;">Nombre del Titular</label>
+                            <input type="text" name="sinpe_name" class="form-control border-warning bg-body shadow-none" value="{{ sinpe_name }}" required placeholder="Nombre Completo">
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" class="btn btn-warning fw-bold w-100 rounded-pill shadow-sm text-dark">
+                                <i class="bi bi-save-fill me-2"></i>ACTUALIZAR DATOS
+                            </button>
+                        </div>
+                    </form>
+                    <div class="mt-3">
+                        <small class="text-muted"><i class="bi bi-info-circle me-1"></i> Estos datos se mostrarán automáticamente a los aventureros al completar su reserva.</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
     <!-- CUERPO PRINCIPAL: RANKING Y ACTIVIDAD -->
     <!-- ========================================== -->
     <div class="row g-4">

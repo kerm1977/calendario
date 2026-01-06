@@ -1,7 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_login import UserMixin
-from datetime import datetime
+from datetime import datetime, timezone
 
 # --- INICIALIZACIÓN DE EXTENSIONES ---
 # db: Motor de ORM para gestionar la base de datos SQLite
@@ -10,7 +10,21 @@ db = SQLAlchemy()
 bcrypt = Bcrypt()
 
 # ==========================================
-# MODELO: User (Administradores)
+# MODELO: SystemConfig (Configuraciones Editables)
+# ==========================================
+class SystemConfig(db.Model):
+    """
+    Almacena variables globales del sistema como datos de pago SINPE.
+    Permite que el administrador cambie datos críticos sin tocar el código fuente.
+    """
+    __tablename__ = 'system_config'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(50), unique=True, nullable=False) # ej: 'sinpe_number'
+    value = db.Column(db.String(255)) # ej: '86529837'
+
+# ==========================================
+# MODELO: User (Administradores / Guías)
 # ==========================================
 class User(db.Model, UserMixin):
     """
@@ -22,19 +36,19 @@ class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(200), nullable=False)
-    # is_superuser: Define si tiene acceso total a auditoría y borrado
+    # is_superuser: Define si tiene acceso total a auditoría, finanzas y borrado radical
     is_superuser = db.Column(db.Boolean, default=False)
 
     def __repr__(self):
         return f'<User {self.email}>'
 
 # ==========================================
-# MODELO: AdminNotification (Centro de Alertas) - NUEVO
+# MODELO: AdminNotification (Centro de Alertas)
 # ==========================================
 class AdminNotification(db.Model):
     """
     Registro de eventos críticos para el panel de control de superusuarios.
-    Notifica sobre acciones de usuarios (regalos, compras, etc.).
+    Notifica sobre acciones de usuarios (regalos, compras de puntos, retiros, etc.).
     """
     __tablename__ = 'admin_notification'
     
@@ -42,10 +56,11 @@ class AdminNotification(db.Model):
     category = db.Column(db.String(50), nullable=False) # 'info', 'warning', 'success', 'danger'
     title = db.Column(db.String(100), nullable=False)
     message = db.Column(db.String(255), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    is_read = db.Column(db.Boolean, default=False) # Para marcar como leída a futuro si se desea
+    # Uso de lambda para obtener la fecha UTC actual de forma moderna y aware
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    is_read = db.Column(db.Boolean, default=False)
     
-    # Opcional: Link para ir directo al detalle (ej: perfil del usuario)
+    # Enlace opcional para navegación directa desde la notificación
     action_link = db.Column(db.String(200))
 
 # ==========================================
@@ -60,25 +75,25 @@ class Event(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(100), nullable=False)
-    flyer = db.Column(db.String(120)) # Nombre del archivo de imagen
+    flyer = db.Column(db.String(120)) # Nombre del archivo de imagen física
     
     # Datos Financieros
     currency = db.Column(db.String(5), default='¢')
     price = db.Column(db.Float, nullable=False)
-    reservation_fee = db.Column(db.String(50)) # Texto libre ej: "5000 colones"
+    reservation_fee = db.Column(db.String(50)) # Texto descriptivo ej: "5000 colones"
     
     # Datos de Fidelidad
-    points_reward = db.Column(db.Integer, default=10) # Puntos que otorga
+    points_reward = db.Column(db.Integer, default=10) # Puntos base que otorga el evento
     
     # Datos Logísticos
-    activity_type = db.Column(db.String(50)) # Caminata, Camping, etc.
+    activity_type = db.Column(db.String(50)) # Caminata, Camping, Taller, etc.
     difficulty = db.Column(db.String(50))
     distance = db.Column(db.String(50))
     duration_days = db.Column(db.Integer, default=1)
     
     # Fechas
     event_date = db.Column(db.Date, nullable=False)
-    end_date = db.Column(db.Date) # Para eventos de varios días
+    end_date = db.Column(db.Date) # Para expediciones de varios días
     
     # Detalles operativos
     departure_point = db.Column(db.String(150))
@@ -88,10 +103,10 @@ class Event(db.Model):
     description = db.Column(db.Text)
     
     # Estado del evento
-    status = db.Column(db.String(20), default='Activa') # Activa, Suspendido, Se Traslado
-    moved_date = db.Column(db.Date) # Nueva fecha si se traslada
+    status = db.Column(db.String(20), default='Activa') # Activa, Suspendido, Se Traslado, Oculto
+    moved_date = db.Column(db.Date) # Nueva fecha en caso de reprogramación
 
-    # Relaciones
+    # Relaciones: Cascade asegura que al borrar el evento radicalmente se limpien las reservas
     bookings = db.relationship('Booking', backref='event', lazy=True, cascade="all, delete-orphan")
 
 # ==========================================
@@ -99,8 +114,8 @@ class Event(db.Model):
 # ==========================================
 class Member(db.Model):
     """
-    Perfil del usuario final. Identificado por un PIN único de 6 dígitos.
-    Almacena su saldo de puntos y datos personales básicos.
+    Perfil del usuario final (Aventurero). Identificado por un PIN único de 6 dígitos.
+    Centraliza el saldo de puntos y el estatus VIP.
     """
     __tablename__ = 'member'
 
@@ -113,14 +128,14 @@ class Member(db.Model):
     telefono = db.Column(db.String(20))
     birth_date = db.Column(db.Date)
     
-    # Saldo de Puntos (Caché para acceso rápido, la verdad está en los logs)
+    # Saldo de Puntos (Caché de rendimiento; la verdad contable reside en PointLog)
     puntos_totales = db.Column(db.Integer, default=0)
     
-    # NUEVO: Estado de Deuda (True = Debe dinero/comprobante)
+    # Estado de Deuda (True = Tiene pendiente dinero o comprobantes)
     debt_pending = db.Column(db.Boolean, default=False)
     
-    # Control de Bonos
-    ultimo_regalo_bday = db.Column(db.Integer, default=0) # Año del último regalo
+    # Control de Bonos de Fidelidad
+    ultimo_regalo_bday = db.Column(db.Integer, default=0) # Año del último bono acreditado
     
     # Relaciones
     bookings = db.relationship('Booking', backref='member', lazy=True)
@@ -131,8 +146,8 @@ class Member(db.Model):
 # ==========================================
 class Booking(db.Model):
     """
-    Tabla intermedia que registra la participación de un miembro en un evento.
-    Esencial para el historial y la logística de asistentes.
+    Tabla intermedia que registra la participación de un miembro en una expedición.
+    Mantiene snapshots de datos del usuario para auditoría histórica.
     """
     __tablename__ = 'booking'
     
@@ -140,48 +155,48 @@ class Booking(db.Model):
     event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
     member_id = db.Column(db.Integer, db.ForeignKey('member.id'), nullable=False)
     
-    # Copia de datos al momento de reservar (Snapshots)
+    # Datos persistidos al momento de la reserva
     pin = db.Column(db.String(6))
     nombre = db.Column(db.String(100))
     apellido1 = db.Column(db.String(100))
     telefono = db.Column(db.String(20))
     
-    # Estado de la reserva: 'Activo', 'Cancelado', 'Retirado', 'No Participó'
+    # Estado: 'Activo', 'Retirado' (Conserva puntos), 'Cancelado' (Revoca puntos)
     status = db.Column(db.String(20), default='Activo')
     
-    # Puntos que valía el evento al momento de registrarse (para devoluciones justas)
+    # Puntos que otorgaba el evento en el momento del registro
     points_at_registration = db.Column(db.Integer, default=0)
     
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
 # ==========================================
-# MODELO: PointLog (Cronograma Detallado)
+# MODELO: PointLog (Cronograma Transaccional)
 # ==========================================
 class PointLog(db.Model):
     """
-    TABLA MAESTRA DE AUDITORÍA (El Cronograma).
-    Aquí se registra cada movimiento individual de puntos para máxima precisión.
+    TABLA MAESTRA DE AUDITORÍA (El Libro Mayor).
+    Registra cada movimiento individual de puntos para garantizar transparencia total.
     """
     __tablename__ = 'point_log'
     
     id = db.Column(db.Integer, primary_key=True)
     member_id = db.Column(db.Integer, db.ForeignKey('member.id'), nullable=False)
     
-    # tipo: 'Inscripción', 'Retiro', 'Bono Cumpleaños', 'Ajuste Manual', 'Penalización'
+    # Tipos: 'Inscripción', 'Retiro', 'Bono Cumpleaños', 'Canje', 'Compra Puntos', 'Ajuste'
     transaction_type = db.Column(db.String(50), nullable=False)
     
-    # detalle: Nombre de la aventura o motivo del movimiento
+    # Detalle descriptivo del movimiento
     description = db.Column(db.String(200))
     
-    # amount: Cantidad de puntos (Puede ser positivo como 10 o negativo como -10)
+    # Cantidad: Positiva para abonos, Negativa para cargos
     amount = db.Column(db.Integer, nullable=False)
     
-    # timestamp: Fecha y hora exacta del movimiento
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # Timestamp preciso de la transacción
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     
-    # Referencia opcional a un booking específico
+    # Relación opcional a una reserva específica
     booking_id = db.Column(db.Integer, db.ForeignKey('booking.id'), nullable=True)
     
-    # Campos para manejo de penalizaciones
+    # Campos para auditoría de penalizaciones
     is_penalized = db.Column(db.Boolean, default=False)
     penalty_reason = db.Column(db.String(200))
