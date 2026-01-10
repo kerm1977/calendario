@@ -24,7 +24,7 @@
 <!-- ========================================== -->
 <!-- SECCIÓN: ACCESO RÁPIDO A PERFIL (ÁREA DEL CAMINANTE) -->
 <!-- ========================================== -->
-<div class="row justify-content-center mb-5 animate__animated animate__fadeInUp" style="animation-delay: 0.2s;">
+<div class="row justify-content-center mb-4 animate__animated animate__fadeInUp" style="animation-delay: 0.2s;">
     <div class="col-md-8 col-lg-6">
         <div class="card border-0 shadow-lg rounded-5 overflow-hidden position-relative">
             <!-- Fondo Decorativo -->
@@ -54,9 +54,107 @@
 </div>
 
 <!-- ========================================== -->
-<!-- GRID DE ACTIVIDADES PRÓXIMAS (AGRUPADO POR MES) -->
+<!-- CONTROL DE VISTAS (SWITCH) -->
 <!-- ========================================== -->
-<div class="row g-4">
+<div class="row mb-4 justify-content-center animate__animated animate__fadeIn">
+    <div class="col-auto">
+        <div class="bg-white p-1 rounded-pill shadow-sm border d-flex">
+            <button class="btn btn-sm rounded-pill px-4 fw-bold transition-all" id="btnViewGrid" onclick="switchView('grid')">
+                <i class="bi bi-grid-fill me-2"></i>Tarjetas
+            </button>
+            <button class="btn btn-sm rounded-pill px-4 fw-bold transition-all text-muted" id="btnViewList" onclick="switchView('list')">
+                <i class="bi bi-list-ul me-2"></i>Lista
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================== -->
+<!-- CONTENEDOR VISTA LISTA (Compacta) -->
+<!-- ========================================== -->
+<div id="listViewContainer" class="d-none animate__animated animate__fadeIn">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            {% if events %}
+                {# Namespace separado para el loop de lista para evitar conflictos #}
+                {% set last_month_list = namespace(value=none) %}
+
+                {% for event in events %}
+                    {# Lógica de Separador de Mes para Lista #}
+                    {% if last_month_list.value != event.event_date.month %}
+                        <div class="mt-4 mb-3 ps-2 border-start border-4 border-warning">
+                            <h5 class="fw-bold text-dark mb-0 text-uppercase ps-2">
+                                {{ meses[event.event_date.month] }}
+                            </h5>
+                        </div>
+                        {% set last_month_list.value = event.event_date.month %}
+                    {% endif %}
+
+                    {% set active_bookings_list = event.bookings | selectattr("status", "equalto", "Activo") | list %}
+                    {% set ocupados_list = active_bookings_list | length %}
+                    {% set disponibles_list = event.capacity - ocupados_list %}
+                    {% set es_pasado_list = event.event_date < now.date() %}
+
+                    <!-- ITEM DE LISTA -->
+                    <!-- CORRECCIÓN #3: Usar data-bs-toggle en lugar de onclick inline para garantizar que abra -->
+                    <div class="card mb-3 border-0 shadow-sm rounded-4 overflow-hidden hover-scale-sm cursor-pointer" 
+                         {% if not es_pasado_list and disponibles_list > 0 %}
+                         data-bs-toggle="modal" 
+                         data-bs-target="#detailsModal{{ event.id }}"
+                         style="cursor: pointer;"
+                         {% endif %}>
+                        
+                        <div class="card-body p-0 d-flex align-items-stretch">
+                            <!-- Columna Fecha -->
+                            <div class="bg-light p-3 d-flex flex-column justify-content-center align-items-center text-center border-end" style="min-width: 85px;">
+                                <span class="h3 fw-bold text-dark mb-0">{{ event.event_date.day }}</span>
+                                <span class="small fw-bold text-muted text-uppercase" style="font-size: 0.65rem;">{{ meses[event.event_date.month][:3] }}</span>
+                            </div>
+
+                            <!-- Columna Info Principal -->
+                            <div class="p-3 flex-grow-1 d-flex flex-column justify-content-center">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <h5 class="fw-bold text-dark mb-1 text-truncate-2">{{ event.title }}</h5>
+                                    
+                                    <!-- Badges de Estado -->
+                                    {% if event.status == 'Se Traslado' %}
+                                        <span class="badge bg-warning text-dark ms-2">Trasladado</span>
+                                    {% elif es_pasado_list %}
+                                        <span class="badge bg-secondary ms-2">Finalizado</span>
+                                    {% elif disponibles_list <= 0 %}
+                                        <span class="badge bg-danger ms-2">Agotado</span>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="d-flex align-items-center text-muted small mt-1">
+                                    <span class="me-3"><i class="bi bi-geo-alt-fill text-warning me-1"></i>{{ event.distance or 'N/A' }}</span>
+                                    <span class="me-3"><i class="bi bi-speedometer2 text-warning me-1"></i>{{ event.difficulty }}</span>
+                                    <span><i class="bi bi-star-fill text-warning me-1"></i>+{{ event.points_reward or 10 }} pts</span>
+                                </div>
+                            </div>
+
+                            <!-- Columna Acción (Flecha) -->
+                            <div class="p-3 d-flex align-items-center justify-content-center bg-white text-muted">
+                                {% if not es_pasado_list and disponibles_list > 0 %}
+                                    <div class="btn btn-warning btn-sm rounded-circle shadow-sm" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;">
+                                        <i class="bi bi-chevron-right text-dark"></i>
+                                    </div>
+                                {% else %}
+                                    <i class="bi bi-lock-fill opacity-25 fs-5"></i>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- ========================================== -->
+<!-- CONTENEDOR VISTA GRID (Original) -->
+<!-- ========================================== -->
+<div id="gridViewContainer" class="row g-4 animate__animated animate__fadeIn">
     {% if events %}
         {# Inicializamos la variable para rastrear el cambio de mes #}
         {% set last_month = namespace(value=none) %}
@@ -189,7 +287,7 @@
                                             style="font-size: 0.6rem;"
                                             data-bs-toggle="modal" 
                                             data-bs-target="#withdrawHomeModal{{ b.id }}">
-                                        RETIRAR
+                                            RETIRAR
                                     </button>
                                 </div>
                                 {% endfor %}
@@ -239,57 +337,9 @@
                     </div>
                 </div>
             </div>
-
-            <!-- MODALES DE RETIRO (SÓLO PARA ADMIN) -->
-            {% if current_user.is_authenticated and current_user.is_superuser %}
-                {% for b in active_bookings %}
-                <div class="modal fade" id="withdrawHomeModal{{ b.id }}" tabindex="-1" style="z-index: 2000;">
-                    <div class="modal-dialog modal-sm modal-dialog-centered">
-                        <div class="modal-content border-0 shadow-lg rounded-5 overflow-hidden">
-                            <div class="modal-header bg-warning text-dark border-0 py-3 text-center d-block">
-                                <h6 class="modal-title fw-bold">Gestionar Retiro</h6>
-                            </div>
-                            <div class="modal-body p-4 text-center bg-body">
-                                <div class="text-warning mb-3">
-                                    <i class="bi bi-exclamation-triangle-fill display-4 opacity-25"></i>
-                                </div>
-                                <p class="text-body fw-bold mb-1 fs-5">{{ b.member.nombre }}</p>
-                                <p class="small text-muted mb-4 px-2">
-                                    Se restarán los puntos otorgados por <strong>"{{ event.title }}"</strong> automáticamente.
-                                </p>
-                                
-                                <div class="form-check text-start bg-light p-3 rounded-3 mb-4 border">
-                                    <input class="form-check-input ms-0 me-2" type="checkbox" id="confirmWithdrawHome{{ b.id }}" onchange="document.getElementById('btnWithdrawHomeSubmit{{ b.id }}').classList.toggle('disabled', !this.checked)">
-                                    <label class="form-check-label small fw-bold text-dark" for="confirmWithdrawHome{{ b.id }}">
-                                        Confirmo el retiro y el descuento de puntos.
-                                    </label>
-                                </div>
-
-                                <div class="d-grid gap-2">
-                                    <form action="{{ url_for('main.cancel_booking', booking_id=b.id) }}" method="POST">
-                                        <button type="submit" id="btnWithdrawHomeSubmit{{ b.id }}" class="btn btn-warning fw-bold rounded-pill shadow-sm py-2 w-100 text-dark disabled">
-                                            EFECTUAR RETIRO
-                                        </button>
-                                    </form>
-                                    <button type="button" class="btn btn-light fw-bold rounded-pill py-2 border" data-bs-dismiss="modal">VOLVER</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                {% endfor %}
-            {% endif %}
-
-            <!-- ============================================== -->
-            <!-- IMPORTACIÓN DE COMPONENTES MODULARES -->
-            <!-- ============================================== -->
             
-            <!-- 1. Modal de Reserva (Usuario) -->
-            {% include 'modal_reservar.html' %}
+            <!-- CORRECCIÓN #4: Modales movidos fuera del loop principal en este contenedor para evitar errores de z-index y display -->
             
-            <!-- 2. Modales de Administración (Editar y Borrar) -->
-            {% include 'modales_admin.html' %}
-
         {% endfor %}
     {% else %}
         <!-- ESTADO VACÍO -->
@@ -301,6 +351,69 @@
         </div>
     {% endif %}
 </div>
+
+<!-- ============================================================== -->
+<!-- CORRECCIÓN FUNDAMENTAL: GENERACIÓN DE MODALES FUERA DE VISTAS -->
+<!-- Esto soluciona: -->
+<!-- 1. Que no abran en vista lista (porque estaban en un div oculto) -->
+<!-- 2. El fondo gris transparente (z-index incorrecto por animaciones padres) -->
+<!-- ============================================================== -->
+{% if events %}
+    {% for event in events %}
+        <!-- Cálculo de variables para los modales (NECESARIO PARA EVITAR ERROR 'disponibles is undefined') -->
+        {% set active_bookings = event.bookings | selectattr("status", "equalto", "Activo") | list %}
+        {% set ocupados = active_bookings | length %}
+        {% set disponibles = event.capacity - ocupados %}
+        {% set es_pasado = event.event_date < now.date() %}
+
+        <!-- 1. Modal de Reserva (Usuario) -->
+        {% include 'modal_reservar.html' %}
+        
+        <!-- 2. Modales de Administración (Editar y Borrar) -->
+        {% include 'modales_admin.html' %}
+
+        <!-- 3. Modales de Retiro (Admin) - Replicados aquí para contexto correcto -->
+        {% if current_user.is_authenticated and current_user.is_superuser %}
+            {# Reutilizamos active_bookings calculado arriba #}
+            {% for b in active_bookings %}
+            <div class="modal fade" id="withdrawHomeModal{{ b.id }}" tabindex="-1" style="z-index: 2000;">
+                <div class="modal-dialog modal-sm modal-dialog-centered">
+                    <div class="modal-content border-0 shadow-lg rounded-5 overflow-hidden">
+                        <div class="modal-header bg-warning text-dark border-0 py-3 text-center d-block">
+                            <h6 class="modal-title fw-bold">Gestionar Retiro</h6>
+                        </div>
+                        <div class="modal-body p-4 text-center bg-body">
+                            <div class="text-warning mb-3">
+                                <i class="bi bi-exclamation-triangle-fill display-4 opacity-25"></i>
+                            </div>
+                            <p class="text-body fw-bold mb-1 fs-5">{{ b.member.nombre }}</p>
+                            <p class="small text-muted mb-4 px-2">
+                                Se restarán los puntos otorgados por <strong>"{{ event.title }}"</strong> automáticamente.
+                            </p>
+                            
+                            <div class="form-check text-start bg-light p-3 rounded-3 mb-4 border">
+                                <input class="form-check-input ms-0 me-2" type="checkbox" id="confirmWithdrawHome{{ b.id }}" onchange="document.getElementById('btnWithdrawHomeSubmit{{ b.id }}').classList.toggle('disabled', !this.checked)">
+                                <label class="form-check-label small fw-bold text-dark" for="confirmWithdrawHome{{ b.id }}">
+                                    Confirmo el retiro y el descuento de puntos.
+                                </label>
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <form action="{{ url_for('main.cancel_booking', booking_id=b.id) }}" method="POST">
+                                    <button type="submit" id="btnWithdrawHomeSubmit{{ b.id }}" class="btn btn-warning fw-bold rounded-pill shadow-sm py-2 w-100 text-dark disabled">
+                                        EFECTUAR RETIRO
+                                    </button>
+                                </form>
+                                <button type="button" class="btn btn-light fw-bold rounded-pill py-2 border" data-bs-dismiss="modal">VOLVER</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% endif %}
+    {% endfor %}
+{% endif %}
 
 <!-- NUEVO: MODAL VISUALIZADOR DE IMAGEN COMPLETA (LIGHTBOX) -->
 <div class="modal fade" id="imageLightboxModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
@@ -319,6 +432,46 @@
 <!-- SCRIPTS DE LÓGICA FRONTEND -->
 <!-- ============================================================== -->
 <script>
+    /**
+     * Lógica para el Switch de Vistas (Grid vs Lista)
+     */
+    function switchView(viewName) {
+        const gridContainer = document.getElementById('gridViewContainer');
+        const listContainer = document.getElementById('listViewContainer');
+        const btnGrid = document.getElementById('btnViewGrid');
+        const btnList = document.getElementById('btnViewList');
+
+        // Guardar preferencia
+        localStorage.setItem('tribu_view_preference', viewName);
+
+        if (viewName === 'list') {
+            gridContainer.classList.add('d-none');
+            listContainer.classList.remove('d-none');
+            
+            // Estilos botones
+            btnList.classList.remove('text-muted');
+            btnList.classList.add('btn-warning', 'text-dark');
+            btnGrid.classList.remove('btn-warning', 'text-dark');
+            btnGrid.classList.add('text-muted');
+        } else {
+            listContainer.classList.add('d-none');
+            gridContainer.classList.remove('d-none');
+            
+            // Estilos botones
+            btnGrid.classList.remove('text-muted');
+            btnGrid.classList.add('btn-warning', 'text-dark');
+            btnList.classList.remove('btn-warning', 'text-dark');
+            btnList.classList.add('text-muted');
+        }
+    }
+
+    // Cargar preferencia al inicio
+    document.addEventListener('DOMContentLoaded', () => {
+        // CORRECCIÓN #2: Cambio de 'grid' a 'list' como predeterminado
+        const savedView = localStorage.getItem('tribu_view_preference') || 'list';
+        switchView(savedView);
+    });
+
     /**
      * Función para mostrar imagen completa en Lightbox
      */
@@ -653,6 +806,8 @@
 
     .btn-xs { padding: 0.15rem 0.4rem; font-size: 0.65rem; line-height: 1.2; }
     .x-small { font-size: 0.7rem; }
+    .hover-scale-sm { transition: transform 0.2s ease; }
+    .hover-scale-sm:hover { transform: scale(1.02); }
 
     [data-bs-theme="dark"] .adventure-card { background: #1a1a1a !important; border: 1px solid #2a2a2a !important; }
     [data-bs-theme="dark"] .card-title, [data-bs-theme="dark"] h1, [data-bs-theme="dark"] h2, [data-bs-theme="dark"] .modal-title, [data-bs-theme="dark"] .text-body { color: #ffffff !important; }
