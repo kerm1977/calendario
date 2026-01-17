@@ -420,6 +420,75 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- ============================================================== -->
+                <!-- NUEVO: RESUMEN FINANCIERO GLOBAL (AL FINAL DEL RANKING) -->
+                <!-- ============================================================== -->
+                {% if global_stats %}
+                <div class="card border-0 shadow-lg rounded-5 overflow-hidden mt-5 animate__animated animate__fadeInUp bg-dark text-white">
+                    <div class="card-header bg-transparent border-bottom border-secondary p-4">
+                        <h5 class="fw-bold mb-0 text-warning"><i class="bi bi-bank2 me-2"></i>Resumen Financiero Global</h5>
+                        <small class="text-secondary">Estadísticas agregadas de todo el ecosistema de La Tribu</small>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="row g-4 text-center">
+                            
+                            <!-- 1. TOTAL CIRCULANTE -->
+                            <div class="col-md-4 col-lg-2 border-end border-secondary">
+                                <h6 class="text-uppercase x-small text-secondary fw-bold mb-2">Total Circulante</h6>
+                                <h3 class="fw-bold text-white mb-1">{{ "{:,.0f}".format(global_stats.total_circulante) }}</h3>
+                                <small class="text-success x-small"><i class="bi bi-wallet2 me-1"></i>En Billeteras</small>
+                            </div>
+
+                            <!-- 2. ÚLTIMA ACTIVIDAD -->
+                            <div class="col-md-4 col-lg-2 border-end border-secondary">
+                                <h6 class="text-uppercase x-small text-secondary fw-bold mb-2">Último Movimiento</h6>
+                                {% if global_stats.ultima_actividad %}
+                                    <h5 class="fw-bold text-white mb-1">{{ global_stats.ultima_actividad.strftime('%d/%m') }}</h5>
+                                    <small class="text-secondary x-small">{{ global_stats.ultima_actividad.strftime('%H:%M') }}</small>
+                                {% else %}
+                                    <h5 class="fw-bold text-white mb-1">-</h5>
+                                {% endif %}
+                            </div>
+
+                            <!-- 3. CANJES -->
+                            <div class="col-md-4 col-lg-2 border-end border-secondary">
+                                <h6 class="text-uppercase x-small text-secondary fw-bold mb-2">Total Canjeado</h6>
+                                <h4 class="fw-bold text-info mb-1">{{ "{:,.0f}".format(global_stats.total_canjeado) }}</h4>
+                                <small class="text-secondary x-small">Puntos Redimidos</small>
+                            </div>
+
+                            <!-- 4. DONACIONES -->
+                            <div class="col-md-4 col-lg-2 border-end border-secondary">
+                                <h6 class="text-uppercase x-small text-secondary fw-bold mb-2">Total Donado</h6>
+                                <h4 class="fw-bold text-warning mb-1">{{ "{:,.0f}".format(global_stats.total_donado) }}</h4>
+                                <small class="text-secondary x-small">Regalos Admin</small>
+                            </div>
+
+                            <!-- 5. COMPRAS -->
+                            <div class="col-md-4 col-lg-2 border-end border-secondary">
+                                <h6 class="text-uppercase x-small text-secondary fw-bold mb-2">Total Comprado</h6>
+                                <h4 class="fw-bold text-success mb-1">{{ "{:,.0f}".format(global_stats.total_comprado) }}</h4>
+                                <small class="text-secondary x-small">Ingresos Puntos</small>
+                            </div>
+
+                            <!-- 6. PENALIZACIONES -->
+                            <div class="col-md-4 col-lg-2">
+                                <h6 class="text-uppercase x-small text-secondary fw-bold mb-2">Total Penalizado</h6>
+                                <h4 class="fw-bold text-danger mb-1">{{ "{:,.0f}".format(global_stats.total_penalizado) }}</h4>
+                                <small class="text-secondary x-small">Retiros/Sanciones</small>
+                            </div>
+
+                        </div>
+                    </div>
+                    <div class="card-footer bg-transparent border-top border-secondary p-3 text-center">
+                        <small class="text-secondary fst-italic">
+                            * Datos calculados en tiempo real basados en la auditoría histórica completa (PointLogs).
+                        </small>
+                    </div>
+                </div>
+                {% endif %}
+
             </div>
         {% endif %}
 

@@ -1,8 +1,8 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, abort, request
 from flask_login import login_required, current_user
 from db import db, Member, PointLog, Booking, Event, AdminNotification
-from sqlalchemy import desc
-from datetime import datetime, date, timedelta # Importamos datetime y timedelta
+from sqlalchemy import desc, func # Agregamos func para sumas SQL
+from datetime import datetime, date, timedelta
 
 # Definición del Blueprint
 puntos_bp = Blueprint('puntos', __name__, url_prefix='/admin/puntos')
@@ -58,13 +58,52 @@ def historial_global():
         flash('Acceso restringido a líderes.', 'danger')
         return redirect(url_for('main.home'))
 
-    # Ordenar miembros por puntos totales descendente
+    # 1. Obtener miembros ordenados (Tu código original)
     members = Member.query.order_by(Member.puntos_totales.desc()).all()
+    
+    # 2. CALCULAR ESTADÍSTICAS GLOBALES PARA EL RESUMEN FINAL
+    
+    # A. Total Circulante (Suma de las billeteras de todos los usuarios)
+    total_circulante = db.session.query(func.sum(Member.puntos_totales)).scalar() or 0
+    
+    # B. Última vez que se movieron puntos (Fecha más reciente en logs)
+    last_log = PointLog.query.order_by(PointLog.created_at.desc()).first()
+    ultima_actividad = last_log.created_at if last_log else None
+    
+    # C. Puntos Canjeados (Suma de montos negativos donde type contiene 'Canje')
+    # Usamos abs() para mostrarlo en positivo visualmente
+    total_canjeado = db.session.query(func.sum(PointLog.amount)).filter(PointLog.transaction_type.like('%Canje%')).scalar() or 0
+    total_canjeado = abs(total_canjeado)
+    
+    # D. Puntos Donados (Suma de montos positivos donde type contiene 'Donación')
+    total_donado = db.session.query(func.sum(PointLog.amount)).filter(PointLog.transaction_type.like('%Donación%')).scalar() or 0
+    
+    # E. Puntos Comprados (Suma exacta de tipo 'Compra Puntos')
+    total_comprado = db.session.query(func.sum(PointLog.amount)).filter(PointLog.transaction_type == 'Compra Puntos').scalar() or 0
+    
+    # F. Puntos Penalizados (Suma de 'Penalización' o 'Retiro')
+    # Buscamos tipos que contengan 'Penalización' o sean 'Retiro'
+    total_penalizado = db.session.query(func.sum(PointLog.amount)).filter(
+        (PointLog.transaction_type.like('%Penalización%')) | 
+        (PointLog.transaction_type == 'Retiro')
+    ).scalar() or 0
+    total_penalizado = abs(total_penalizado)
+
+    # Empaquetamos los datos para enviarlos a la vista
+    global_stats = {
+        'total_circulante': total_circulante,
+        'ultima_actividad': ultima_actividad,
+        'total_canjeado': total_canjeado,
+        'total_donado': total_donado,
+        'total_comprado': total_comprado,
+        'total_penalizado': total_penalizado
+    }
     
     return render_template('puntos.html', 
                          members=members, 
                          selected_member=None, 
-                         is_global_schedule=False)
+                         is_global_schedule=False,
+                         global_stats=global_stats) # Pasamos la nueva variable
 
 @puntos_bp.route('/cronograma')
 @login_required
